@@ -128,7 +128,7 @@ export function GalleryPage() {
               </p>
             </Card>
           ) : (
-            <div className="grid auto-rows-[160px] grid-cols-2 gap-3 sm:auto-rows-[220px] sm:gap-4 lg:grid-cols-4">
+            <div className="grid auto-rows-[160px] grid-cols-2 gap-3 sm:auto-rows-[220px] sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
               {items.map((item, i) => (
                 <button
                   key={item.id}

@@ -243,7 +243,7 @@ export function CalendarAdmin() {
           >
             <ChevronRight className="size-4" />
           </Button>
-          <span className="ml-2 font-display text-base font-medium tracking-tight text-foreground">
+          <span className="ml-2 hidden font-display text-base font-medium tracking-tight text-foreground sm:inline">
             {rangeLabel}
           </span>
         </div>
@@ -294,7 +294,7 @@ export function CalendarAdmin() {
             <Table className="w-full min-w-[900px] border-separate border-spacing-0">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="sticky left-0 z-10 w-44 min-w-[11rem] border-b border-r border-border bg-card text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <TableHead className="sticky left-0 z-10 w-36 min-w-[9rem] border-b border-r border-border bg-card text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Room
                   </TableHead>
                   {days.map((d) => (
@@ -318,11 +318,11 @@ export function CalendarAdmin() {
               <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.room.id} className="hover:bg-transparent">
-                    <TableCell className="sticky left-0 z-10 w-44 min-w-[11rem] border-b border-r border-border bg-card px-3 py-2 align-top">
-                      <div className="text-sm font-medium text-foreground">
+                    <TableCell className="sticky left-0 z-10 w-36 min-w-[9rem] border-b border-r border-border bg-card px-3 py-2 align-top">
+                      <div className="truncate text-sm font-medium text-foreground">
                         {row.room.name}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="truncate text-xs text-muted-foreground">
                         {row.room.type} · sleeps {row.room.capacity}
                       </div>
                     </TableCell>
@@ -349,7 +349,7 @@ export function CalendarAdmin() {
         )}
       </Card>
 
-      <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+      <p className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
         <CalendarDays className="size-3.5" />
         Click any booked cell to view the reservation details.
       </p>
@@ -432,11 +432,11 @@ function ReservationDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg gap-0 p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
+        <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
           <DialogTitle className="font-display text-xl font-medium tracking-tight">
             Reservation
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="break-all">
             Reference{" "}
             <span className="font-mono text-foreground">
               {reservation.referenceNo}
@@ -444,13 +444,13 @@ function ReservationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 py-5">
+        <div className="max-h-[85vh] overflow-y-auto px-4 py-5 sm:px-6">
           <div className="mb-4 flex items-center gap-2">
             <BookingStatusBadge status={reservation.status} friendly />
           </div>
 
           <div className="mb-4 flex items-center gap-3">
-            <Avatar className="size-10 border border-border">
+            <Avatar className="size-10 shrink-0 border border-border">
               <AvatarFallback className="bg-sand text-xs font-semibold text-primary">
                 {reservation.guest
                   ? getInitials(
@@ -471,11 +471,11 @@ function ReservationDialog({
 
           <dl className="grid grid-cols-2 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Check in</dt>
-            <dd className="text-right text-foreground">
+            <dd className="break-words text-right text-foreground">
               {formatDate(reservation.checkIn)}
             </dd>
             <dt className="text-muted-foreground">Check out</dt>
-            <dd className="text-right text-foreground">
+            <dd className="break-words text-right text-foreground">
               {formatDate(reservation.checkOut)}
             </dd>
             <dt className="text-muted-foreground">Nights</dt>
@@ -483,7 +483,7 @@ function ReservationDialog({
               {reservation.nights}
             </dd>
             <dt className="text-muted-foreground">Room</dt>
-            <dd className="text-right text-foreground">
+            <dd className="break-words text-right text-foreground">
               {reservation.rooms?.[0]?.room?.name ?? "—"}
             </dd>
             <dt className="text-muted-foreground">Total</dt>
@@ -493,7 +493,7 @@ function ReservationDialog({
           </dl>
         </div>
 
-        <DialogFooter className="border-t border-border px-6 py-4">
+        <DialogFooter className="border-t border-border px-4 py-4 sm:px-6">
           <Button variant="outline" className="ml-auto" onClick={onClose}>
             Close
           </Button>

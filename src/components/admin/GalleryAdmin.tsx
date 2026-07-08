@@ -101,15 +101,15 @@ export function GalleryAdmin() {
             </button>
           );
         })}
-        <div className="ml-auto">
-          <Button
-            onClick={() => setAdding(true)}
-            className="bg-primary text-white hover:bg-primary/90"
-          >
-            <Plus className="size-4" />
-            <span className="hidden sm:inline">Add Image</span>
-          </Button>
-        </div>
+      </div>
+      <div className="mb-5 flex justify-end">
+        <Button
+          onClick={() => setAdding(true)}
+          className="bg-primary text-white hover:bg-primary/90"
+        >
+          <Plus className="size-4" />
+          <span className="hidden sm:inline">Add Image</span>
+        </Button>
       </div>
 
       {isLoading ? (
@@ -134,7 +134,7 @@ export function GalleryAdmin() {
           }
         />
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 pb-6 sm:grid-cols-3 lg:grid-cols-4">
           {gallery.map((item) => (
             <Card
               key={item.id}
@@ -157,11 +157,11 @@ export function GalleryAdmin() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-2 top-2 size-8 bg-white/90 text-foreground opacity-0 backdrop-blur-sm transition-opacity hover:bg-white hover:text-red-700 group-hover:opacity-100"
+                className="absolute right-2 top-2 size-8 bg-white/90 text-foreground backdrop-blur-sm transition-opacity hover:bg-white hover:text-red-700 sm:opacity-0 sm:group-hover:opacity-100"
                 onClick={() => setDeleting(item)}
                 aria-label={`Remove ${item.title}`}
               >
-                <Trash2 className="size-3.5" />
+                <Trash2 className="size-4" />
               </Button>
             </Card>
           ))}
@@ -263,8 +263,8 @@ function AddImageDialog({
         }
       }}
     >
-      <DialogContent className="max-w-md gap-0 p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
+      <DialogContent className="max-h-[90vh] max-w-md gap-0 overflow-hidden p-0">
+        <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
           <DialogTitle className="font-display text-xl font-medium tracking-tight">
             Add photo
           </DialogTitle>
@@ -279,8 +279,9 @@ function AddImageDialog({
             if (!title || !url) return;
             mutation.mutate();
           }}
-          className="space-y-4 px-6 py-5"
+          className="flex max-h-[70vh] flex-col"
         >
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
           <div className="space-y-1.5">
             <Label htmlFor="photo-title" className="text-xs font-medium">
               Title
@@ -331,7 +332,7 @@ function AddImageDialog({
               <img
                 src={url}
                 alt={title || "Preview"}
-                className="aspect-video w-full object-cover"
+                className="max-h-48 w-full object-cover"
               />
             </div>
           )}
@@ -348,10 +349,13 @@ function AddImageDialog({
             />
           </div>
 
-          <DialogFooter className="gap-2 pt-2">
+          </div>
+
+          <DialogFooter className="flex-row gap-2 border-t border-border px-4 py-4 pt-4 sm:px-6">
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => {
                 setTitle("");
                 setCategory("RESORT");
@@ -364,7 +368,7 @@ function AddImageDialog({
             </Button>
             <Button
               type="submit"
-              className="bg-primary text-white hover:bg-primary/90"
+              className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
               disabled={mutation.isPending || !title || !url}
             >
               {mutation.isPending ? "Adding…" : "Add photo"}

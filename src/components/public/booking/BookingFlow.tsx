@@ -167,7 +167,7 @@ export function BookingFlow() {
                       if (s.value < step) setStep(s.value);
                     }}
                     disabled={s.value > step}
-                    className="flex items-center gap-2"
+                    className="flex min-h-[44px] items-center gap-2 px-1"
                   >
                     <span
                       className={cn(
@@ -183,7 +183,7 @@ export function BookingFlow() {
                     </span>
                     <span
                       className={cn(
-                        "text-sm font-medium transition-colors",
+                        "hidden text-sm font-medium transition-colors sm:inline",
                         active
                           ? "text-foreground"
                           : "text-muted-foreground"
@@ -195,7 +195,7 @@ export function BookingFlow() {
                   {i < STEPS.length - 1 && (
                     <span
                       className={cn(
-                        "h-px w-8 sm:w-16",
+                        "h-px w-6 sm:w-16",
                         step > s.value ? "bg-primary/40" : "bg-border"
                       )}
                     />
@@ -1024,11 +1024,11 @@ function ConfirmationScreen({
 
         {/* Action buttons */}
         <FadeUpSection delay={0.15} className="mx-auto mt-10 max-w-2xl">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:flex-row md:flex-wrap md:justify-center">
             <Button
               onClick={downloadIcs}
               variant="outline"
-              className="rounded-full"
+              className="w-full rounded-full md:w-auto"
             >
               <Download className="h-4 w-4" />
               Add to Calendar
@@ -1037,16 +1037,17 @@ function ConfirmationScreen({
               href={RESORT_INFO.social.messenger}
               target="_blank"
               rel="noopener noreferrer"
+              className="md:w-auto"
             >
-              <Button className="w-full rounded-full">
+              <Button className="w-full rounded-full md:w-auto">
                 <MessageSquare className="h-4 w-4" />
                 Message us on Messenger
               </Button>
             </a>
-            <a href={`tel:${RESORT_INFO.phoneRaw}`}>
+            <a href={`tel:${RESORT_INFO.phoneRaw}`} className="md:w-auto">
               <Button
                 variant="outline"
-                className="w-full rounded-full"
+                className="w-full rounded-full md:w-auto"
               >
                 <Phone className="h-4 w-4" />
                 Call the villa
@@ -1055,7 +1056,7 @@ function ConfirmationScreen({
             <Button
               onClick={() => navigate("find-reservation")}
               variant="outline"
-              className="rounded-full"
+              className="w-full rounded-full md:w-auto"
             >
               <Search className="h-4 w-4" />
               Find my booking later

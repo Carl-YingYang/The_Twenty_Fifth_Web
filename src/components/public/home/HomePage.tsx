@@ -29,17 +29,34 @@ import { RoomCard } from "../RoomCard";
 import {
   FadeUpSection,
   SectionHeading,
+  SectionDivider,
   getAmenityIcon,
+  useCountUp,
   HERO_IMAGE,
 } from "../shared";
 
 const STATS = [
-  { value: "4", label: "Bedrooms" },
-  { value: "21", label: "Beds" },
-  { value: "5.5", label: "Baths" },
-  { value: "25", label: "Guests" },
-  { value: "Private", label: "Beachfront" },
+  { value: 4, label: "Bedrooms", display: "4" },
+  { value: 21, label: "Beds", display: "21" },
+  { value: 5.5, label: "Baths", display: "5.5" },
+  { value: 25, label: "Guests", display: "25" },
+  { value: 0, label: "Beachfront", display: "Private" },
 ];
+
+function AnimatedStat({ stat }: { stat: typeof STATS[number] }) {
+  const isText = stat.display === "Private";
+  const { ref, count } = useCountUp(stat.value, 1400);
+  return (
+    <div className="text-center">
+      <div className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+        {isText ? stat.display : <span ref={ref}>{stat.value % 1 !== 0 ? count.toFixed(1) : count}</span>}
+      </div>
+      <div className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-white/60">
+        {stat.label}
+      </div>
+    </div>
+  );
+}
 
 const GALLERY_TEASER = [
   {
@@ -118,7 +135,7 @@ export function HomePage() {
       {/* ============================================================
           HERO
       ============================================================ */}
-      <section className="relative flex min-h-[92vh] items-center overflow-hidden">
+      <section className="relative flex min-h-[88vh] items-center overflow-hidden sm:min-h-[92vh]">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url('${HERO_BG}')` }}
@@ -140,11 +157,11 @@ export function HomePage() {
         </div>
 
         {/* Floating Check Availability card */}
-        <div className="absolute inset-x-0 bottom-0 z-20 translate-y-1/2 px-4">
+        <div className="absolute inset-x-0 bottom-0 z-20 translate-y-1/3 px-4 sm:translate-y-1/2">
           <div className="container-luxury">
             <FadeUpSection delay={0.15}>
               <div className="rounded-xl border border-border bg-card p-4 shadow-card-hover sm:p-6">
-                <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
                   <div className="space-y-1.5">
                     <Label
                       htmlFor="hero-checkin"
@@ -204,7 +221,7 @@ export function HomePage() {
                   <Button
                     onClick={onCheckAvailability}
                     size="lg"
-                    className="w-full rounded-full bg-primary text-white hover:bg-primary/90 md:w-auto"
+                    className="col-span-1 w-full rounded-full bg-primary text-white hover:bg-primary/90 sm:col-span-2 md:col-span-1 md:w-auto"
                   >
                     Check Availability
                     <ArrowRight className="h-4 w-4" />
@@ -217,7 +234,7 @@ export function HomePage() {
       </section>
 
       {/* Spacer to accommodate floating search */}
-      <div className="h-32 sm:h-40" />
+      <div className="h-40 sm:h-48" />
 
       {/* ============================================================
           STORY / INTRO
@@ -316,6 +333,8 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      <SectionDivider className="py-6" />
 
       {/* ============================================================
           AMENITIES PREVIEW
@@ -421,12 +440,7 @@ export function HomePage() {
                 delay={i * 0.06}
                 className="text-center"
               >
-                <div className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-                  {s.value}
-                </div>
-                <div className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-white/60">
-                  {s.label}
-                </div>
+                <AnimatedStat stat={s} />
               </FadeUpSection>
             ))}
           </div>

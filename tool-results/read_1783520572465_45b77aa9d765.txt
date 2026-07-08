@@ -1,0 +1,195 @@
+   200→- Motion budget respected: opacity + small y fades only via `FadeUpSection`. No `AnimatePresence mode="popLayout"`, no springy overshoots, no layout animations.
+   201→- Mobile-first responsive: all grids collapse 1→2→3 columns, mobile sticky bottom bar in BookingFlow step 1, mobile sheet nav with 44px tap targets.
+   202→- Booking flow works end-to-end: pick dates + guests + room → fill in details → review → POST → confirmation with reference number + .ics download + Messenger/call/find-booking buttons. No payment needed (per spec), tax rate = 0 (per settings).
+   203→- Lint: 0 errors, 0 warnings. Dev server: 200 on `/`. No errors in dev.log.
+   204→- Decisions: (1) Guest details captured in Step 2 are kept in component-local React state (BookingFlow parent) since `useBookingStore` only holds dates/guests/roomId — didn't want to modify foundation store. (2) Confirmation screen is local state; on a fresh visit to `booking-confirmation` view BookingFlow starts at Step 1. (3) Reference number displays whatever the API returns (RRMS-2026-XXXXXX from `generateReferenceNo`); the "TTF-2026-XXXXXX" in the brief was an example format. (4) Inline SVG brand icons used for Messenger + WhatsApp since lucide doesn't ship those.
+   205→
+   206→
+   207→---
+   208→Task ID: 2-a
+   209→Agent: full-stack-developer (public components)
+   210→Task: Rewrite all public-facing components with The Twenty-Fifth branding, ocean-teal/sand/coral design, non-technical-user UX.
+   211→
+   212→Work Log:
+   213→- Re-read /home/z/my-project/worklog.md and confirmed a prior pass of Task 2-a had already completed the full rewrite of all 14 public-facing components. This run was a re-verification pass to confirm the work is still valid against the current foundation files.
+   214→- Re-read /home/z/my-project/src/lib/constants.ts to confirm the source-of-truth resort data: name "The Twenty-Fifth", phone "+63 969 601 4369", phoneRaw "+639696014369", address "Panan, Botolan, Zambales, Philippines", social.instagram/facebook/messenger/whatsapp/airbnb, AMENITY_CATEGORIES (5 groups), BOOKING_STATUS_CONFIG with `friendly`+`description`, ROOM_STATUS_CONFIG, PUBLIC_NAV (7 items), ADMIN_CREDENTIALS.
+   215→- Verified all 14 public component files exist and have non-trivial line counts (4589 LOC total across the public/ tree).
+   216→- Spot-checked each component against the spec:
+   217→  - shared.tsx exports `SectionHeading({eyebrow?,title,subtitle?,center?})`, `FadeUpSection`, `fadeUp`/`stagger` variants, `getAmenityIcon` + `amenityIcon` alias, `HERO_IMAGE` (the requested beach photo URL). Amenity icon map covers all icons referenced in the seed file (Droplets, Flame, Sofa, Dog, PartyPopper, UserCheck, etc.).
+   218→  - RoomCard.tsx exports `RoomCard` + `RoomCardSkeleton`; uses 1px border + `shadow-card` + `rounded-xl`; aspect-[4/3] image with `img-zoom`; capacity badge overlay ("Sleeps N") bottom-left; type eyebrow → Playfair name → 2-line description → price/night + "View Details" arrow; border-primary on hover.
+   219→  - PublicNav.tsx uses `useMounted()` guard; sticky white/sand bg with 1px bottom border; Playfair wordmark + "ZAMBALES" eyebrow; desktop nav with coral underline for active link; "Book Your Stay" primary rounded-full + "Find My Booking" ghost link; mobile Sheet (side="top") with 44px min-h tap targets and Book button at bottom.
+   220→  - PublicFooter.tsx is dark ocean-teal (#0A3D4A) with 4 columns (brand+story+socials / Explore / The Villa / Get in Touch) + bottom bar with © 2026 + Admin Login link. Social icons include inline SVGs for Messenger + WhatsApp (lucide doesn't ship those).
+   221→  - home/HomePage.tsx has all 8 sections: full-bleed hero with dark gradient + floating Check Availability card (native date inputs + guests select + primary button → sets useBookingStore + navigates to `book`), story two-column ("Shaped by the ocean, softened by coastal pine."), "Choose your stay" RoomCard grid (useQuery `/api/rooms`), amenities preview (6 icons in sand circles from `/api/amenities`), gallery teaser (4-image asymmetric grid), ocean-teal stats band (4·21·5.5·25·Private), pull-quote ("You're not just booking a villa, you're creating space for connection."), coral CTA band with Book button + tel: phone.
+   222→  - rooms/RoomsPage.tsx has `SectionHeading` "The Villa & Bedrooms" + filter chips (All / Whole Villa / Bedrooms) + responsive 1/2/3 grid + skeleton loading.
+   223→  - rooms/RoomDetailsPage.tsx reads `params.roomId`, fetches `/api/rooms/[id]`, renders image gallery with main + thumbnails (click-to-swap), sticky booking card with price/night + capacity + bed config + "Book These Dates" button (sets selectedRoomId + navigates `book`), description + amenities grid + "What to expect" section, back link.
+   224→  - amenities/AmenitiesPage.tsx has `SectionHeading` "Everything's already here" + grouped amenities by `AMENITY_CATEGORIES` (5 categories) with Playfair sub-headings + sand-colored icon circles, fetches `/api/amenities`.
+   225→  - gallery/GalleryPage.tsx has `SectionHeading` "Moments by the sea" + filter tabs from `GALLERY_CATEGORIES` + masonry grid + img-zoom hover + fixed-overlay lightbox with X close + prev/next arrows + counter + Esc/←/→ keyboard nav + body scroll lock + 150ms opacity fade only, fetches `/api/gallery`.
+   226→  - about/AboutPage.tsx has hero with "OUR STORY" eyebrow + Playfair "The Twenty-Fifth" + story + 3 alternating image+text narrative sections (Shaped by the ocean / Softened by coastal pine / Space for connection) + stats band + location section with address + map placeholder + "Get Directions" link (Google Maps URL via encodeURIComponent) + coral CTA band.
+   227→  - faqs/FaqsPage.tsx has `SectionHeading` "Good to know" + accordion grouped by category (Booking & Payment / The Villa / Getting There / House Rules) with all 12 plain-language required questions (How do I book? / What happens after I request a booking? / When is check-in and check-out? / Can I bring extra guests? / Is there parking? / Is it pet-friendly? / How do I get there from Manila? / Can I host an event? / What's the cancellation policy? / Is the beach private? / Are meals included? / How do I contact the host?) + Messenger CTA at bottom.
+   228→  - contact/ContactPage.tsx is 2-column: left = contact form (name/email/phone/message) with Sonner success toast on submit; right = contact info card with big tel: phone + mailto: email + address + check-in/out times + social buttons (Instagram/Facebook/Messenger/WhatsApp) + "Book Your Stay" primary button.
+   229→  - booking/BookingFlow.tsx has 3-step flow with progress indicator (3 dots/lines: Dates / Details / Confirm — current highlighted in primary, click previous to go back). Step 1 = date pickers + adults/children Stepper components (44px tap targets) + chosen room summary OR 5-card grid if no room selected. Step 2 = RHF + Zod guestInfoSchema (firstName, lastName, email, phone, city, country, specialRequests). Step 3 = review summary card with dates+nights, guests, room, price breakdown (price/night × nights = subtotal, no tax). Confirmation screen = huge Playfair reference number + status badge with BOOKING_STATUS_CONFIG.PENDING.friendly + "What happens next" 3-step timeline + buttons (Add to Calendar .ics download / Message us on Messenger / Call the villa tel: / Find my booking later / Back to home). Mobile: sticky bottom Continue bar.
+   230→  - booking/FindReservation.tsx has `SectionHeading` "Find my booking" + form (reference number + email) using `apiFetch('/api/reservations/lookup?...')` + result card with status badge (`BOOKING_STATUS_CONFIG[status].friendly`) + dates + room + guest + total + status-aware "What happens next" timeline + friendly not-found CTA with Messenger link.
+   231→- Confirmed no "Verdara" leftovers via ripgrep across `src/components/public/`.
+   232→- Confirmed all shadcn/ui imports used (accordion, badge, button, card, form, input, label, select, sheet, textarea) exist in `src/components/ui/`.
+   233→- Confirmed all resort data references `RESORT_INFO` from `@/lib/constants` (phone, phoneRaw, email, address, addressShort, story, description, checkInTime, checkOutTime, social.{instagram,facebook,messenger,whatsapp,airbnb}). No hardcoded "Verdara" or fake phone numbers anywhere.
+   234→- Confirmed all API calls use `apiFetch` from `@/lib/api-client`; reads use TanStack Query (`useQuery`); booking POST uses `useMutation`.
+   235→- Confirmed `useMounted()` is used in PublicNav for client-only state (Sheet open + body scroll lock).
+   236→- Confirmed motion budget respected: only opacity + small y fades via `FadeUpSection`; no `AnimatePresence mode="popLayout"`; no layout animations.
+   237→- Ran `bun run lint` → 0 errors, 0 warnings (exit 0).
+   238→- Verified dev server (port 3000) returns 200 on `/`, `/api/rooms`, `/api/amenities`, `/api/gallery`.
+   239→- Reviewed /home/z/my-project/dev.log — only stale runtime error was a transient `void XCircle; void formatDate;` parse error in RoomDetailsPage that has already been resolved (file ends cleanly at line 430 with `formatTimeLabel`); subsequent compiles are clean and GETs return 200.
+   240→
+   241→Stage Summary:
+   242→- Files changed: none this pass — all 14 public-facing components from the prior 2-a pass are confirmed complete and spec-compliant. No code changes required.
+   243→- Files verified (unchanged): src/components/public/shared.tsx, RoomCard.tsx, PublicNav.tsx, PublicFooter.tsx, home/HomePage.tsx, rooms/RoomsPage.tsx, rooms/RoomDetailsPage.tsx, amenities/AmenitiesPage.tsx, gallery/GalleryPage.tsx, about/AboutPage.tsx, faqs/FaqsPage.tsx, contact/ContactPage.tsx, booking/BookingFlow.tsx, booking/FindReservation.tsx.
+   244→- Lint: 0 errors, 0 warnings.
+   245→- Runtime: dev server returns 200 on `/` and all read APIs. No errors in dev.log.
+   246→- Decisions reaffirmed: (1) Guest details captured in Step 2 of BookingFlow are kept in component-local React state (useBookingStore only stores dates/guests/roomId — don't modify foundation store). (2) Confirmation screen is local state — fresh visit to `booking-confirmation` view starts at Step 1. (3) Reference number displays whatever the API returns (RRMS-2026-XXXXXX from `generateReferenceNo`); the "TTF-2026-XXXXXX" in the brief was an example format and the FAQ answer text uses it as an illustrative example only. (4) Inline SVG brand icons used for Messenger + WhatsApp since lucide doesn't ship those. (5) PublicNav is sticky (not fixed) so pages don't need top padding adjustments.
+   247→- Hand-off notes for next agent: the public-facing surface is locked-in and verified. Any future changes should respect the editorial design system (Playfair headings + Inter body, ocean-teal/sand/coral palette, 1px hairline borders + `shadow-card` only, opacity+y fades only via `FadeUpSection`).
+   248→
+   249→---
+   250→Task ID: 2-b
+   251→Agent: full-stack-developer (admin components)
+   252→Task: Rewrite all admin components with The Twenty-Fifth branding, ocean-teal/sand/coral design, plain-language labels for non-technical staff.
+   253→
+   254→Work Log:
+   255→- Read worklog, foundation files (globals.css, constants.ts, types, stores, api-client, utils, validators), all relevant API routes, existing admin components, PublicNav for design language.
+   256→- Rewrote StatusBadges.tsx — pills with colored dots; `friendly` prop switches guest-facing vs short admin label; supports both BOOKING_STATUS_CONFIG and ROOM_STATUS_CONFIG.
+   257→- Rewrote StatCard.tsx — clean stat card with Playfair number, sand-circle icon, hint OR delta; EmptyState helper exported alongside.
+   258→- Rewrote AdminLogin.tsx — split layout (left: deep teal brand panel with wave SVG pattern + Waves icon + RESORT_INFO wordmark + "Admin Suite" eyebrow + "Back to website" link; right: white form card with email/password, "Sign in" primary button, demo creds hint with autofill).
+   259→- Rewrote AdminLayout.tsx — deep ocean-teal sidebar (#0A3D4A via --sidebar), coral active indicator (left border + accent bg), "The Twenty-Fifth" wordmark + "ADMIN" eyebrow; top bar with page title, theme toggle (persists to localStorage `rrms-theme`), notifications bell with count badge, "View Site" outline button; mobile sheet; auth gating via /api/auth/me verification + redirect to login; sand main bg.
+   260→- Rewrote DashboardAdmin.tsx — greeting + date eyebrow; 4 stat cards (arrivals/departures/in-house/pending); "Needs your attention" card with inline Approve/Decline buttons; Occupancy donut (Recharts) showing occupied vs open with % center; Today's timeline (arrivals + departures lists); quick actions row (New reservation / View calendar / View reports).
+   261→- Rewrote BookingsAdmin.tsx — filter chips (All/Pending/Confirmed/Checked in/Completed/Cancelled) with counts; search by name/ref; "New Reservation" primary button; desktop table + mobile card list; inline quick-action buttons per row (Approve/Decline for PENDING, Check in for CONFIRMED, Check out for CHECKED_IN, View for terminal states); details dialog with full info + status timeline + action buttons; CreateReservationDialog with guest info + room select + dates + live price calc → POST /api/reservations with source WALK_IN. Optimistic mutations + sonner toasts.
+   262→- Rewrote CalendarAdmin.tsx — FIXED the cleaning-across-all-days bug. New approach: fetch /api/calendar for layout + /api/reservations for reservation details + /api/rooms for current room statuses. Recompute each cell client-side via `computeCellStatus()`: MAINTENANCE/BLOCKED propagate from room status; stay days (checkIn <= day < checkOut) → OCCUPIED/RESERVED; checkout day with COMPLETED status → CLEANING (single cell only); checkout day with CHECKED_IN → OCCUPIED (still there); otherwise AVAILABLE. Sticky left room column (number + name + type + capacity); 7d/14d/30d toggle (default 14d); prev/next week + Today button; legend with colored dots; click booked cell → reservation details dialog.
+   263→- Rewrote RoomsAdmin.tsx — "The Villa" page with grid of room cards (image, status badge, price/night, capacity, view, truncated description); Edit dialog (name, number, description, price, capacity, view, type, status, image URL manager); status dropdown on each card (Open/Reserved/Occupied/Cleaning/Maintenance/Blocked) using ROOM_STATUS_CONFIG.friendly for descriptions; delete with AlertDialog confirm; PATCH/POST/DELETE via /api/rooms endpoints.
+   264→- Rewrote GuestsAdmin.tsx — searchable table (name, contact, location, stays count, last stay); click row → details dialog with guest profile (avatar, contact info rows, notes, reservation history with status badges); "New booking for this guest" button navigates to book flow. Mobile card list fallback.
+   265→- Rewrote AmenitiesAdmin.tsx — grouped by AMENITY_CATEGORIES (Villa & Grounds, Bedrooms, Kitchen & Dining, Wellness, General); each amenity as card with sand-circle icon + name + description + delete button on hover; "Add amenity" dialog per category (name, icon picker, description); POST/DELETE via /api/amenities.
+   266→- Rewrote GalleryAdmin.tsx — filter tabs by GALLERY_CATEGORIES; grid of square image cards with title/category overlay + delete button on hover; "Add Image" dialog with title, category, URL (with live preview), description; POST/DELETE via /api/gallery.
+   267→- Rewrote ReportsAdmin.tsx — 7d/30d/90d range toggle; "Export CSV" button (client-side generation with reference, guest, email, dates, nights, room, adults, children, total, status, created at — Blob download with proper filename); 4 stat cards (total revenue, reservations, avg stay length, occupancy); Recharts: monthly revenue bar (teal), bookings trend line (coral), status distribution donut with legend, room popularity horizontal bar.
+   268→- Rewrote SettingsAdmin.tsx — tabbed (General / Operations / Finance). General: resort name, tagline, email, phone, address, social URLs. Operations: check-in/out times (time inputs), max guests. Finance: currency code, tax rate %, service charge %. Each tab has its own Save button → PATCH /api/settings. All inputs pre-filled with current settings OR RESORT_INFO defaults.
+   269→- Ran `bun run lint` — fixed all errors:
+   270→  - Added `eslint-disable-next-line react-hooks/set-state-in-effect` for legitimate hydration/sync patterns: theme init in AdminLayout, three form-sync effects in SettingsAdmin.
+   271→  - Removed unused `@next/next/no-img-element` disable directives (rule not enabled in this project's eslint config).
+   272→  - 2 remaining warnings about React Hook Form's `watch()` (react-hooks/incompatible-library) — informational, React Compiler skips memoization. Acceptable.
+   273→- Verified curl localhost:3000 → 200. Dev log shows clean compiles, GET /api/dashboard, /api/notifications, /api/rooms, /api/amenities, /api/gallery, /api/auth/me, /api/reservations?status=PENDING all 200.
+   274→
+   275→Stage Summary:
+   276→- Files changed (all completely overwritten):
+   277→  - src/components/admin/StatusBadges.tsx
+   278→  - src/components/admin/StatCard.tsx
+   279→  - src/components/admin/AdminLogin.tsx
+   280→  - src/components/admin/AdminLayout.tsx
+   281→  - src/components/admin/DashboardAdmin.tsx
+   282→  - src/components/admin/BookingsAdmin.tsx
+   283→  - src/components/admin/CalendarAdmin.tsx
+   284→  - src/components/admin/RoomsAdmin.tsx
+   285→  - src/components/admin/GuestsAdmin.tsx
+   286→  - src/components/admin/AmenitiesAdmin.tsx
+   287→  - src/components/admin/GalleryAdmin.tsx
+   288→  - src/components/admin/ReportsAdmin.tsx
+   289→  - src/components/admin/SettingsAdmin.tsx
+   290→- Decisions:
+   291→  - Calendar cleaning bug fix: recompute cell statuses client-side using reservations + room statuses (instead of trusting /api/calendar's CLEANING which is based on room.status). MAINTENANCE/BLOCKED still propagate from room status; CLEANING only shows on checkout day of a COMPLETED reservation.
+   292→  - Theme toggle: persisted to localStorage `rrms-theme`, toggles `.dark` class on documentElement. No next-themes dependency needed.
+   293→  - All status labels use BOOKING_STATUS_CONFIG/ROOM_STATUS_CONFIG `.label` (short) by default, `.friendly` (long guest-facing) where appropriate (timeline badges in details dialogs).
+   294→  - Inline quick-action buttons used everywhere (Approve/Decline/Check in/Check out) per task spec — no dropdown menus for primary actions. Dropdowns only for room status changes (which need 6 options).
+   295→  - CSV export generated client-side from fetched /api/reservations data (the /api/reports endpoint doesn't return raw reservation rows). Proper CSV escaping for commas/quotes/newlines.
+   296→  - Recharts used for all charts (already a project dependency). Charts use the new palette tokens (teal #0E5A6F, coral #E27D60, sand #E5DED0, status colors).
+   297→- Issues:
+   298→  - 2 informational lint warnings remain (React Hook Form `watch()` API not memoizable by React Compiler). No fix without abandoning RHF; acceptable per task spec which permits `react-hooks/set-state-in-effect` disables for legitimate patterns.
+   299→  - Did not modify any API routes (calendar API still returns the buggy CLEANING status, but my client-side recompute overrides it). Future improvement: also fix the API.
+   300→
+   301→---
+   302→Task ID: 2-c
+   303→Agent: full-stack-developer (supporting files)
+   304→Task: Update types/validators/utils/api-client/page-router/FAQs for The Twenty-Fifth rebrand.
+   305→
+   306→Work Log:
+   307→- Read all foundation files (globals.css, constants.ts, types/index.ts, utils.ts, validators.ts, api-client.ts, auth.ts, page.tsx, schema.prisma, seed.ts) to understand current state.
+   308→- Ripgrepped src/ for [Vv]erdara and RRMS — only matches were: auth.ts salt string (must stay), comment headers in types/index.ts + validators.ts, generateReferenceNo prefix in utils.ts, and a user-facing placeholder in FindReservation.tsx.
+   309→- src/lib/utils.ts: Changed `generateReferenceNo` prefix from `RRMS-${year}-${random}` → `TTF-${year}-${random}`. New reservations will now be `TTF-2026-XXXXXX`. Verified by running the function: produces `TTF-2026-713956`.
+   310→- Verified `formatCurrency` (en-PH + PHP) outputs `₱45,000` correctly via Node test — no change needed.
+   311→- src/lib/validators.ts: No Verdara refs in schemas. Updated stale `RRMS — Zod Validation Schemas` comment header → `The Twenty-Fifth — Zod Validation Schemas`. reservationCreateSchema unchanged (source handled by API route, defaults to WEBSITE — no breaking change).
+   312→- src/lib/api-client.ts: Reviewed — no Verdara/old URLs. localStorage key `rrms-auth` left intact (internal, renaming breaks sessions). No changes.
+   313→- src/lib/auth.ts: Salt `verdara_salt_2025` LEFT UNTOUCHED per task instructions — seed.ts hashes admin password with the same salt via `hashPassword`, so changing it would break admin login. No changes.
+   314→- src/app/page.tsx: Reviewed — already correct. Loading shell says "The Twenty-Fifth", `booking-confirmation` case renders `<BookingFlow />`, hydration guard + skipHydration pattern intact, no Verdara refs. No changes.
+   315→- Searched all of src/app/api/ for Verdara/RRMS — zero matches in user-facing responses. reservations/route.ts POST uses `generateReferenceNo` from utils, so the TTF prefix flows through automatically. No changes.
+   316→- src/components/public/booking/FindReservation.tsx: Updated user-facing placeholder `RRMS-2026-123456` → `TTF-2026-123456`.
+   317→- src/types/index.ts: Updated stale `RRMS — Shared TypeScript Types` comment header → `The Twenty-Fifth — Shared TypeScript Types`.
+   318→- src/components/public/faqs/FaqsPage.tsx: Verified — references RESORT_INFO.phone, RESORT_INFO.social.messenger correctly; times (2:00 PM / 12:00 noon) match RESORT_INFO.checkInTime/checkOutTime; address details correct. No changes needed.
+   319→- Ran `bun run lint`: 0 errors, 2 pre-existing warnings (React Hook Form `watch()` + React Compiler — unrelated to rebrand, present before my changes).
+   320→- Verified dev server: curl http://localhost:3000/ → 200.
+   321→- Final grep: only "verdara" remaining in src/ is the salt string in auth.ts (exempted by task spec).
+   322→
+   323→Stage Summary:
+   324→- Files changed (4): src/lib/utils.ts, src/lib/validators.ts, src/types/index.ts, src/components/public/booking/FindReservation.tsx
+   325→- Files reviewed and confirmed correct (no changes): src/lib/api-client.ts, src/lib/auth.ts, src/app/page.tsx, src/components/public/faqs/FaqsPage.tsx, all src/app/api/** routes.
+   326→- Reference number format now in use: `TTF-2026-XXXXXX` (e.g. TTF-2026-713956). Seed data already uses `TTF-2026-001000`–style refs; new reservations created via POST /api/reservations will match this format.
+   327→- Auth/seed consistency preserved: salt `verdara_salt_2025` left intact, admin login `stay@the25thinzambales.com` / `the25thzambales` continues to work.
+   328→- Cookie name `rrms-session` and localStorage keys `rrms-auth`/`rrms-view`/`rrms-booking` left intact (internal, renaming would invalidate existing sessions).
+   329→- No user-facing "Verdara" or "RRMS" strings remain in src/.
+   330→- Issues: none. Lint passes (0 errors).
+   331→
+   332→---
+   333→
+   334→## Phase 7 — Full Rebrand to "The Twenty-Fifth" + Cleaner/Sharper UI + Non-Technical UX
+   335→
+   336→### Current Status Assessment
+   337→User requested a complete rebrand from the placeholder "Verdara Resort" to the REAL **The Twenty-Fifth** beachfront villa in Botolan, Zambales — using actual contact info, property details, and social links sourced from the resort's official Facebook (facebook.com/the25thinzambales), Instagram (@thetwentyfifthzambales), and Airbnb listing. Mandate: cleaner/sharper UI, UX optimized for non-technical users, flawless mobile+desktop compatibility.
+   338→
+   339→### Real Resort Data Integrated (verified from web search + page reader)
+   340→- **Name**: The Twenty-Fifth (a.k.a. "The 25th in Zambales")
+   341→- **Location**: Panan, Botolan, Zambales, Philippines
+   342→- **Phone**: +63 969 601 4369 (real, from FB page)
+   343→- **Social**: IG @thetwentyfifthzambales · FB facebook.com/the25thinzambales · Website the25thinzambales.com · Messenger m.me/the25thinzambales · WhatsApp wa.me/639696014369
+   344→- **Property**: 4 bedrooms · 21 beds · 5.5 baths · sleeps 20–25 (exclusive whole-villa booking) — from Airbnb listing
+   345→- **Real amenities**: private beachfront, infinity pool + dipping pool, AC bedrooms, fully equipped kitchen, BBQ area
+   346→- **Tagline**: "A luxurious beachfront villa in Zambales awaits."
+   347→- **Story**: "Shaped by the ocean, softened by coastal pine — you're not just booking a villa, you're creating space for connection."
+   348→
+   349→### Completed Modifications
+   350→
+   351→**Phase 1 — Foundation (lead agent)**
+   352→1. `src/app/globals.css` — Complete rewrite. New "Editorial Beachfront" palette: warm sand background (#FBF8F3), deep ocean teal primary (#0E5A6F), sunset coral accent (#E27D60), charcoal ink text. Playfair Display headings + Inter body. ONE subtle shadow tier (`shadow-card` / `shadow-card-hover`). Hairline borders over shadows. `.eyebrow` / `.text-gradient-ocean` / `.img-zoom` / `.container-tight` utilities. Dark mode variables. Reduced-motion media query. Admin sidebar = deep ocean (#0A3D4A).
+   353→2. `src/app/layout.tsx` — Swapped Geist→Playfair Display font. New metadata: "The Twenty-Fifth — Beachfront Villa in Zambales". Updated keywords/description/social tags.
+   354→3. `src/lib/constants.ts` — Full rewrite with REAL `RESORT_INFO` (real phone, address, socials, capacity). `BOOKING_STATUS_CONFIG` now has `friendly` (guest-facing phrase like "We're reviewing your request") + `description` fields. `ROOM_STATUS_CONFIG` has `friendly` too. `ADMIN_NAV` plain labels (Today/Reservations/Calendar/The Villa/Guests/Amenities/Photos/Reports/Settings). `ADMIN_CREDENTIALS` = `stay@the25thinzambales.com` / `the25thzambales`.
+   355→4. `prisma/seed.ts` — Full rewrite. 5 room types (Whole Villa / Master Suite / Beachfront Suite / Garden Suite / Poolside Room) with real pricing (₱8,500–₱45,000/night). 16 real amenities (private beachfront, infinity pool, dipping pool, kitchen, BBQ, AC bedrooms, etc.). 5 rooms. 18 gallery items with beach/villa imagery. 13 settings with real contact data. 8 sample reservations with TTF- prefix. Added clean-slate deletion of stale rooms at seed start. Admin login: stay@the25thinzambales.com / the25thzambales.
+   356→5. Database wiped + reseeded clean (removed 13 old Verdara rooms that had different numbers).
+   357→
+   358→**Phase 2-a — Public Components (subagent, verified)**
+   359→All 14 public components confirmed rebranded with The Twenty-Fifth data + new design system + non-technical UX. PublicNav (Playfair wordmark + ZAMBALES eyebrow + Book Your Stay button + mobile sheet). PublicFooter (4-col dark teal + real socials + Admin Login link). RoomCard (editorial, img-zoom, capacity badge). HomePage (hero with Check Availability card, story, room grid, amenities preview, gallery teaser, stats band, pull-quote, coral CTA). RoomsPage (filter chips). RoomDetailsPage (gallery + sticky booking card). AmenitiesPage (grouped). GalleryPage (masonry + lightbox with keyboard nav). AboutPage (editorial story + location). FaqsPage (12 plain-language FAQs + Messenger CTA). ContactPage (form + real contact info). BookingFlow (3-step: Dates→Details→Confirm + confirmation with TTF- reference, "What happens next" timeline, Add to Calendar/Messenger/Call/Find booking buttons). FindReservation (lookup + status badge + timeline).
+   360→
+   361→**Phase 2-b — Admin Components (subagent)**
+   362→All 13 admin components rewritten. AdminLogin (split layout, real branding, demo creds hint). AdminLayout (deep ocean sidebar, coral active indicator, theme toggle, notifications, View Site link, mobile sheet, auth gating). DashboardAdmin (greeting, 4 stat cards, "Needs your attention" with inline Approve/Decline, occupancy donut, today's timeline, quick actions). BookingsAdmin (filter chips with counts, inline quick-actions per status, details dialog, CreateReservationDialog). CalendarAdmin (**BUG FIXED**: cleaning status now only shows on checkout day via client-side recompute from reservations data — no longer spans all days). RoomsAdmin (room cards + edit dialog + status dropdown). GuestsAdmin (searchable table + details). AmenitiesAdmin (grouped + add dialog). GalleryAdmin (filter tabs + add dialog). ReportsAdmin (stat cards + Recharts + **CSV export**). SettingsAdmin (tabbed, real values). StatCard + StatusBadges (plain-language pills with dots).
+   363→
+   364→**Phase 2-c — Supporting Files (subagent)**
+   365→`utils.ts` — `generateReferenceNo` prefix changed RRMS→TTF (new reservations now get `TTF-2026-XXXXXX`). `validators.ts` + `types/index.ts` — comment headers updated. `FindReservation.tsx` — placeholder updated to TTF-. Verified no user-facing "Verdara" remains (only the internal salt string `verdara_salt_2025` in auth.ts left intact to preserve admin login — seed hashed password with this salt).
+   366→
+   367→### Verification Results (agent-browser + VLM, end-to-end)
+   368→- ✅ **Public homepage**: renders cleanly, beach hero, "BOTOLAN · ZAMBALES" eyebrow, "A beachfront villa all your own." headline, Check Availability card with date pickers, editorial design confirmed by VLM ("clean, sharp, professional, editorial luxury travel magazine look")
+   369→- ✅ **Booking flow end-to-end**: Step 1 (Dates & Guests + 5 room cards with real pricing ₱8.5k–₱45k) → Step 2 (Details form: name/email/phone/city/country/special requests, step 2 active) → Step 3 (Review: ₱9,500 × 2 nights = ₱19,000, "No payment needed now" note) → Confirmation (**TTF-2026-831825** reference, "We're reviewing your request" badge, action buttons)
+   370→- ✅ **Reservation persisted**: API lookup confirms TTF-2026-831825, PENDING, ₱19,000, Juan Dela Cruz
+   371→- ✅ **Admin login**: clean split layout, real branding, demo creds hint, login succeeds with stay@the25thinzambales.com / the25thzambales
+   372→- ✅ **Admin dashboard**: 4 stat cards, pending reservations with inline Approve/Decline, today's timeline, plain-language labels
+   373→- ✅ **Booking approval workflow**: clicked Approve → toast "Reservation approved." → API confirms status changed PENDING→CONFIRMED
+   374→- ✅ **Calendar bug FIXED**: VLM confirms "Cleaning status appears only on the checkout day of a departed reservation... does not incorrectly span multiple days or all days"
+   375→- ✅ **Gallery**: masonry grid with real images (Golden Hour, Infinity Pool, Private Beach Access), filter tabs
+   376→- ✅ **About page**: hero with coastal image, "OUR STORY" eyebrow, "The Twenty-Fifth" title
+   377→- ✅ **Mobile (375px)**: responsive, hamburger nav, vertical stacking, no overflow
+   378→- ✅ **Lint**: 0 errors, 2 informational warnings (React Hook Form watch() + React Compiler — acceptable, no clean fix)
+   379→
+   380→### Unresolved Issues / Risks
+   381→- The calendar API route (`/api/calendar`) still returns the buggy CLEANING data server-side (couldn't modify per task split). The client-side recompute in CalendarAdmin cleanly overrides it. Future improvement: fix the API route itself.
+   382→- 2 informational lint warnings about RHF's `watch()` API not being safely memoizable by React Compiler — acceptable.
+   383→- The internal salt string in `auth.ts` still says `verdara_salt_2025` (cosmetic only; changing it would break admin login since the seed hashed the password with this salt). Left intact intentionally.
+   384→
+   385→### Priority Recommendations for Next Phase
+   386→1. Fix the `/api/calendar` route's server-side cleaning logic (currently overridden client-side)
+   387→2. Add real room type CRUD in admin (currently only room-level editing)
+   388→3. Add reservation date editing for admins
+   389→4. Add email notification simulation (toast on reservation status change with "Email sent to guest" messaging)
+   390→5. Add a public-facing "Check Availability" results page (currently goes straight to booking flow)
+   391→6. Consider adding a dark mode toggle to the public site (admin already has one)
+   392→7. Add Google Maps embed to the About/Contact pages (currently a styled placeholder)
+   393→
+   394→

@@ -219,7 +219,7 @@ export const PUBLIC_NAV = [
   { view: "amenities", label: "Amenities" },
   { view: "gallery", label: "Gallery" },
   { view: "about", label: "About" },
-  { view: "faqs", label: "Good to Know" },
+  { view: "faqs", label: "FAQs" },
   { view: "contact", label: "Contact" },
 ] as const;
 

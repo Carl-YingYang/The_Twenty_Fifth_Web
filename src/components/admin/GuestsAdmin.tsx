@@ -95,28 +95,29 @@ export function GuestsAdmin() {
         </div>
       </div>
 
-      {/* Desktop table */}
-      <Card className="hidden overflow-hidden rounded-xl border border-border shadow-card lg:block">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Guest
-              </TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Contact
-              </TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Location
-              </TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Stays
-              </TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Last stay
-              </TableHead>
-            </TableRow>
-          </TableHeader>
+      {/* Desktop / tablet table */}
+      <Card className="hidden overflow-hidden rounded-xl border border-border shadow-card md:block">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Guest
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Contact
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Location
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Stays
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Last stay
+                </TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
@@ -187,10 +188,11 @@ export function GuestsAdmin() {
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
 
       {/* Mobile cards */}
-      <div className="space-y-3 lg:hidden">
+      <div className="space-y-3 md:hidden pb-6">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-xl" />
@@ -277,7 +279,7 @@ function GuestDetailsDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl gap-0 p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
+        <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
           <DialogTitle className="font-display text-xl font-medium tracking-tight">
             Guest profile
           </DialogTitle>
@@ -286,14 +288,14 @@ function GuestDetailsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
+        <div className="max-h-[85vh] overflow-y-auto px-4 py-5 sm:px-6">
           <div className="mb-5 flex items-center gap-3">
-            <Avatar className="size-12 border border-border">
+            <Avatar className="size-12 shrink-0 border border-border">
               <AvatarFallback className="bg-sand text-sm font-semibold text-primary">
                 {getInitials(`${guest.firstName} ${guest.lastName}`)}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="min-w-0">
               <div className="text-base font-medium text-foreground">
                 {guest.firstName} {guest.lastName}
               </div>
@@ -365,9 +367,10 @@ function GuestDetailsDialog({
           </div>
         </div>
 
-        <DialogFooter className="border-t border-border px-6 py-4">
+        <DialogFooter className="flex-row flex-wrap gap-2 border-t border-border px-4 py-4 sm:px-6">
           <Button
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={() => {
               selectRoom("");
               navigate("book");
@@ -378,7 +381,7 @@ function GuestDetailsDialog({
           </Button>
           <Button
             variant="ghost"
-            className="ml-auto"
+            className="ml-auto w-full sm:w-auto"
             onClick={onClose}
           >
             Close

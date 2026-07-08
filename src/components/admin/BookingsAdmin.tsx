@@ -125,6 +125,20 @@ export function BookingsAdmin() {
       qc.invalidateQueries({ queryKey: ["admin-calendar"] });
       qc.invalidateQueries({ queryKey: ["admin-rooms"] });
       toast.success(`Reservation ${data.reservation.referenceNo} updated.`);
+      // Email notification simulation
+      const guestEmail = data.reservation.guest?.email;
+      if (guestEmail) {
+        const emailMap: Record<string, string> = {
+          CONFIRMED: `✉️ Confirmation email sent to ${guestEmail}`,
+          CHECKED_IN: `✉️ Check-in confirmation sent to ${guestEmail}`,
+          COMPLETED: `✉️ Thank-you email sent to ${guestEmail}`,
+          CANCELLED: `✉️ Cancellation notice sent to ${guestEmail}`,
+          REJECTED: `✉️ Cancellation notice sent to ${guestEmail}`,
+          NO_SHOW: `✉️ No-show notice sent to ${guestEmail}`,
+        };
+        const msg = emailMap[data.reservation.status];
+        if (msg) setTimeout(() => toast.info(msg), 800);
+      }
     },
     onError: (err) => {
       const message =
@@ -170,8 +184,8 @@ export function BookingsAdmin() {
             );
           })}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 lg:w-64 lg:flex-none">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+          <div className="relative flex-1 sm:w-56 sm:flex-none lg:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -191,9 +205,10 @@ export function BookingsAdmin() {
         </div>
       </div>
 
-      {/* Table — desktop */}
-      <Card className="hidden overflow-hidden rounded-xl border border-border shadow-card lg:block">
-        <Table>
+      {/* Table — desktop / tablet */}
+      <Card className="hidden overflow-hidden rounded-xl border border-border shadow-card md:block">
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -300,10 +315,11 @@ export function BookingsAdmin() {
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
 
       {/* Card list — mobile */}
-      <div className="space-y-3 lg:hidden">
+      <div className="space-y-3 md:hidden pb-6">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-32 w-full rounded-xl" />
@@ -501,11 +517,11 @@ function ReservationDetailsDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl gap-0 p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
+        <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
           <DialogTitle className="font-display text-xl font-medium tracking-tight">
             Reservation details
           </DialogTitle>
-          <DialogDescription className="text-xs">
+          <DialogDescription className="text-xs break-all">
             Reference{" "}
             <span className="font-mono text-foreground">
               {reservation.referenceNo}
@@ -513,7 +529,7 @@ function ReservationDetailsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
+        <div className="max-h-[60vh] overflow-y-auto px-4 py-5 sm:px-6">
           {/* Status & timeline */}
           <div className="mb-5 flex flex-wrap items-center gap-2">
             <BookingStatusBadge status={reservation.status} friendly />
@@ -629,12 +645,12 @@ function ReservationDetailsDialog({
           </Section>
         </div>
 
-        <DialogFooter className="flex-row flex-wrap gap-2 border-t border-border px-6 py-4">
+        <DialogFooter className="flex-row flex-wrap gap-2 border-t border-border px-4 py-4 sm:px-6">
           {s === "PENDING" && (
             <>
               <Button
                 variant="outline"
-                className="border-red-300 text-red-700 hover:bg-red-50"
+                className="w-full border-red-300 text-red-700 hover:bg-red-50 sm:w-auto"
                 disabled={pending}
                 onClick={() => onMutate("REJECTED")}
               >
@@ -642,7 +658,7 @@ function ReservationDetailsDialog({
                 Decline
               </Button>
               <Button
-                className="ml-auto bg-emerald-600 text-white hover:bg-emerald-700"
+                className="ml-auto w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
                 disabled={pending}
                 onClick={() => onMutate("CONFIRMED")}
               >
@@ -653,7 +669,7 @@ function ReservationDetailsDialog({
           )}
           {s === "CONFIRMED" && (
             <Button
-              className="ml-auto bg-primary text-white hover:bg-primary/90"
+              className="ml-auto w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
               disabled={pending}
               onClick={() => onMutate("CHECKED_IN")}
             >
@@ -663,7 +679,7 @@ function ReservationDetailsDialog({
           )}
           {s === "CHECKED_IN" && (
             <Button
-              className="ml-auto bg-primary text-white hover:bg-primary/90"
+              className="ml-auto w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
               disabled={pending}
               onClick={() => onMutate("COMPLETED")}
             >
@@ -675,7 +691,7 @@ function ReservationDetailsDialog({
             s === "CANCELLED" ||
             s === "REJECTED" ||
             s === "NO_SHOW") && (
-            <Button variant="outline" className="ml-auto" onClick={onClose}>
+            <Button variant="outline" className="ml-auto w-full sm:w-auto" onClick={onClose}>
               Close
             </Button>
           )}
@@ -822,7 +838,7 @@ function CreateReservationDialog({
       }}
     >
       <DialogContent className="max-h-[90vh] max-w-2xl gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
+        <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
           <DialogTitle className="font-display text-xl font-medium tracking-tight">
             New reservation
           </DialogTitle>
@@ -835,7 +851,7 @@ function CreateReservationDialog({
           onSubmit={handleSubmit((v) => mutation.mutate(v))}
           className="flex max-h-[70vh] flex-col"
         >
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
             {/* Guest */}
             <div className="mb-5">
               <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -957,10 +973,11 @@ function CreateReservationDialog({
             )}
           </div>
 
-          <DialogFooter className="border-t border-border px-6 py-4">
+          <DialogFooter className="flex-row flex-wrap gap-2 border-t border-border px-4 py-4 sm:px-6">
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => {
                 reset();
                 onClose();
@@ -970,7 +987,7 @@ function CreateReservationDialog({
             </Button>
             <Button
               type="submit"
-              className="bg-primary text-white hover:bg-primary/90"
+              className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
               disabled={mutation.isPending}
             >
               {mutation.isPending ? "Creating…" : "Create reservation"}

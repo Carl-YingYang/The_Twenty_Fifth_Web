@@ -79,7 +79,7 @@ export function RoomCard({
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 flex-col p-5">
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
         <p className="eyebrow text-[0.65rem] text-coral">{typeLabel}</p>
         <h3 className="mt-1.5 font-display text-xl font-semibold leading-tight tracking-tight text-foreground">
           {room.name}
@@ -91,7 +91,7 @@ export function RoomCard({
         )}
 
         {/* Footer */}
-        <div className="mt-auto flex items-end justify-between gap-3 pt-4">
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-4">
           <div>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
               From
@@ -110,18 +110,18 @@ export function RoomCard({
                 e.stopPropagation();
                 onDetails(room);
               }}
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-coral"
+              className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-coral"
             >
               View Details
               <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
             </button>
           ) : onSelect ? (
-            <span className="inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors group-hover:text-coral">
+            <span className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-primary transition-colors group-hover:text-coral">
               {selected ? "Selected" : "Choose"}
               <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors group-hover:text-coral">
+            <span className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-primary transition-colors group-hover:text-coral">
               Book Now
               <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
             </span>
@@ -136,7 +136,7 @@ export function RoomCardSkeleton() {
   return (
     <Card className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="aspect-[4/3] w-full animate-pulse bg-muted" />
-      <div className="space-y-3 p-5">
+      <div className="space-y-3 p-4 sm:p-5">
         <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
         <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
         <div className="h-3 w-full animate-pulse rounded bg-muted" />

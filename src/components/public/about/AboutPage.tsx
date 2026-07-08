@@ -156,28 +156,18 @@ export function AboutPage() {
             </FadeUpSection>
 
             <FadeUpSection delay={0.1}>
-              {/* Static map placeholder — styled box with address text */}
-              <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-border bg-[#0A3D4A]">
-                <div
-                  className="absolute inset-0 opacity-20"
-                  style={{
-                    backgroundImage:
-                      "url('https://images.unsplash.com/photo-1502920917128-1aa500764cbd?auto=format&fit=crop&w=1200&q=80')",
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
+              {/* Google Maps embed */}
+              <div className="relative overflow-hidden rounded-xl border border-border shadow-card">
+                <iframe
+                  src="https://maps.google.com/maps?q=Panan+Botolan+Zambales+Philippines&t=&z=13&ie=UTF8&iwloc=&output=embed"
+                  width="100%"
+                  height="300"
+                  style={{ border: 0, borderRadius: "0.625rem" }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="The Twenty-Fifth location map"
                 />
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-white">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-coral text-white shadow-card">
-                    <MapPin className="h-6 w-6" />
-                  </span>
-                  <p className="font-display text-lg font-semibold">
-                    {RESORT_INFO.name}
-                  </p>
-                  <p className="text-sm text-white/80">
-                    {RESORT_INFO.addressShort}
-                  </p>
-                </div>
               </div>
             </FadeUpSection>
           </div>

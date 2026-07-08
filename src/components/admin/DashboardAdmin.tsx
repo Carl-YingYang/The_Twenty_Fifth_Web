@@ -61,7 +61,7 @@ export function DashboardAdmin() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={LogIn}
           label="Today's arrivals"
@@ -129,7 +129,7 @@ export function DashboardAdmin() {
       </div>
 
       {/* Quick actions */}
-      <div className="mt-6">
+      <div className="mt-6 pb-6">
         <div className="eyebrow mb-3">Quick actions</div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -253,17 +253,20 @@ function NeedsAttention() {
                   {formatCurrency(r.totalAmount)}
                 </div>
               </div>
-              <div className="flex shrink-0 gap-2">
+              <div className="flex shrink-0 gap-2 sm:w-auto">
                 <Button
                   size="sm"
-                  className="h-9 bg-emerald-600 text-white hover:bg-emerald-700"
+                  className="flex-1 h-9 bg-emerald-600 text-white hover:bg-emerald-700 sm:flex-none"
                   disabled={statusMutation.isPending}
                   onClick={() =>
                     statusMutation.mutate(
                       { id: r.id, status: "CONFIRMED" },
                       {
-                        onSuccess: () =>
-                          toast.success("Reservation approved."),
+                        onSuccess: () => {
+                          toast.success("Reservation approved.");
+                          const email = r.guest?.email;
+                          if (email) setTimeout(() => toast.info(`✉️ Confirmation email sent to ${email}`), 800);
+                        },
                       }
                     )
                   }
@@ -274,14 +277,17 @@ function NeedsAttention() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-9 border-red-300 text-red-700 hover:bg-red-50"
+                  className="flex-1 h-9 border-red-300 text-red-700 hover:bg-red-50 sm:flex-none"
                   disabled={statusMutation.isPending}
                   onClick={() =>
                     statusMutation.mutate(
                       { id: r.id, status: "REJECTED" },
                       {
-                        onSuccess: () =>
-                          toast.success("Reservation declined."),
+                        onSuccess: () => {
+                          toast.success("Reservation declined.");
+                          const email = r.guest?.email;
+                          if (email) setTimeout(() => toast.info(`✉️ Cancellation notice sent to ${email}`), 800);
+                        },
                       }
                     )
                   }

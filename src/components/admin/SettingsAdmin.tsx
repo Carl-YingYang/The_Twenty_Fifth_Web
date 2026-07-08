@@ -57,50 +57,52 @@ export function SettingsAdmin() {
           <Skeleton className="h-96 w-full" />
         </div>
       ) : (
-        <Tabs defaultValue="general">
-          <TabsList className="mb-5 h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1 sm:w-auto">
-            <TabsTrigger
-              value="general"
-              className="min-h-[36px] rounded-lg px-4 text-sm"
-            >
-              General
-            </TabsTrigger>
-            <TabsTrigger
-              value="operations"
-              className="min-h-[36px] rounded-lg px-4 text-sm"
-            >
-              Operations
-            </TabsTrigger>
-            <TabsTrigger
-              value="finance"
-              className="min-h-[36px] rounded-lg px-4 text-sm"
-            >
-              Finance
-            </TabsTrigger>
-          </TabsList>
+        <div className="pb-6">
+          <Tabs defaultValue="general">
+            <TabsList className="mb-5 h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1 sm:w-auto">
+              <TabsTrigger
+                value="general"
+                className="min-h-[36px] shrink-0 rounded-lg px-4 text-sm"
+              >
+                General
+              </TabsTrigger>
+              <TabsTrigger
+                value="operations"
+                className="min-h-[36px] shrink-0 rounded-lg px-4 text-sm"
+              >
+                Operations
+              </TabsTrigger>
+              <TabsTrigger
+                value="finance"
+                className="min-h-[36px] shrink-0 rounded-lg px-4 text-sm"
+              >
+                Finance
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="general">
-            <GeneralTab
-              settings={settings}
-              saving={mutation.isPending}
-              onSave={(patch) => mutation.mutate(patch)}
-            />
-          </TabsContent>
-          <TabsContent value="operations">
-            <OperationsTab
-              settings={settings}
-              saving={mutation.isPending}
-              onSave={(patch) => mutation.mutate(patch)}
-            />
-          </TabsContent>
-          <TabsContent value="finance">
-            <FinanceTab
-              settings={settings}
-              saving={mutation.isPending}
-              onSave={(patch) => mutation.mutate(patch)}
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="general">
+              <GeneralTab
+                settings={settings}
+                saving={mutation.isPending}
+                onSave={(patch) => mutation.mutate(patch)}
+              />
+            </TabsContent>
+            <TabsContent value="operations">
+              <OperationsTab
+                settings={settings}
+                saving={mutation.isPending}
+                onSave={(patch) => mutation.mutate(patch)}
+              />
+            </TabsContent>
+            <TabsContent value="finance">
+              <FinanceTab
+                settings={settings}
+                saving={mutation.isPending}
+                onSave={(patch) => mutation.mutate(patch)}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
       )}
     </AdminLayout>
   );
@@ -116,7 +118,7 @@ function SettingsCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="rounded-xl border border-border p-6 shadow-card">
+    <Card className="rounded-xl border border-border p-4 shadow-card sm:p-6">
       <div className="mb-5">
         <h3 className="font-display text-lg font-medium tracking-tight">
           {title}
@@ -256,7 +258,7 @@ function GeneralTab({
 
       <div className="mt-6 flex justify-end">
         <Button
-          className="bg-primary text-white hover:bg-primary/90"
+          className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
           disabled={saving}
           onClick={() => onSave(form)}
         >
@@ -325,7 +327,7 @@ function OperationsTab({
 
       <div className="mt-6 flex justify-end">
         <Button
-          className="bg-primary text-white hover:bg-primary/90"
+          className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
           disabled={saving}
           onClick={() => onSave(form)}
         >
@@ -397,7 +399,7 @@ function FinanceTab({
 
       <div className="mt-6 flex justify-end">
         <Button
-          className="bg-primary text-white hover:bg-primary/90"
+          className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
           disabled={saving}
           onClick={() => onSave(form)}
         >

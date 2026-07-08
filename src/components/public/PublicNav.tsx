@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
 import { PUBLIC_NAV, RESORT_INFO } from "@/lib/constants";
 import { useViewStore } from "@/store/useViewStore";
 import { useMounted } from "@/hooks/useMounted";
+import { useThemeToggle } from "@/components/public/shared";
 import type { View } from "@/types";
 
 export function PublicNav() {
@@ -21,6 +22,7 @@ export function PublicNav() {
   const currentView = useViewStore((s) => s.view);
   const [open, setOpen] = React.useState(false);
   const mounted = useMounted();
+  const { dark, toggle: toggleTheme, ready: themeReady } = useThemeToggle();
 
   // Lock body scroll when mobile sheet is open.
   React.useEffect(() => {
@@ -59,7 +61,7 @@ export function PublicNav() {
           </button>
 
           {/* Desktop nav */}
-          <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
+          <nav className="hidden items-center gap-2 lg:flex" aria-label="Primary">
             {PUBLIC_NAV.map((item) => {
               const active = currentView === item.view;
               return (
@@ -67,7 +69,7 @@ export function PublicNav() {
                   key={item.view}
                   onClick={() => go(item.view as View)}
                   className={cn(
-                    "relative px-3 py-2 text-sm font-medium transition-colors",
+                    "relative px-4 py-2 text-sm font-medium transition-colors",
                     active
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -75,7 +77,7 @@ export function PublicNav() {
                 >
                   {item.label}
                   {active && (
-                    <span className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-coral" />
+                    <span className="absolute inset-x-4 -bottom-0.5 h-0.5 rounded-full bg-coral" />
                   )}
                 </button>
               );
@@ -83,7 +85,20 @@ export function PublicNav() {
           </nav>
 
           {/* Right side */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Vertical divider between nav and actions (desktop only) */}
+            <span className="hidden h-6 w-px bg-border lg:block" aria-hidden="true" />
+
+            {/* Dark mode toggle */}
+            {mounted && themeReady && (
+              <button
+                onClick={toggleTheme}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-9 sm:w-9"
+                aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+            )}
             <button
               onClick={() => go("find-reservation")}
               className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:inline-flex"

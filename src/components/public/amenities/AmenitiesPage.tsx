@@ -81,15 +81,15 @@ export function AmenitiesPage() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                       {items.map((amenity) => {
                         const Icon = getAmenityIcon(amenity.icon);
                         return (
                           <div
                             key={amenity.id}
-                            className="group rounded-xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary"
+                            className="group rounded-xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary sm:p-5"
                           >
-                            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sand text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-sand text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                               <Icon className="h-5 w-5" />
                             </span>
                             <h3 className="mt-4 text-base font-semibold">

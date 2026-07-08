@@ -119,16 +119,16 @@ export function RoomsAdmin() {
 
   return (
     <AdminLayout title="The Villa" subtitle="Manage rooms, photos, and availability">
-      <div className="mb-5 flex items-center justify-between">
-        <div>
+      <div className="mb-5 flex items-center justify-between gap-3 pb-6">
+        <div className="min-w-0">
           <div className="eyebrow">{rooms.length} spaces</div>
-          <h2 className="mt-1 font-display text-2xl font-medium tracking-tight">
+          <h2 className="mt-1 truncate font-display text-2xl font-medium tracking-tight">
             The Villa at {`The Twenty-Fifth`}
           </h2>
         </div>
         <Button
           onClick={() => setCreating(true)}
-          className="bg-primary text-white hover:bg-primary/90"
+          className="shrink-0 bg-primary text-white hover:bg-primary/90"
         >
           <Plus className="size-4" />
           <span className="hidden sm:inline">Add Room</span>
@@ -157,7 +157,7 @@ export function RoomsAdmin() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 pb-6">
           {rooms.map((room) => (
             <RoomCard
               key={room.id}
@@ -293,11 +293,11 @@ function RoomCard({
           {room.description}
         </p>
 
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="h-9 flex-1"
+            className="h-9 flex-1 min-w-[100px]"
             onClick={onEdit}
           >
             <Pencil className="size-3.5" />
@@ -308,7 +308,7 @@ function RoomCard({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 gap-1.5"
+                className="h-9 min-w-[44px] gap-1.5"
                 disabled={pending}
               >
                 <span
@@ -343,7 +343,7 @@ function RoomCard({
           <Button
             variant="ghost"
             size="icon"
-            className="size-9 text-muted-foreground hover:bg-red-50 hover:text-red-700"
+            className="size-9 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-700"
             onClick={onDelete}
             aria-label="Remove room"
           >
@@ -479,7 +479,7 @@ function RoomFormDialog({
       }}
     >
       <DialogContent className="max-h-[90vh] max-w-2xl gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
+        <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
           <DialogTitle className="font-display text-xl font-medium tracking-tight">
             {room ? "Edit room" : "Add room"}
           </DialogTitle>
@@ -494,7 +494,7 @@ function RoomFormDialog({
           onSubmit={handleSubmit((v) => mutation.mutate(v))}
           className="flex max-h-[70vh] flex-col"
         >
-          <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Room name" error={errors.name?.message}>
                 <Input {...register("name", { required: true })} className="h-10" />
@@ -644,10 +644,11 @@ function RoomFormDialog({
             </div>
           </div>
 
-          <DialogFooter className="border-t border-border px-6 py-4">
+          <DialogFooter className="border-t border-border px-4 py-4 sm:px-6">
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => {
                 reset();
                 onClose();
@@ -657,7 +658,7 @@ function RoomFormDialog({
             </Button>
             <Button
               type="submit"
-              className="bg-primary text-white hover:bg-primary/90"
+              className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
               disabled={mutation.isPending}
             >
               {mutation.isPending

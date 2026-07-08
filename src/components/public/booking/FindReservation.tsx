@@ -182,7 +182,7 @@ export function FindReservation() {
               <FadeUpSection delay={0.05} className="mt-8">
                 <Card className="overflow-hidden rounded-xl border border-border shadow-card">
                   {/* Header */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 bg-[#0A3D4A] p-6 text-white sm:p-7">
+                  <div className="flex flex-col-reverse gap-3 bg-[#0A3D4A] p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-7">
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-coral">
                         Reservation
@@ -193,7 +193,7 @@ export function FindReservation() {
                     </div>
                     <Badge
                       className={cn(
-                        "rounded-full border-0 px-4 py-1.5 text-sm",
+                        "w-fit rounded-full border-0 px-4 py-1.5 text-sm",
                         statusConfig.bg,
                         statusConfig.text
                       )}

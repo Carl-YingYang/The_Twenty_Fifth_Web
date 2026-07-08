@@ -175,13 +175,13 @@ export function RoomDetailsPage() {
 
                 {/* Thumbnails */}
                 {images.length > 1 && (
-                  <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-5">
+                  <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
                     {images.map((img, i) => (
                       <button
                         key={img.id}
                         onClick={() => setActiveImage(i)}
                         className={cn(
-                          "relative aspect-square overflow-hidden rounded-lg border-2 transition-all",
+                          "relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all sm:w-auto",
                           activeImage === i
                             ? "border-primary"
                             : "border-transparent opacity-70 hover:opacity-100"

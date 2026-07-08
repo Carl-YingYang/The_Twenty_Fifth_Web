@@ -391,3 +391,106 @@ All 13 admin components rewritten. AdminLogin (split layout, real branding, demo
 6. Consider adding a dark mode toggle to the public site (admin already has one)
 7. Add Google Maps embed to the About/Contact pages (currently a styled placeholder)
 
+
+---
+Task ID: 3-a
+Agent: full-stack-developer (public UI fixes + FAQ rename)
+Task: Fix public-facing UI bugs (PublicNav spacing, hero booking card overflow, loading screen, mobile polish across all public pages) and rename "Good to Know" → "FAQs".
+
+Work Log:
+- Read worklog.md to confirm Phase 2-a/2-b/2-c foundation: 14 public components + admin + supporting files all rebranded to The Twenty-Fifth with ocean-teal/sand/coral design system. Read all target files (PublicNav, HomePage, page.tsx, FaqsPage, constants, RoomsPage, RoomDetailsPage, AmenitiesPage, GalleryPage, AboutPage, ContactPage, BookingFlow, FindReservation, RoomCard, PublicFooter) in full before editing.
+- Grepped src/ for "Good to Know" / "Good to know" — found 3 references (constants.ts:222, FaqsPage.tsx:140 eyebrow, FaqsPage.tsx:141 title). PublicFooter doesn't hardcode it (iterates PUBLIC_NAV), so updating constants auto-updates the footer's Explore column too.
+- Fix 1 — PublicNav.tsx: changed desktop nav `gap-1` → `gap-2`, item padding `px-3` → `px-4` (and matching coral underline `inset-x-3` → `inset-x-4`); added `<span className="hidden h-6 w-px bg-border lg:block" />` divider before the dark-mode toggle; bumped right-side cluster `gap-2 sm:gap-3` → `gap-3 sm:gap-4`; dark-mode toggle `h-9 w-9` → `h-10 w-10 sm:h-9 sm:w-9` so mobile touch target is ≥44px (sm+ stays compact).
+- Fix 2 — HomePage.tsx hero: grid changed to `grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto_auto] md:items-end`; Check Availability button gets `col-span-1 w-full ... sm:col-span-2 md:col-span-1 md:w-auto` (full-width on mobile, both columns on sm, auto on md); hero `min-h-[92vh]` → `min-h-[88vh] sm:min-h-[92vh]`; floating card `translate-y-1/2` → `translate-y-1/3 sm:translate-y-1/2`; spacer below hero `h-32 sm:h-40` → `h-40 sm:h-48`.
+- Fix 3 — page.tsx loading shell: spinner `h-10 w-10` → `h-12 w-12`, gap `gap-4` → `gap-6`, wordmark tracking `tracking-[0.3em]` → `tracking-[0.25em]`. Spinner keeps the existing `animate-pulse` (whole-shell pulse removed per spec).
+- Fix 4 — rename "Good to Know" → "FAQs": constants.ts PUBLIC_NAV label "Good to Know" → "FAQs"; FaqsPage.tsx SectionHeading `eyebrow="Good to Know"` → `eyebrow="FAQs"` and `title="Good to know"` → `title="Frequently asked questions"` (subtitle kept — it didn't reference "Good to know"). Re-grepped to confirm zero remaining occurrences.
+- Fix 5 — mobile polish (375px audit):
+  - RoomsPage.tsx: filter chips already `flex flex-wrap` ✓ + grid already `sm:grid-cols-2 lg:grid-cols-3` ✓ (defaults grid-cols-1 on mobile); bumped chip `min-h-[44px]` for touch targets.
+  - RoomDetailsPage.tsx: thumbnails changed from `grid grid-cols-4 sm:grid-cols-5` to a horizontally scrollable `no-scrollbar flex gap-3 overflow-x-auto` strip on mobile (`w-20 shrink-0 aspect-square`) that reverts to `sm:grid sm:grid-cols-5 sm:overflow-visible sm:w-auto` on sm+; sticky booking card already stacks below gallery on mobile (parent `grid gap-10 lg:grid-cols-[1.6fr_1fr]`).
+  - AmenitiesPage.tsx: amenity grid `sm:grid-cols-2 lg:grid-cols-4` → `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`; card padding `p-5` → `p-4 sm:p-5`; icon `h-11 w-11` → `h-12 w-12` (no longer shrinks below spec).
+  - GalleryPage.tsx: masonry grid `grid-cols-2 sm:auto-rows-[220px] sm:gap-4 lg:grid-cols-4` → `grid-cols-2 sm:auto-rows-[220px] sm:grid-cols-3 sm:gap-4 lg:grid-cols-4`; lightbox already full-screen (`fixed inset-0 z-[100]`) ✓.
+  - AboutPage.tsx: NarrativeSection grid already `grid items-center gap-10 lg:grid-cols-2` (stacks on mobile) ✓; images use `aspect-[4/3] overflow-hidden rounded-xl` + `object-cover` ✓ (no overflow). Location grid already `grid gap-10 lg:grid-cols-2` ✓.
+  - ContactPage.tsx: contact+form grid already `grid gap-8 lg:grid-cols-[1.2fr_1fr]` (stacks on mobile) ✓; both info cards have `p-6 sm:p-7`, form card `p-6 sm:p-8` ✓; inputs already `w-full` ✓.
+  - BookingFlow.tsx: step indicator — labels now `hidden ... sm:inline` (icons/numbers only on mobile), connector line `w-8` → `w-6` on mobile, button gets `min-h-[44px] px-1` for touch target; confirmation screen action buttons (Add to Calendar / Messenger / Call / Find booking) changed from `grid gap-3 sm:grid-cols-2` to `grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:flex-row md:flex-wrap md:justify-center` with `w-full ... md:w-auto` on each (full-width stacked on mobile, 2-col on sm, row on md); review/confirm price breakdown already stacks naturally (each row is `flex items-center justify-between`) ✓.
+  - FindReservation.tsx: lookup inputs already `w-full` ✓; result-card header changed from `flex flex-wrap items-center justify-between gap-3` to `flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between` and Badge gets `w-fit` so on mobile the badge appears ABOVE the reservation number (DOM order kept, visual swap via flex-col-reverse), and on sm+ returns to right-aligned row.
+  - RoomCard.tsx: body padding `p-5` → `p-4 sm:p-5`; price+action footer `flex items-end justify-between gap-3` → `flex flex-wrap items-end justify-between gap-3` so long prices wrap; View Details/Choose/Book Now action gets `min-h-[44px]` touch target; skeleton padding matched `p-4 sm:p-5`.
+- Ran `bun run lint` — 0 errors, 2 pre-existing React Hook Form warnings on admin files (BookingsAdmin.tsx:798 watch, RoomsAdmin.tsx:415 watch) which are explicitly acceptable per task spec.
+- Checked dev.log (most recent lines): clean compiles, no errors after edits.
+
+Stage Summary:
+Files changed (11 total):
+- src/components/public/PublicNav.tsx — desktop nav gap-2 / px-4 + coral underline inset-x-4; right cluster gap-3 sm:gap-4; vertical hairline divider (h-6 w-px bg-border, lg:block) before dark-mode toggle; dark-mode toggle h-10 w-10 sm:h-9 sm:w-9 for 44px mobile touch target.
+- src/components/public/home/HomePage.tsx — hero min-h-[88vh] sm:min-h-[92vh]; floating card translate-y-1/3 sm:translate-y-1/2; booking grid `grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto_auto] md:items-end`; Check Availability button `col-span-1 w-full sm:col-span-2 md:col-span-1 md:w-auto`; spacer h-40 sm:h-48.
+- src/app/page.tsx — loading shell spinner h-12 w-12, gap-6, wordmark tracking-[0.25em] (kept spinner-only animate-pulse).
+- src/lib/constants.ts — PUBLIC_NAV faqs label "Good to Know" → "FAQs".
+- src/components/public/faqs/FaqsPage.tsx — SectionHeading eyebrow "FAQs", title "Frequently asked questions" (subtitle unchanged).
+- src/components/public/rooms/RoomsPage.tsx — filter chips min-h-[44px].
+- src/components/public/rooms/RoomDetailsPage.tsx — thumbnails horizontally scrollable on mobile (`no-scrollbar flex gap-3 overflow-x-auto w-20 shrink-0`), revert to `sm:grid sm:grid-cols-5`.
+- src/components/public/amenities/AmenitiesPage.tsx — grid `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`; card p-4 sm:p-5; icon h-12 w-12.
+- src/components/public/gallery/GalleryPage.tsx — masonry `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`.
+- src/components/public/booking/BookingFlow.tsx — step indicator labels hidden on mobile (sm:inline), connector w-6 sm:w-16, button min-h-[44px]; confirmation action buttons `grid-cols-1 sm:grid-cols-2 md:flex md:flex-row md:flex-wrap md:justify-center` with each button `w-full ... md:w-auto`.
+- src/components/public/booking/FindReservation.tsx — result header `flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between`; Badge gets `w-fit` (badge stacks above reservation number on mobile).
+- src/components/public/RoomCard.tsx — body p-4 sm:p-5; footer flex-wrap; action min-h-[44px]; skeleton p-4 sm:p-5.
+Decisions:
+- AboutPage, ContactPage, AboutPage narrative sections already had correct mobile-first responsive classes (default grid-cols-1, lg:grid-cols-2), so no edits needed there.
+- Used flex-col-reverse (instead of reordering DOM) for FindReservation header so sm+ layout is unchanged (badge right, reservation # left).
+- Kept BookingFlow circle size at h-8 w-8 (spec said "smaller circles") but enlarged the clickable button to min-h-[44px] for touch accessibility.
+- For sm:grid-cols-2 hero booking card on HomePage, gave Check Availability button `sm:col-span-2` so it spans the full row on sm (the guests select takes the other column on row 2).
+Lint result: 0 errors, 2 pre-existing RHF warnings (BookingsAdmin.tsx:798, RoomsAdmin.tsx:415) — both acceptable per task spec.
+
+---
+Task ID: 3-b
+Agent: full-stack-developer (admin mobile responsiveness)
+Task: Fix admin mobile responsiveness across ALL admin pages (375px + tablet, no clipping, no cramping, proper touch targets).
+
+Work Log:
+- Read /home/z/my-project/worklog.md (full prior context — Phase 7 rebrand, Tasks 1/2-a/2-b/2-c, design system, layout structure).
+- Read each admin component fully before editing (AdminLayout, DashboardAdmin, CalendarAdmin, BookingsAdmin, RoomsAdmin, GuestsAdmin, AmenitiesAdmin, GalleryAdmin, ReportsAdmin, SettingsAdmin).
+- AdminLayout: main content padding `p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8` with `min-h-0 flex-1` so mobile browser chrome never clips the page bottom; top-bar action cluster gap tightened `gap-1 sm:gap-1.5` for very small screens.
+- DashboardAdmin: stat cards grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` (was 2-up); Approve/Decline buttons in pending reservations list now `flex-1 sm:flex-none` inside `sm:w-auto` container so they go full-width stacked on mobile; added `pb-6` to quick-actions section root.
+- CalendarAdmin: sticky room column narrowed `w-36 min-w-[9rem]` (was `w-44 min-w-[11rem]`); room name + meta truncated on mobile to fit; date-range label hidden on `< sm` (`hidden sm:inline`) so nav cluster (prev / today / next + range toggle) fits on 375px; hint text wraps (`flex-wrap`); reservation details dialog body scrolls `max-h-[85vh] overflow-y-auto` with `px-4 sm:px-6`, dl values `break-words` so long emails/refs don't overflow.
+- BookingsAdmin: filter chip row already wrapped + 36px targets — kept; search input + New Reservation button stacked `flex-col sm:flex-row`; desktop table switched from `lg:block` to `md:block` and wrapped in `overflow-x-auto`; mobile cards `md:hidden pb-6`; reservation details dialog body scrolls (`max-h-[60vh] overflow-y-auto`), all DialogFooter buttons `w-full sm:w-auto`; CreateReservationDialog body padding `px-4 sm:px-6`, footer buttons full-width on mobile.
+- RoomsAdmin: header row `flex items-center justify-between gap-3 pb-6` with truncated title + shrink-0 button; room card action row `flex flex-wrap` with `min-w-[100px]` Edit button, `min-w-[44px]` status dropdown trigger, `size-9 shrink-0` delete; status label hidden on mobile; room form dialog body `px-4 py-5 sm:px-6`, footer buttons `w-full sm:w-auto`.
+- GuestsAdmin: desktop table `md:block` wrapped in `overflow-x-auto`; mobile card list `md:hidden pb-6`; guest details dialog body `max-h-[85vh] overflow-y-auto` with `px-4 sm:px-6`, avatar gets `shrink-0`, name container `min-w-0`; footer buttons full-width on mobile, `flex-row flex-wrap gap-2`.
+- AmenitiesAdmin: section header `flex items-center justify-between gap-3`, truncated title; amenity card trash button bumped to `size-9` for proper touch target, kept opacity-reveal only on `sm+` (always visible on mobile); add-amenity dialog max-height `max-h-[90vh]` + body `flex-1 overflow-y-auto px-4 py-5 sm:px-6`, footer full-width mobile buttons.
+- GalleryAdmin: filter tabs row + Add Image button split into two rows (filter row `flex flex-wrap`, button row `flex justify-end`) so the button doesn't get pushed off-screen on small phones; image grid keeps `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4` with `pb-6`; trash button only opacity-toggled on `sm+`; add-image dialog preview `max-h-48 w-full object-cover` (was `aspect-video` which could dominate on mobile), body `flex-1 overflow-y-auto px-4 py-5 sm:px-6`, footer full-width mobile buttons.
+- ReportsAdmin: range toggle `self-start` + 36px touch targets; Export CSV button `w-full sm:w-auto`; stat cards `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`; charts grid `grid-cols-1 lg:grid-cols-2 pb-6`; room-popularity YAxis width reduced to 80 + smaller tick font to avoid horizontal clipping on mobile.
+- SettingsAdmin: tab triggers get `shrink-0` (no flex-shrink) so they don't squish when horizontally scrolling on mobile; settings card padding `p-4 sm:p-6`; all Save buttons `w-full sm:w-auto`; root content wrapped in `pb-6`.
+- Ran `bun run lint`: 0 errors, 2 pre-existing acceptable React Hook Form `watch()` warnings (RHF + React Compiler, no clean fix — explicitly exempted by task spec).
+- Verified dev server (port 3000) returns HTTP 200 on `/` and dev.log shows clean recompiles with no runtime errors.
+
+Stage Summary:
+- Files changed (10): src/components/admin/AdminLayout.tsx, DashboardAdmin.tsx, CalendarAdmin.tsx, BookingsAdmin.tsx, RoomsAdmin.tsx, GuestsAdmin.tsx, AmenitiesAdmin.tsx, GalleryAdmin.tsx, ReportsAdmin.tsx, SettingsAdmin.tsx
+- Mobile patterns applied uniformly:
+  - All grids start at `grid-cols-1` and step up at `sm:` / `lg:`.
+  - All tables (Bookings, Guests) wrapped in `hidden md:block overflow-x-auto` with a parallel `md:hidden` mobile card list (Bookings already had one, Guests already had one — breakpoints shifted from `lg` to `md`).
+  - All Dialog/Sheet bodies use `max-h-[85vh] overflow-y-auto` (or existing `max-h-[60-70vh]`) with `px-4 sm:px-6` responsive padding.
+  - All form submit / footer buttons `w-full sm:w-auto`.
+  - All filter chip rows `flex flex-wrap` with `min-h-[36px]` touch targets.
+  - Page roots have `pb-6` so content isn't clipped by mobile browser chrome at the bottom of long pages.
+  - AdminLayout main wrapper now `min-h-0 flex-1 p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8` to guarantee bottom breathing room on mobile.
+- No design system changes (colors, fonts, shadows, border styles untouched).
+- No API/component API changes — all imports preserved, all mutations/queries intact.
+- Lint: 0 errors, 2 acceptable pre-existing RHF warnings.
+
+---
+Task ID: 3-verify
+Agent: lead (Z.ai Code) — UI bug fix verification + orchestration
+Task: Fix UI bugs (hero card overflow, cramped nav, mobile responsiveness for public+admin), rename "Good to Know" → "FAQs", improve loading screen. Verified end-to-end with agent-browser.
+
+Work Log:
+- Analyzed 6 user-uploaded screenshots via VLM to identify specific bugs: (1) hero booking card right-edge cut off on mobile, (2) desktop nav 7 items too cramped at px-3 gap-1, (3) mobile header brand+moon+hamburger too tight at gap-2, (4) admin dashboard mobile clips "Quick actions" + 2x2 stat grid cramps phones, (5) admin calendar mobile overflow, (6) loading screen spinner+wordmark too close.
+- Improved the user's prompt into a structured 7-point task spec, then dispatched 2 parallel full-stack-developer subagents:
+  - Task 3-a: public UI fixes + FAQ rename (12 files changed)
+  - Task 3-b: admin mobile responsiveness (10 files changed)
+- Verified with agent-browser + VLM on BOTH viewports:
+  - Mobile (375x812): header spacing clean (brand/moon/hamburger not touching), hero "Check Availability" button fully visible + full-width (scrollintoview confirmed), FAQ page title = "Frequently asked questions", admin dashboard stat cards stack to 1 column, dashboard bottom "Quick actions" not clipped (pb-16 fix working), admin calendar controls fit 375px with no overflow + legend visible, admin bookings renders mobile cards (not cramped table).
+  - Desktop (1440x900): nav 7 items well-spaced with visual divider before action cluster, admin dashboard 4-col stat row intact (no regression), sidebar visible.
+- Ran `bun run lint`: 0 errors, 2 pre-existing RHF warnings (acceptable).
+
+Stage Summary:
+- All 6 user-reported UI bugs + loading screen spacing FIXED and browser-verified on both mobile (375px) and desktop (1440px).
+- "Good to Know" → "FAQs" rename confirmed in nav + page title (constants.ts + FaqsPage.tsx).
+- No regressions on desktop admin dashboard (4-col stats, sidebar, layout all intact).
+- Lint clean (0 errors). Dev server HTTP 200.
+- Files changed across both subagents (22 total): PublicNav, HomePage, page.tsx, constants.ts, FaqsPage, RoomsPage, RoomDetailsPage, AmenitiesPage, GalleryPage, BookingFlow, FindReservation, RoomCard (public); AdminLayout, DashboardAdmin, CalendarAdmin, BookingsAdmin, RoomsAdmin, GuestsAdmin, AmenitiesAdmin, GalleryAdmin, ReportsAdmin, SettingsAdmin (admin).

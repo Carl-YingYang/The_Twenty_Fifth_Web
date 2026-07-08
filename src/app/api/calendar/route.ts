@@ -93,9 +93,20 @@ export async function GET(req: NextRequest) {
         };
       }
 
-      // Check cleaning (room is in cleaning state today)
-      if (room.status === "CLEANING" && res === undefined) {
-        status = "CLEANING";
+      // Check cleaning: only show CLEANING on the checkout day of a just-completed reservation.
+      // A room in "CLEANING" static status should only display as cleaning on days where
+      // a checkout just happened (reservation with COMPLETED status whose checkout == this day).
+      // All other days should be AVAILABLE (the room isn't being cleaned all week).
+      if (status === "AVAILABLE") {
+        const checkoutRes = reservations.find(
+          (r) =>
+            r.rooms.some((rr) => rr.roomId === room.id) &&
+            r.checkOut.toDateString() === day.date.toDateString() &&
+            (r.status === "COMPLETED" || r.status === "CANCELLED" || r.status === "NO_SHOW")
+        );
+        if (checkoutRes) {
+          status = "CLEANING";
+        }
       }
 
       return {

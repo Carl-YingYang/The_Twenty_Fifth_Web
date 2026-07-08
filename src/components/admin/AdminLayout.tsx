@@ -181,7 +181,7 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
             theme={theme}
             onToggleTheme={toggleTheme}
           />
-          <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+          <main className="min-h-0 flex-1 p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8">{children}</main>
         </div>
       </div>
     </div>
@@ -325,7 +325,7 @@ function TopBar({
         )}
       </div>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 sm:gap-1.5">
         {actions}
         <Button
           variant="ghost"

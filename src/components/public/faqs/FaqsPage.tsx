@@ -137,8 +137,8 @@ export function FaqsPage() {
         <div className="container-luxury">
           <FadeUpSection>
             <SectionHeading
-              eyebrow="Good to Know"
-              title="Good to know"
+              eyebrow="FAQs"
+              title="Frequently asked questions"
               subtitle="Everything you need before you arrive — booking, check-in, getting here, and the small print. Still have a question? We're a message away."
             />
           </FadeUpSection>

@@ -94,22 +94,22 @@ export function AmenitiesAdmin() {
 
   return (
     <AdminLayout title="Amenities" subtitle="Manage what makes the villa special">
-      <div className="space-y-6">
+      <div className="space-y-6 pb-6">
         {AMENITY_CATEGORIES.map((cat) => {
           const items = amenities.filter((a) => a.category === cat.value);
           return (
             <section key={cat.value}>
-              <div className="mb-3 flex items-center justify-between">
-                <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <div className="eyebrow">{cat.value}</div>
-                  <h2 className="mt-1 font-display text-xl font-medium tracking-tight">
+                  <h2 className="mt-1 truncate font-display text-xl font-medium tracking-tight">
                     {cat.label}
                   </h2>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9"
+                  className="h-9 shrink-0"
                   onClick={() => setAddingCategory(cat.value)}
                 >
                   <Plus className="size-4" />
@@ -153,11 +153,11 @@ export function AmenitiesAdmin() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-7 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-700"
+                        className="size-9 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-700 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
                         onClick={() => setDeleting(a)}
                         aria-label={`Remove ${a.name}`}
                       >
-                        <Trash2 className="size-3.5" />
+                        <Trash2 className="size-4" />
                       </Button>
                     </Card>
                   ))}
@@ -262,8 +262,8 @@ function AddAmenityDialog({
         }
       }}
     >
-      <DialogContent className="max-w-md gap-0 p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
+      <DialogContent className="max-h-[90vh] max-w-md gap-0 overflow-hidden p-0">
+        <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
           <DialogTitle className="font-display text-xl font-medium tracking-tight">
             Add amenity
           </DialogTitle>
@@ -279,8 +279,9 @@ function AddAmenityDialog({
             if (!name) return;
             mutation.mutate();
           }}
-          className="space-y-4 px-6 py-5"
+          className="flex max-h-[70vh] flex-col"
         >
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
           <div className="space-y-1.5">
             <Label htmlFor="amenity-name" className="text-xs font-medium">
               Name
@@ -323,11 +324,13 @@ function AddAmenityDialog({
               placeholder="One short line for guests"
             />
           </div>
+          </div>
 
-          <DialogFooter className="gap-2 pt-2">
+          <DialogFooter className="flex-row gap-2 border-t border-border px-4 py-4 pt-4 sm:px-6">
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => {
                 setName("");
                 setIcon("Sparkles");
@@ -339,7 +342,7 @@ function AddAmenityDialog({
             </Button>
             <Button
               type="submit"
-              className="bg-primary text-white hover:bg-primary/90"
+              className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
               disabled={mutation.isPending || !name}
             >
               {mutation.isPending ? "Adding…" : "Add amenity"}

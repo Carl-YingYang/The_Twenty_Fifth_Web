@@ -179,7 +179,7 @@ export function ReportsAdmin() {
     <AdminLayout title="Reports" subtitle="Performance insights for the villa">
       {/* Range + export */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+        <div className="flex items-center gap-1 self-start rounded-full border border-border bg-card p-1">
           {RANGE_OPTIONS.map((opt) => {
             const active = range === opt.value;
             return (
@@ -187,7 +187,7 @@ export function ReportsAdmin() {
                 key={opt.value}
                 onClick={() => setRange(opt.value)}
                 className={cn(
-                  "min-h-[32px] rounded-full px-3.5 text-xs font-medium transition-colors",
+                  "min-h-[36px] rounded-full px-3.5 text-xs font-medium transition-colors",
                   active
                     ? "bg-primary text-white"
                     : "text-muted-foreground hover:text-foreground"
@@ -201,7 +201,7 @@ export function ReportsAdmin() {
         <Button
           variant="outline"
           size="sm"
-          className="h-9"
+          className="h-9 w-full sm:w-auto"
           onClick={exportCsv}
         >
           <Download className="size-4" />
@@ -210,7 +210,7 @@ export function ReportsAdmin() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={Wallet}
           label="Total revenue"
@@ -244,7 +244,7 @@ export function ReportsAdmin() {
       </div>
 
       {/* Charts */}
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 pb-6 lg:grid-cols-2">
         {/* Monthly revenue */}
         <Card className="rounded-xl border border-border p-5 shadow-card">
           <div className="mb-4">
@@ -422,7 +422,7 @@ export function ReportsAdmin() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={roomTypeData} layout="vertical">
+              <BarChart data={roomTypeData} layout="vertical" margin={{ left: 0, right: 8 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="#E5DED0"
@@ -438,10 +438,10 @@ export function ReportsAdmin() {
                 <YAxis
                   type="category"
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: "#6B7A7E" }}
+                  tick={{ fontSize: 10, fill: "#6B7A7E" }}
                   axisLine={false}
                   tickLine={false}
-                  width={100}
+                  width={80}
                 />
                 <Tooltip
                   formatter={(v: number) => [v, "Bookings"]}
