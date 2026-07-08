@@ -9,6 +9,7 @@ import {
   LogIn,
   LogOut,
   MoreHorizontal,
+  Plus,
   Search,
   UserX,
   XCircle,
@@ -63,8 +64,9 @@ import {
   formatDateTime,
   formatDateShort,
   getInitials,
+  nightsBetween,
 } from "@/lib/utils";
-import type { BookingStatus, Reservation } from "@/types";
+import type { BookingStatus, Reservation, Room } from "@/types";
 
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: "ALL", label: "All" },
@@ -84,6 +86,7 @@ export function BookingsAdmin() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<Reservation | null>(null);
+  const [creating, setCreating] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -141,6 +144,15 @@ export function BookingsAdmin() {
     <AdminLayout
       title="Bookings"
       subtitle="Manage all reservations"
+      actions={
+        <Button
+          onClick={() => setCreating(true)}
+          className="rounded-full bg-primary shadow-sm"
+        >
+          <Plus className="size-4" />
+          New Reservation
+        </Button>
+      }
     >
       {/* Filter bar */}
       <Card className="rounded-2xl border-border/70 shadow-luxury">
@@ -257,17 +269,75 @@ export function BookingsAdmin() {
                     <TableCell>
                       <BookingStatusBadge status={r.status} />
                     </TableCell>
-                    <TableCell className="pr-6 text-right">
-                      <RowActions
-                        reservation={r}
-                        onView={() => setDetailsId(r.id)}
-                        onConfirm={() => updateStatus(r, "CONFIRMED")}
-                        onCheckIn={() => updateStatus(r, "CHECKED_IN")}
-                        onComplete={() => updateStatus(r, "COMPLETED")}
-                        onCancel={() => updateStatus(r, "CANCELLED")}
-                        onReject={() => setRejecting(r)}
-                        onNoShow={() => updateStatus(r, "NO_SHOW")}
-                      />
+                    <TableCell className="pr-6">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {/* Inline quick-action buttons for common transitions */}
+                        {r.status === "PENDING" && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                              title="Confirm reservation"
+                              onClick={() => updateStatus(r, "CONFIRMED")}
+                            >
+                              <CheckCircle2 className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                              title="Reject reservation"
+                              onClick={() => setRejecting(r)}
+                            >
+                              <XCircle className="size-4" />
+                            </Button>
+                          </>
+                        )}
+                        {r.status === "CONFIRMED" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-primary hover:bg-primary/10"
+                            title="Check in guest"
+                            onClick={() => updateStatus(r, "CHECKED_IN")}
+                          >
+                            <LogIn className="size-4" />
+                          </Button>
+                        )}
+                        {r.status === "CHECKED_IN" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-primary hover:bg-primary/10"
+                            title="Check out / complete"
+                            onClick={() => updateStatus(r, "COMPLETED")}
+                          >
+                            <LogOut className="size-4" />
+                          </Button>
+                        )}
+                        {/* View details */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-muted-foreground hover:text-foreground"
+                          title="View details"
+                          onClick={() => setDetailsId(r.id)}
+                        >
+                          <Eye className="size-4" />
+                        </Button>
+                        {/* More actions dropdown */}
+                        <RowActions
+                          reservation={r}
+                          onView={() => setDetailsId(r.id)}
+                          onConfirm={() => updateStatus(r, "CONFIRMED")}
+                          onCheckIn={() => updateStatus(r, "CHECKED_IN")}
+                          onComplete={() => updateStatus(r, "COMPLETED")}
+                          onCancel={() => updateStatus(r, "CANCELLED")}
+                          onReject={() => setRejecting(r)}
+                          onNoShow={() => updateStatus(r, "NO_SHOW")}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -297,6 +367,18 @@ export function BookingsAdmin() {
           setRejecting(null);
         }}
         submitting={statusMutation.isPending}
+      />
+
+      {/* Create reservation dialog */}
+      <CreateReservationDialog
+        open={creating}
+        onClose={() => setCreating(false)}
+        onSuccess={() => {
+          setCreating(false);
+          qc.invalidateQueries({ queryKey: ["admin-reservations"] });
+          qc.invalidateQueries({ queryKey: ["dashboard"] });
+          qc.invalidateQueries({ queryKey: ["calendar"] });
+        }}
       />
     </AdminLayout>
   );

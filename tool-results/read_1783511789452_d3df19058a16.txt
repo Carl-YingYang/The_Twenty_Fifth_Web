@@ -1,0 +1,623 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { useQuery } from "@tanstack/react-query";
+     5→import { motion } from "framer-motion";
+     6→import {
+     7→  Calendar as CalendarIcon,
+     8→  Users,
+     9→  Search,
+    10→  ArrowRight,
+    11→  ArrowDown,
+    12→  Star,
+    13→  Quote,
+    14→  Leaf,
+    15→  Waves,
+    16→  TreePine,
+    17→  Sparkles,
+    18→} from "lucide-react";
+    19→import { toast } from "sonner";
+    20→import { Button } from "@/components/ui/button";
+    21→import { Input } from "@/components/ui/input";
+    22→import { Label } from "@/components/ui/label";
+    23→import {
+    24→  Select,
+    25→  SelectContent,
+    26→  SelectItem,
+    27→  SelectTrigger,
+    28→  SelectValue,
+    29→} from "@/components/ui/select";
+    30→import { Card } from "@/components/ui/card";
+    31→import { apiFetch } from "@/lib/api-client";
+    32→import { useViewStore } from "@/store/useViewStore";
+    33→import { useBookingStore } from "@/store/useBookingStore";
+    34→import type { Room, Amenity } from "@/types";
+    35→import { RoomCard } from "../RoomCard";
+    36→import { FadeUpSection, HERO_IMAGE, getAmenityIcon } from "../shared";
+    37→
+    38→const GALLERY_TEASER_IMAGES = [
+    39→  {
+    40→    url: "https://images.unsplash.com/photo-1575340122733-83724d2756c0?auto=format&fit=crop&w=900&q=80",
+    41→    title: "Infinity Pool at Dusk",
+    42→    span: "sm:col-span-2 sm:row-span-2",
+    43→  },
+    44→  {
+    45→    url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80",
+    46→    title: "Private Beach",
+    47→    span: "",
+    48→  },
+    49→  {
+    50→    url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80",
+    51→    title: "Rainforest Canopy",
+    52→    span: "",
+    53→  },
+    54→  {
+    55→    url: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=600&q=80",
+    56→    title: "Farm-to-Table Dining",
+    57→    span: "sm:col-span-2",
+    58→  },
+    59→];
+    60→
+    61→const TESTIMONIALS = [
+    62→  {
+    63→    quote:
+    64→      "Verdara is the rare place that feels both effortless and considered. We woke to birdsong, slept to waves, and never wanted to leave the canopy.",
+    65→    author: "Eleanor & James Whitfield",
+    66→    origin: "London, United Kingdom",
+    67→    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+    68→  },
+    69→  {
+    70→    quote:
+    71→      "From the moment our private car arrived at the gate, every detail felt intentional. The Pool Villa is pure poetry — the staff anticipated needs we hadn't even named.",
+    72→    author: "Sofia Reyes",
+    73→    origin: "Manila, Philippines",
+    74→    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80",
+    75→  },
+    76→  {
+    77→    quote:
+    78→      "I've stayed at Aman, Soneva, and Nihi. Verdara belongs in that conversation — and in some ways, exceeds it. The forest spa alone is worth the journey.",
+    79→    author: "Hiroshi Tanaka",
+    80→    origin: "Tokyo, Japan",
+    81→    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80",
+    82→  },
+    83→];
+    84→
+    85→export function HomePage() {
+    86→  const navigate = useViewStore((s) => s.navigate);
+    87→  const setSearch = useBookingStore((s) => s.setSearch);
+    88→  const booking = useBookingStore();
+    89→
+    90→  const [checkIn, setCheckIn] = React.useState(booking.checkIn || defaultDate(1));
+    91→  const [checkOut, setCheckOut] = React.useState(booking.checkOut || defaultDate(3));
+    92→  const [adults, setAdults] = React.useState(String(booking.adults || 2));
+    93→  const [children, setChildren] = React.useState(String(booking.children || 0));
+    94→
+    95→  const { data: roomsData, isLoading: roomsLoading } = useQuery({
+    96→    queryKey: ["rooms", "featured"],
+    97→    queryFn: () => apiFetch<{ rooms: Room[] }>("/api/rooms"),
+    98→  });
+    99→  const featuredRooms = (roomsData?.rooms ?? []).slice(0, 3);
+   100→
+   101→  const { data: amenitiesData } = useQuery({
+   102→    queryKey: ["amenities", "home"],
+   103→    queryFn: () => apiFetch<{ amenities: Amenity[] }>("/api/amenities"),
+   104→  });
+   105→  const featuredAmenities = (amenitiesData?.amenities ?? []).slice(0, 6);
+   106→
+   107→  const onSearch = () => {
+   108→    if (!checkIn || !checkOut) {
+   109→      toast.error("Please select your check-in and check-out dates");
+   110→      return;
+   111→    }
+   112→    if (new Date(checkOut) <= new Date(checkIn)) {
+   113→      toast.error("Check-out must be after check-in");
+   114→      return;
+   115→    }
+   116→    setSearch({
+   117→      checkIn,
+   118→      checkOut,
+   119→      adults: parseInt(adults, 10) || 2,
+   120→      children: parseInt(children, 10) || 0,
+   121→    });
+   122→    navigate("book");
+   123→  };
+   124→
+   125→  return (
+   126→    <div>
+   127→      {/* ============================================================
+   128→          Hero
+   129→      ============================================================ */}
+   130→      <section className="relative flex min-h-[100svh] items-center justify-center overflow-hidden">
+   131→        <div
+   132→          className="absolute inset-0 bg-cover bg-center"
+   133→          style={{ backgroundImage: `url('${HERO_IMAGE}')` }}
+   134→        />
+   135→        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
+   136→
+   137→        <div className="container-luxury relative z-10 flex flex-col items-center text-center text-white">
+   138→          <motion.div
+   139→            initial={{ opacity: 0, y: 20 }}
+   140→            animate={{ opacity: 1, y: 0 }}
+   141→            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+   142→            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-xs uppercase tracking-[0.25em] backdrop-blur"
+   143→          >
+   144→            <Leaf className="h-3 w-3" />
+   145→            Welcome to Verdara
+   146→          </motion.div>
+   147→
+   148→          <motion.h1
+   149→            initial={{ opacity: 0, y: 30 }}
+   150→            animate={{ opacity: 1, y: 0 }}
+   151→            transition={{ duration: 0.9, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+   152→            className="mt-6 max-w-4xl font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl"
+   153→          >
+   154→            A Sanctuary Between
+   155→            <br />
+   156→            <span className="italic text-emerald-200">Forest &amp; Sea</span>
+   157→          </motion.h1>
+   158→
+   159→          <motion.p
+   160→            initial={{ opacity: 0, y: 20 }}
+   161→            animate={{ opacity: 1, y: 0 }}
+   162→            transition={{ duration: 0.8, delay: 0.25 }}
+   163→            className="mt-6 max-w-xl text-base text-white/80 sm:text-lg"
+   164→          >
+   165→            Private villas tucked into the rainforest canopy. Farm-to-table dining under the stars.
+   166→            An immersive luxury escape on the coast of Batangas.
+   167→          </motion.p>
+   168→
+   169→          <motion.div
+   170→            initial={{ opacity: 0, y: 20 }}
+   171→            animate={{ opacity: 1, y: 0 }}
+   172→            transition={{ duration: 0.8, delay: 0.4 }}
+   173→            className="mt-8 flex flex-col gap-3 sm:flex-row"
+   174→          >
+   175→            <Button
+   176→              onClick={() => navigate("book")}
+   177→              size="lg"
+   178→              className="rounded-full bg-white px-7 text-primary shadow-lg hover:bg-white/90"
+   179→            >
+   180→              Book Your Stay
+   181→              <ArrowRight className="h-4 w-4" />
+   182→            </Button>
+   183→            <Button
+   184→              onClick={() => navigate("rooms")}
+   185→              size="lg"
+   186→              variant="outline"
+   187→              className="rounded-full border-white/30 bg-white/5 px-7 text-white backdrop-blur hover:bg-white/15"
+   188→            >
+   189→              Explore Rooms
+   190→            </Button>
+   191→          </motion.div>
+   192→        </div>
+   193→
+   194→        {/* Scroll indicator */}
+   195→        <motion.div
+   196→          initial={{ opacity: 0 }}
+   197→          animate={{ opacity: 1 }}
+   198→          transition={{ delay: 1.2 }}
+   199→          className="absolute bottom-32 left-1/2 z-10 -translate-x-1/2 text-white/70"
+   200→        >
+   201→          <motion.div
+   202→            animate={{ y: [0, 8, 0] }}
+   203→            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+   204→            className="flex flex-col items-center gap-1"
+   205→          >
+   206→            <span className="text-[10px] uppercase tracking-[0.3em]">Scroll</span>
+   207→            <ArrowDown className="h-4 w-4" />
+   208→          </motion.div>
+   209→        </motion.div>
+   210→      </section>
+   211→
+   212→      {/* ============================================================
+   213→          Quick Availability Search Bar (floating)
+   214→      ============================================================ */}
+   215→      <section className="relative z-20 -mt-20 px-4 sm:-mt-24">
+   216→        <div className="container-luxury">
+   217→          <FadeUpSection>
+   218→            <Card className="rounded-2xl border-border/60 bg-white p-5 shadow-luxury-lg sm:p-6">
+   219→              <div className="grid gap-4 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end">
+   220→                <div className="space-y-1.5">
+   221→                  <Label htmlFor="hero-checkin" className="text-xs uppercase tracking-wider text-muted-foreground">
+   222→                    Check-in
+   223→                  </Label>
+   224→                  <div className="relative">
+   225→                    <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   226→                    <Input
+   227→                      id="hero-checkin"
+   228→                      type="date"
+   229→                      value={checkIn}
+   230→                      onChange={(e) => setCheckIn(e.target.value)}
+   231→                      className="rounded-xl pl-9"
+   232→                    />
+   233→                  </div>
+   234→                </div>
+   235→                <div className="space-y-1.5">
+   236→                  <Label htmlFor="hero-checkout" className="text-xs uppercase tracking-wider text-muted-foreground">
+   237→                    Check-out
+   238→                  </Label>
+   239→                  <div className="relative">
+   240→                    <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   241→                    <Input
+   242→                      id="hero-checkout"
+   243→                      type="date"
+   244→                      value={checkOut}
+   245→                      onChange={(e) => setCheckOut(e.target.value)}
+   246→                      className="rounded-xl pl-9"
+   247→                    />
+   248→                  </div>
+   249→                </div>
+   250→                <div className="space-y-1.5">
+   251→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Adults</Label>
+   252→                  <Select value={adults} onValueChange={setAdults}>
+   253→                    <SelectTrigger className="w-full rounded-xl">
+   254→                      <Users className="h-4 w-4 text-muted-foreground" />
+   255→                      <SelectValue />
+   256→                    </SelectTrigger>
+   257→                    <SelectContent>
+   258→                      {[1, 2, 3, 4, 5, 6].map((n) => (
+   259→                        <SelectItem key={n} value={String(n)}>
+   260→                          {n} {n === 1 ? "Adult" : "Adults"}
+   261→                        </SelectItem>
+   262→                      ))}
+   263→                    </SelectContent>
+   264→                  </Select>
+   265→                </div>
+   266→                <div className="space-y-1.5">
+   267→                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Children</Label>
+   268→                  <Select value={children} onValueChange={setChildren}>
+   269→                    <SelectTrigger className="w-full rounded-xl">
+   270→                      <Users className="h-4 w-4 text-muted-foreground" />
+   271→                      <SelectValue />
+   272→                    </SelectTrigger>
+   273→                    <SelectContent>
+   274→                      {[0, 1, 2, 3, 4].map((n) => (
+   275→                        <SelectItem key={n} value={String(n)}>
+   276→                          {n} {n === 1 ? "Child" : "Children"}
+   277→                        </SelectItem>
+   278→                      ))}
+   279→                    </SelectContent>
+   280→                  </Select>
+   281→                </div>
+   282→                <Button onClick={onSearch} size="lg" className="rounded-full px-7">
+   283→                  <Search className="h-4 w-4" />
+   284→                  Search
+   285→                </Button>
+   286→              </div>
+   287→            </Card>
+   288→          </FadeUpSection>
+   289→        </div>
+   290→      </section>
+   291→
+   292→      {/* ============================================================
+   293→          Featured Rooms
+   294→      ============================================================ */}
+   295→      <section className="py-20 sm:py-24">
+   296→        <div className="container-luxury">
+   297→          <FadeUpSection className="mb-10 flex flex-col items-end justify-between gap-4 sm:flex-row sm:items-end">
+   298→            <div>
+   299→              <p className="text-xs font-medium uppercase tracking-[0.25em] text-primary">
+   300→                Accommodations
+   301→              </p>
+   302→              <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+   303→                Signature Villas &amp; Suites
+   304→              </h2>
+   305→              <p className="mt-3 max-w-2xl text-muted-foreground">
+   306→                Each residence is thoughtfully designed with natural materials, premium linens,
+   307→                and seamless indoor-outdoor living. Find the sanctuary that speaks to you.
+   308→              </p>
+   309→            </div>
+   310→            <Button
+   311→              variant="ghost"
+   312→              onClick={() => navigate("rooms")}
+   313→              className="rounded-full text-primary"
+   314→            >
+   315→              View all rooms
+   316→              <ArrowRight className="h-4 w-4" />
+   317→            </Button>
+   318→          </FadeUpSection>
+   319→
+   320→          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+   321→            {roomsLoading
+   322→              ? Array.from({ length: 3 }).map((_, i) => (
+   323→                  <RoomCardSkeletonWrapper key={i} />
+   324→                ))
+   325→              : featuredRooms.map((room, i) => (
+   326→                  <FadeUpSection key={room.id} delay={i * 0.08}>
+   327→                    <RoomCard
+   328→                      room={room}
+   329→                      onDetails={(r) => navigate("room-details", { roomId: r.id })}
+   330→                      onBook={(r) => {
+   331→                        setSearch({ selectedRoomId: r.id });
+   332→                        navigate("book");
+   333→                      }}
+   334→                    />
+   335→                  </FadeUpSection>
+   336→                ))}
+   337→          </div>
+   338→        </div>
+   339→      </section>
+   340→
+   341→      {/* ============================================================
+   342→          Amenities Preview
+   343→      ============================================================ */}
+   344→      <section className="bg-section py-20 sm:py-24">
+   345→        <div className="container-luxury">
+   346→          <FadeUpSection className="mb-10 text-center">
+   347→            <p className="text-xs font-medium uppercase tracking-[0.25em] text-primary">
+   348→              Resort Experiences
+   349→            </p>
+   350→            <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+   351→              Every Comfort Considered
+   352→            </h2>
+   353→            <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
+   354→              From the spa pavilion hidden in the rainforest to the chef's farm-to-table kitchen,
+   355→              every detail is curated for stillness and discovery.
+   356→            </p>
+   357→          </FadeUpSection>
+   358→
+   359→          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
+   360→            {featuredAmenities.map((amenity, i) => {
+   361→              const Icon = getAmenityIcon(amenity.icon);
+   362→              return (
+   363→                <FadeUpSection key={amenity.id} delay={i * 0.05}>
+   364→                  <div className="group flex flex-col items-center gap-3 rounded-2xl border border-border/60 bg-card p-6 text-center shadow-luxury transition-all hover:-translate-y-1 hover:shadow-luxury-lg">
+   365→                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+   366→                      <Icon className="h-6 w-6" />
+   367→                    </span>
+   368→                    <span className="text-sm font-medium">{amenity.name}</span>
+   369→                  </div>
+   370→                </FadeUpSection>
+   371→              );
+   372→            })}
+   373→          </div>
+   374→
+   375→          <div className="mt-10 text-center">
+   376→            <Button
+   377→              variant="outline"
+   378→              onClick={() => navigate("amenities")}
+   379→              className="rounded-full"
+   380→            >
+   381→              Explore all amenities
+   382→              <ArrowRight className="h-4 w-4" />
+   383→            </Button>
+   384→          </div>
+   385→        </div>
+   386→      </section>
+   387→
+   388→      {/* ============================================================
+   389→          Gallery Teaser
+   390→      ============================================================ */}
+   391→      <section className="py-20 sm:py-24">
+   392→        <div className="container-luxury">
+   393→          <FadeUpSection className="mb-10 flex flex-col items-end justify-between gap-4 sm:flex-row sm:items-end">
+   394→            <div>
+   395→              <p className="text-xs font-medium uppercase tracking-[0.25em] text-primary">
+   396→                Gallery
+   397→              </p>
+   398→              <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+   399→                Moments at Verdara
+   400→              </h2>
+   401→            </div>
+   402→            <Button
+   403→              variant="ghost"
+   404→              onClick={() => navigate("gallery")}
+   405→              className="rounded-full text-primary"
+   406→            >
+   407→              View full gallery
+   408→              <ArrowRight className="h-4 w-4" />
+   409→            </Button>
+   410→          </FadeUpSection>
+   411→
+   412→          <FadeUpSection>
+   413→            <div className="grid auto-rows-[180px] grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+   414→              {GALLERY_TEASER_IMAGES.map((img, i) => (
+   415→                <button
+   416→                  key={i}
+   417→                  onClick={() => navigate("gallery")}
+   418→                  className={`group relative overflow-hidden rounded-2xl ${img.span}`}
+   419→                >
+   420→                  { }
+   421→                  <img
+   422→                    src={img.url}
+   423→                    alt={img.title}
+   424→                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+   425→                    loading="lazy"
+   426→                  />
+   427→                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-70 transition-opacity group-hover:opacity-90" />
+   428→                  <div className="absolute bottom-0 left-0 p-4 text-left">
+   429→                    <p className="text-sm font-medium text-white">{img.title}</p>
+   430→                  </div>
+   431→                </button>
+   432→              ))}
+   433→            </div>
+   434→          </FadeUpSection>
+   435→        </div>
+   436→      </section>
+   437→
+   438→      {/* ============================================================
+   439→          Experience / About Teaser
+   440→      ============================================================ */}
+   441→      <section className="bg-section py-20 sm:py-24">
+   442→        <div className="container-luxury">
+   443→          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+   444→            <FadeUpSection>
+   445→              <div className="relative aspect-[4/5] overflow-hidden rounded-3xl shadow-luxury-lg">
+   446→                { }
+   447→                <img
+   448→                  src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=900&q=80"
+   449→                  alt="Forest spa pavilion"
+   450→                  className="h-full w-full object-cover"
+   451→                />
+   452→              </div>
+   453→            </FadeUpSection>
+   454→            <FadeUpSection delay={0.1}>
+   455→              <p className="text-xs font-medium uppercase tracking-[0.25em] text-primary">
+   456→                Our Philosophy
+   457→              </p>
+   458→              <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+   459→                Where Nature Meets Luxury
+   460→              </h2>
+   461→              <p className="mt-4 text-muted-foreground">
+   462→                Verdara was born from a simple belief: that true luxury is the feeling of being
+   463→                wholly present. Our villas are built around the rainforest, not in spite of it.
+   464→                Our spa draws from traditional Filipino healing. Our kitchen cooks what the land
+   465→                offers, the day it offers it.
+   466→              </p>
+   467→              <p className="mt-4 text-muted-foreground">
+   468→                Here, time slows. The canopy becomes your ceiling. The cove becomes your horizon.
+   469→                And every detail — from the handwoven linens to the butler's quiet anticipation —
+   470→                is in service of a single, simple feeling: that you have arrived.
+   471→              </p>
+   472→              <div className="mt-8 flex flex-wrap gap-6">
+   473→                <div>
+   474→                  <div className="flex items-center gap-1.5 text-primary">
+   475→                    <TreePine className="h-5 w-5" />
+   476→                    <span className="font-display text-2xl font-semibold">12 acres</span>
+   477→                  </div>
+   478→                  <p className="text-xs text-muted-foreground">of rainforest preserved</p>
+   479→                </div>
+   480→                <div>
+   481→                  <div className="flex items-center gap-1.5 text-primary">
+   482→                    <Sparkles className="h-5 w-5" />
+   483→                    <span className="font-display text-2xl font-semibold">5-star</span>
+   484→                  </div>
+   485→                  <p className="text-xs text-muted-foreground">consistently rated</p>
+   486→                </div>
+   487→                <div>
+   488→                  <div className="flex items-center gap-1.5 text-primary">
+   489→                    <Waves className="h-5 w-5" />
+   490→                    <span className="font-display text-2xl font-semibold">230m</span>
+   491→                  </div>
+   492→                  <p className="text-xs text-muted-foreground">private coastline</p>
+   493→                </div>
+   494→              </div>
+   495→              <Button
+   496→                onClick={() => navigate("about")}
+   497→                className="mt-8 rounded-full"
+   498→                size="lg"
+   499→              >
+   500→                Read our story
+   501→                <ArrowRight className="h-4 w-4" />
+   502→              </Button>
+   503→            </FadeUpSection>
+   504→          </div>
+   505→        </div>
+   506→      </section>
+   507→
+   508→      {/* ============================================================
+   509→          Testimonials
+   510→      ============================================================ */}
+   511→      <section className="py-20 sm:py-24">
+   512→        <div className="container-luxury">
+   513→          <FadeUpSection className="mb-10 text-center">
+   514→            <p className="text-xs font-medium uppercase tracking-[0.25em] text-primary">
+   515→              Guest Stories
+   516→            </p>
+   517→            <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+   518→              Whispers from the Canopy
+   519→            </h2>
+   520→          </FadeUpSection>
+   521→
+   522→          <div className="grid gap-6 md:grid-cols-3">
+   523→            {TESTIMONIALS.map((t, i) => (
+   524→              <FadeUpSection key={i} delay={i * 0.08}>
+   525→                <Card className="flex h-full flex-col gap-5 rounded-2xl border-border/60 p-7 shadow-luxury">
+   526→                  <Quote className="h-8 w-8 text-primary/30" />
+   527→                  <p className="flex-1 text-sm leading-relaxed text-foreground/80">
+   528→                    {t.quote}
+   529→                  </p>
+   530→                  <div className="flex items-center gap-3 border-t border-border/60 pt-4">
+   531→                    { }
+   532→                    <img
+   533→                      src={t.avatar}
+   534→                      alt={t.author}
+   535→                      className="h-10 w-10 rounded-full object-cover"
+   536→                    />
+   537→                    <div>
+   538→                      <div className="text-sm font-medium">{t.author}</div>
+   539→                      <div className="text-xs text-muted-foreground">{t.origin}</div>
+   540→                    </div>
+   541→                  </div>
+   542→                  <div className="flex gap-0.5">
+   543→                    {[1, 2, 3, 4, 5].map((s) => (
+   544→                      <Star key={s} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+   545→                    ))}
+   546→                  </div>
+   547→                </Card>
+   548→              </FadeUpSection>
+   549→            ))}
+   550→          </div>
+   551→        </div>
+   552→      </section>
+   553→
+   554→      {/* ============================================================
+   555→          CTA Banner
+   556→      ============================================================ */}
+   557→      <section className="relative overflow-hidden bg-[#0F2E22] py-20 text-white sm:py-28">
+   558→        <div
+   559→          className="absolute inset-0 opacity-15"
+   560→          style={{
+   561→            backgroundImage:
+   562→              "url('https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1920&q=80')",
+   563→            backgroundSize: "cover",
+   564→            backgroundPosition: "center",
+   565→          }}
+   566→        />
+   567→        <div className="container-luxury relative z-10 text-center">
+   568→          <FadeUpSection>
+   569→            <p className="text-xs font-medium uppercase tracking-[0.3em] text-emerald-300">
+   570→              Your sanctuary awaits
+   571→            </p>
+   572→            <h2 className="mx-auto mt-3 max-w-3xl font-display text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
+   573→              Begin Your Verdara Story
+   574→            </h2>
+   575→            <p className="mx-auto mt-5 max-w-xl text-white/70">
+   576→              Reserve your stay today. Our concierge will reach out within 24 hours to begin
+   577→              shaping your experience — from airport transfer to in-villa dining.
+   578→            </p>
+   579→            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+   580→              <Button
+   581→                onClick={() => navigate("book")}
+   582→                size="lg"
+   583→                className="rounded-full bg-white px-7 text-primary hover:bg-white/90"
+   584→              >
+   585→                Book Your Stay
+   586→                <ArrowRight className="h-4 w-4" />
+   587→              </Button>
+   588→              <Button
+   589→                onClick={() => navigate("contact")}
+   590→                size="lg"
+   591→                variant="outline"
+   592→                className="rounded-full border-white/30 bg-white/5 px-7 text-white backdrop-blur hover:bg-white/15"
+   593→              >
+   594→                Speak to a concierge
+   595→              </Button>
+   596→            </div>
+   597→          </FadeUpSection>
+   598→        </div>
+   599→      </section>
+   600→    </div>
+   601→  );
+   602→}
+   603→
+   604→function defaultDate(daysFromNow: number): string {
+   605→  const d = new Date();
+   606→  d.setDate(d.getDate() + daysFromNow);
+   607→  return d.toISOString().slice(0, 10);
+   608→}
+   609→
+   610→function RoomCardSkeletonWrapper() {
+   611→  return (
+   612→    <Card className="overflow-hidden rounded-2xl border border-border/60">
+   613→      <div className="aspect-[4/3] w-full animate-pulse bg-muted" />
+   614→      <div className="space-y-3 p-5">
+   615→        <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+   616→        <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
+   617→        <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+   618→        <div className="h-9 w-full animate-pulse rounded-full bg-muted" />
+   619→      </div>
+   620→    </Card>
+   621→  );
+   622→}
+   623→

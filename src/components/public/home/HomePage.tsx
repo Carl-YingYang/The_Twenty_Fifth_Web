@@ -125,14 +125,14 @@ export function HomePage() {
   return (
     <div>
       {/* ============================================================
-          Hero
+          Hero + Floating Search Bar
       ============================================================ */}
-      <section className="relative flex min-h-[100svh] items-center justify-center overflow-hidden">
+      <section className="relative flex min-h-[100svh] items-center justify-center overflow-hidden pb-24">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url('${HERO_IMAGE}')` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/80" />
 
         <div className="container-luxury relative z-10 flex flex-col items-center text-center text-white">
           <motion.div
@@ -153,7 +153,7 @@ export function HomePage() {
           >
             A Sanctuary Between
             <br />
-            <span className="italic text-emerald-200">Forest &amp; Sea</span>
+            <span className="italic text-emerald-300">Forest &amp; Sea</span>
           </motion.h1>
 
           <motion.p
@@ -196,7 +196,7 @@ export function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
-          className="absolute bottom-32 left-1/2 z-10 -translate-x-1/2 text-white/70"
+          className="absolute bottom-40 left-1/2 z-10 -translate-x-1/2 text-white/50"
         >
           <motion.div
             animate={{ y: [0, 8, 0] }}
@@ -207,51 +207,54 @@ export function HomePage() {
             <ArrowDown className="h-4 w-4" />
           </motion.div>
         </motion.div>
-      </section>
 
-      {/* ============================================================
-          Quick Availability Search Bar (floating)
-      ============================================================ */}
-      <section className="relative z-20 -mt-20 px-4 sm:-mt-24">
-        <div className="container-luxury">
-          <FadeUpSection>
-            <Card className="rounded-2xl border-border/60 bg-white p-5 shadow-luxury-lg sm:p-6">
-              <div className="grid gap-4 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end">
+        {/* ============================================================
+            Floating Availability Search Bar — overlaps hero bottom
+        ============================================================ */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="absolute bottom-0 left-0 right-0 z-20 translate-y-1/2 px-4"
+        >
+          <div className="container-luxury">
+            <Card className="rounded-2xl border-border/40 bg-white/95 p-5 shadow-luxury-lg backdrop-blur-md sm:p-6">
+              <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto_auto_auto] md:items-end">
                 <div className="space-y-1.5">
-                  <Label htmlFor="hero-checkin" className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <Label htmlFor="hero-checkin" className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                     Check-in
                   </Label>
                   <div className="relative">
-                    <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/50" />
                     <Input
                       id="hero-checkin"
                       type="date"
                       value={checkIn}
                       onChange={(e) => setCheckIn(e.target.value)}
-                      className="rounded-xl pl-9"
+                      className="rounded-xl border-border/60 bg-muted/30 pl-9 transition-colors focus:border-primary focus:bg-white"
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="hero-checkout" className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <Label htmlFor="hero-checkout" className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                     Check-out
                   </Label>
                   <div className="relative">
-                    <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/50" />
                     <Input
                       id="hero-checkout"
                       type="date"
                       value={checkOut}
                       onChange={(e) => setCheckOut(e.target.value)}
-                      className="rounded-xl pl-9"
+                      className="rounded-xl border-border/60 bg-muted/30 pl-9 transition-colors focus:border-primary focus:bg-white"
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Adults</Label>
+                  <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Adults</Label>
                   <Select value={adults} onValueChange={setAdults}>
-                    <SelectTrigger className="w-full rounded-xl">
-                      <Users className="h-4 w-4 text-muted-foreground" />
+                    <SelectTrigger className="w-full rounded-xl border-border/60 bg-muted/30 transition-colors focus:border-primary">
+                      <Users className="h-4 w-4 text-primary/50" />
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -264,10 +267,10 @@ export function HomePage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Children</Label>
+                  <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Children</Label>
                   <Select value={children} onValueChange={setChildren}>
-                    <SelectTrigger className="w-full rounded-xl">
-                      <Users className="h-4 w-4 text-muted-foreground" />
+                    <SelectTrigger className="w-full rounded-xl border-border/60 bg-muted/30 transition-colors focus:border-primary">
+                      <Users className="h-4 w-4 text-primary/50" />
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -279,14 +282,14 @@ export function HomePage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={onSearch} size="lg" className="rounded-full px-7">
+                <Button onClick={onSearch} size="lg" className="rounded-full bg-primary px-7 shadow-md hover:bg-primary/90">
                   <Search className="h-4 w-4" />
                   Search
                 </Button>
               </div>
             </Card>
-          </FadeUpSection>
-        </div>
+          </div>
+        </motion.div>
       </section>
 
       {/* ============================================================
