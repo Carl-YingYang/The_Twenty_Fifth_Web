@@ -732,3 +732,32 @@ Stage Summary:
 - Mobile footer: Completely redesigned with mobile-first compact layout — brand+socials inline, contact strip, 2-column link grid, secondary links row, CTA button. Desktop 4-column layout preserved unchanged.
 - Both components now look clean and polished on mobile without being excessively long.
 - Lint: 0 errors. Dev server: HTTP 200, no runtime errors.
+
+---
+Task ID: 9
+Agent: Main (Z.ai Code) — Mobile nav 2-column side-by-side layout
+
+Task: User requested making the mobile navigation menu links 2 side-by-side for a cleaner UI view (was single-column vertical stack).
+
+Work Log:
+- Analyzed user-uploaded screenshot of the mobile nav menu showing 7 nav links stacked vertically in a single column.
+- Redesigned the mobile nav layout in PublicNav.tsx:
+  - Changed nav links container from `flex flex-col gap-0.5` to `grid grid-cols-2 gap-1.5` — 7 links now arranged in a 2-column grid (4 rows × 2 cols, last row has 1 item)
+  - Added `justify-center` to link buttons for centered text in the grid cells
+  - Reduced font slightly (`text-[0.95rem]` → `text-[0.9rem]`) for better fit in narrower columns
+  - Reduced horizontal padding (`px-4` → `px-3`) for the grid cells
+  - Made "Find My Booking" and "Book Your Stay" side-by-side in a 2-column grid (was stacked vertically with Book Your Stay as full-width button below)
+  - Changed Book Your Stay button from `rounded-full` to `rounded-lg` to match the grid cell shape
+- Verified via agent-browser + VLM:
+  - Nav links in 2-column grid ✅
+  - Find My Booking + Book Your Stay side by side ✅
+  - Clean and compact ✅
+  - X close button visible at top-right ✅
+  - No issues ✅
+- Lint: 0 errors (2 pre-existing RHF warnings) ✅
+
+Stage Summary:
+- File changed (1): src/components/public/PublicNav.tsx
+- Mobile nav now uses a clean 2-column grid layout for both primary links and secondary actions
+- More compact vertical footprint, cleaner visual rhythm
+- Lint: 0 errors. Dev server: HTTP 200.

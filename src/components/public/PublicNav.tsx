@@ -141,42 +141,47 @@ export function PublicNav() {
           </SheetHeader>
 
           <nav
-            className="flex flex-col gap-0.5 px-3 py-3"
+            className="px-3 py-3"
             aria-label="Mobile"
           >
-            {PUBLIC_NAV.map((item) => {
-              const active = currentView === item.view;
-              return (
-                <button
-                  key={item.view}
-                  onClick={() => go(item.view as View)}
-                  className={cn(
-                    "flex min-h-[44px] items-center rounded-lg px-4 py-2.5 text-[0.95rem] font-medium transition-colors",
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground hover:bg-muted"
-                  )}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
+            {/* 2-column grid for nav links — cleaner, more compact */}
+            <div className="grid grid-cols-2 gap-1.5">
+              {PUBLIC_NAV.map((item) => {
+                const active = currentView === item.view;
+                return (
+                  <button
+                    key={item.view}
+                    onClick={() => go(item.view as View)}
+                    className={cn(
+                      "flex min-h-[44px] items-center justify-center rounded-lg px-3 py-2.5 text-[0.9rem] font-medium transition-colors",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
 
-            <div className="my-1.5 h-px bg-border" />
+            <div className="my-2.5 h-px bg-border" />
 
-            <button
-              onClick={() => go("find-reservation")}
-              className="flex min-h-[44px] items-center rounded-lg px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted"
-            >
-              Find My Booking
-            </button>
-
-            <Button
-              onClick={() => go("book")}
-              className="mt-2 min-h-[44px] rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              Book Your Stay
-            </Button>
+            {/* Secondary actions — side by side */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={() => go("find-reservation")}
+                className="flex min-h-[44px] items-center justify-center rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
+              >
+                Find My Booking
+              </button>
+              <Button
+                onClick={() => go("book")}
+                className="min-h-[44px] rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Book Your Stay
+              </Button>
+            </div>
           </nav>
         </SheetContent>
       </Sheet>
