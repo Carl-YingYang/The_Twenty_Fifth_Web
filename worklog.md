@@ -699,3 +699,36 @@ Stage Summary:
 - Slide indicator dots show progress and are clickable for manual navigation
 - Existing flow preserved: booking card still overlaps hero correctly, text still readable, layout intact
 - Order: villa pool showcase → beachfront sunset → couple in infinity pool (loops back)
+
+---
+Task ID: 8
+Agent: Main (Z.ai Code) — Fix mobile footer and mobile nav X button
+
+Task: User reported two mobile issues: (1) Footer looks bad and is way too long on mobile viewing, (2) Mobile navigation menu has X button issues and is too long.
+
+Work Log:
+- **Diagnosed mobile nav issue**: Found TWO overlapping close buttons in the mobile Sheet menu — the default `SheetPrimitive.Close` button rendered by `SheetContent` (absolute top-4 right-4, 16px icon) PLUS our custom `SheetClose` button in the header (36px). This caused a confusing double-X.
+- **Fixed mobile nav**: Removed the custom `SheetClose` button entirely, now using only the default close button from `SheetContent`. Added `pr-14` to the `SheetHeader` so the title never overlaps with the absolute-positioned close button. Cleaned up unused imports (`X`, `SheetClose`). Made the nav more compact: reduced padding (`py-3` → `py-2.5`), reduced gaps (`gap-1` → `gap-0.5`), smaller font (`text-base` → `text-[0.95rem]`), tighter header (`p-4` → `px-5 py-4`), smaller Book Your Stay button (`size="lg"` → default with `min-h-[44px]`).
+- **Diagnosed footer issue**: On mobile, the footer stacked 4 full columns vertically (Brand+story+socials, Explore with 9 links, The Villa with 5 links, Get in Touch with 4 contact items) + copyright bar = extremely long scroll.
+- **Redesigned footer with mobile-first approach**: Created a completely separate mobile layout (`lg:hidden`) that is compact:
+  - Brand row: logo + 4 social icons inline on one row (not stacked)
+  - Compact contact strip: phone, email, check-in/out times in a single wrap row with small icons
+  - 2-column link grid: Explore (4 links) | The Villa (4 links) side by side
+  - Secondary links row: About, FAQs, Contact + Find My Booking in a compact wrap row
+  - Full-width "Book Your Stay" CTA button (coral, prominent)
+  - Copyright bar with Admin Login
+  - Desktop layout (`hidden lg:grid`): keeps the original 4-column grid unchanged
+- Reduced mobile footer vertical padding from `py-14` to `py-10` (saves ~32px)
+- Verified via agent-browser + VLM:
+  - Mobile nav: exactly ONE close button ✅, no overlaps ✅, compact layout ✅, 7 nav items + Find My Booking + Book Your Stay ✅
+  - Mobile footer: compact (~1-1.5 screen heights, was much longer before) ✅, brand + socials inline ✅, contact strip readable ✅, 2-column link grid ✅, CTA button prominent ✅, clean and polished ✅
+  - Desktop footer: 4-column layout intact ✅, all content visible ✅, no issues ✅
+  - Lint: 0 errors (2 pre-existing RHF warnings) ✅
+  - Dev server: HTTP 200, no compile errors ✅
+
+Stage Summary:
+- Files changed (2): src/components/public/PublicNav.tsx, src/components/public/PublicFooter.tsx
+- Mobile nav: Fixed duplicate X button (now single default close button), made menu more compact and tighter spacing
+- Mobile footer: Completely redesigned with mobile-first compact layout — brand+socials inline, contact strip, 2-column link grid, secondary links row, CTA button. Desktop 4-column layout preserved unchanged.
+- Both components now look clean and polished on mobile without being excessively long.
+- Lint: 0 errors. Dev server: HTTP 200, no runtime errors.

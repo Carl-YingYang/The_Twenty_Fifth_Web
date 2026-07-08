@@ -8,6 +8,7 @@ import {
   Mail,
   MapPin,
   Clock,
+  ArrowRight,
 } from "lucide-react";
 import { RESORT_INFO, PUBLIC_NAV } from "@/lib/constants";
 import { useViewStore } from "@/store/useViewStore";
@@ -55,8 +56,131 @@ export function PublicFooter() {
 
   return (
     <footer className="mt-auto bg-[#0A3D4A] text-white/80">
-      <div className="container-luxury py-14 lg:py-20">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+      <div className="container-luxury py-10 sm:py-12 lg:py-16">
+        {/* ───────────────────────────────────────────────────────
+            MOBILE LAYOUT (default) — compact, single-column with
+            a 2-col link grid. Designed to be short and scannable.
+        ─────────────────────────────────────────────────────── */}
+
+        {/* Brand row — logo + socials inline, compact */}
+        <div className="flex items-center justify-between gap-4 lg:hidden">
+          <div className="flex flex-col leading-none">
+            <span className="font-display text-lg font-semibold tracking-tight text-white">
+              {RESORT_INFO.name}
+            </span>
+            <span className="mt-1 text-[0.5rem] font-medium uppercase tracking-[0.28em] text-white/50">
+              Botolan · Zambales
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <SocialLink href={RESORT_INFO.social.instagram} label="Instagram">
+              <Instagram className="h-3.5 w-3.5" />
+            </SocialLink>
+            <SocialLink href={RESORT_INFO.social.facebook} label="Facebook">
+              <Facebook className="h-3.5 w-3.5" />
+            </SocialLink>
+            <SocialLink href={RESORT_INFO.social.messenger} label="Messenger">
+              <MessengerIcon className="h-3.5 w-3.5" />
+            </SocialLink>
+            <SocialLink href={RESORT_INFO.social.whatsapp} label="WhatsApp">
+              <WhatsAppIcon className="h-3.5 w-3.5" />
+            </SocialLink>
+          </div>
+        </div>
+
+        {/* Compact contact strip — icons only on mobile, single row */}
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 lg:hidden">
+          <a
+            href={`tel:${RESORT_INFO.phoneRaw}`}
+            className="flex items-center gap-1.5 text-xs text-white/70 transition-colors hover:text-coral"
+          >
+            <Phone className="h-3 w-3 text-coral" />
+            {RESORT_INFO.phone}
+          </a>
+          <a
+            href={`mailto:${RESORT_INFO.email}`}
+            className="flex items-center gap-1.5 text-xs text-white/70 transition-colors hover:text-coral"
+          >
+            <Mail className="h-3 w-3 text-coral" />
+            Email
+          </a>
+          <span className="flex items-center gap-1.5 text-xs text-white/70">
+            <Clock className="h-3 w-3 text-coral" />
+            {RESORT_INFO.checkInTime} / {RESORT_INFO.checkOutTime}
+          </span>
+        </div>
+
+        {/* 2-column link grid — Explore | The Villa */}
+        <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-1 lg:hidden">
+          <div>
+            <h3 className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white/40">
+              Explore
+            </h3>
+            <ul className="mt-2.5 space-y-1.5">
+              {PUBLIC_NAV.slice(0, 4).map((item) => (
+                <li key={item.view}>
+                  <button
+                    onClick={() => navigate(item.view as View)}
+                    className="text-xs text-white/70 transition-colors hover:text-coral"
+                  >
+                    {item.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white/40">
+              The Villa
+            </h3>
+            <ul className="mt-2.5 space-y-1.5">
+              {VILLA_LINKS.slice(0, 4).map((link) => (
+                <li key={link.label}>
+                  <button
+                    onClick={() => navigate(link.view)}
+                    className="text-xs text-white/70 transition-colors hover:text-coral"
+                  >
+                    {link.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Mobile secondary links — About, FAQs, Contact, Book */}
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 lg:hidden">
+          {PUBLIC_NAV.slice(4).map((item) => (
+            <button
+              key={item.view}
+              onClick={() => navigate(item.view as View)}
+              className="text-xs text-white/70 transition-colors hover:text-coral"
+            >
+              {item.label}
+            </button>
+          ))}
+          <span className="text-white/20">·</span>
+          <button
+            onClick={() => navigate("find-reservation")}
+            className="text-xs text-white/70 transition-colors hover:text-coral"
+          >
+            Find My Booking
+          </button>
+        </div>
+
+        {/* Mobile CTA button */}
+        <button
+          onClick={() => navigate("book")}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-coral px-5 py-3 text-sm font-medium text-coral-foreground transition-colors hover:bg-coral/90 lg:hidden"
+        >
+          Book Your Stay
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+
+        {/* ───────────────────────────────────────────────────────
+            DESKTOP LAYOUT (lg+) — full 4-column grid
+        ─────────────────────────────────────────────────────── */}
+        <div className="hidden gap-12 lg:grid lg:grid-cols-4">
           {/* Column 1 — Brand + story + socials */}
           <div>
             <div className="flex flex-col leading-none">
@@ -178,13 +302,13 @@ export function PublicFooter() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 md:flex-row">
-          <p className="text-xs text-white/50">
+        <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-5 sm:mt-10 sm:flex-row sm:pt-6">
+          <p className="text-[0.7rem] text-white/50 sm:text-xs">
             © {year} {RESORT_INFO.name}. All rights reserved.
           </p>
           <button
             onClick={() => navigate("admin-login")}
-            className="text-xs text-white/50 transition-colors hover:text-coral"
+            className="text-[0.7rem] text-white/50 transition-colors hover:text-coral sm:text-xs"
           >
             Admin Login
           </button>

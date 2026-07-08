@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Menu, X, Sun, Moon } from "lucide-react";
+import { Menu, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +9,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetClose,
 } from "@/components/ui/sheet";
 import { PUBLIC_NAV, RESORT_INFO } from "@/lib/constants";
 import { useViewStore } from "@/store/useViewStore";
@@ -127,25 +126,22 @@ export function PublicNav() {
         </div>
       </div>
 
-      {/* Mobile slide-down sheet */}
+      {/* Mobile slide-down sheet — compact. Uses the default close button
+          rendered by SheetContent (absolute top-4 right-4). Header has
+          right padding so the title never overlaps the close button. */}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="top"
           className="flex flex-col gap-0 border-b border-border p-0 sm:max-w-full"
         >
-          <SheetHeader className="flex flex-row items-center justify-between border-b border-border p-4">
-            <SheetTitle className="font-display text-lg tracking-tight">
+          <SheetHeader className="flex flex-row items-center border-b border-border px-5 py-4 pr-14">
+            <SheetTitle className="font-display text-base tracking-tight">
               {RESORT_INFO.name}
             </SheetTitle>
-            <SheetClose asChild>
-              <Button variant="ghost" size="icon" aria-label="Close menu">
-                <X className="h-5 w-5" />
-              </Button>
-            </SheetClose>
           </SheetHeader>
 
           <nav
-            className="flex flex-col gap-1 p-4"
+            className="flex flex-col gap-0.5 px-3 py-3"
             aria-label="Mobile"
           >
             {PUBLIC_NAV.map((item) => {
@@ -155,7 +151,7 @@ export function PublicNav() {
                   key={item.view}
                   onClick={() => go(item.view as View)}
                   className={cn(
-                    "flex min-h-[44px] items-center justify-between rounded-lg px-4 py-3 text-base font-medium transition-colors",
+                    "flex min-h-[44px] items-center rounded-lg px-4 py-2.5 text-[0.95rem] font-medium transition-colors",
                     active
                       ? "bg-primary/10 text-primary"
                       : "text-foreground hover:bg-muted"
@@ -166,19 +162,18 @@ export function PublicNav() {
               );
             })}
 
-            <div className="my-2 h-px bg-border" />
+            <div className="my-1.5 h-px bg-border" />
 
             <button
               onClick={() => go("find-reservation")}
-              className="flex min-h-[44px] items-center rounded-lg px-4 py-3 text-sm text-muted-foreground hover:bg-muted"
+              className="flex min-h-[44px] items-center rounded-lg px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted"
             >
               Find My Booking
             </button>
 
             <Button
               onClick={() => go("book")}
-              size="lg"
-              className="mt-3 min-h-[48px] rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+              className="mt-2 min-h-[44px] rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Book Your Stay
             </Button>
