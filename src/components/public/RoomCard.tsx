@@ -110,20 +110,20 @@ export function RoomCard({
                 e.stopPropagation();
                 onDetails(room);
               }}
-              className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-coral"
+              className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-primary transition-colors duration-200 hover:text-coral"
             >
               View Details
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
             </button>
           ) : onSelect ? (
-            <span className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-primary transition-colors group-hover:text-coral">
+            <span className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-primary transition-colors duration-200 group-hover:text-coral">
               {selected ? "Selected" : "Choose"}
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
             </span>
           ) : (
-            <span className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-primary transition-colors group-hover:text-coral">
+            <span className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-primary transition-colors duration-200 group-hover:text-coral">
               Book Now
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
             </span>
           )}
         </div>

@@ -65,10 +65,23 @@ export function ContactPage() {
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSubmitting(false);
-    toast.success("Message sent! We'll respond within 24 hours.");
-    setForm({ name: "", email: "", phone: "", message: "" });
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to send message");
+      }
+      toast.success("Message sent! We'll respond within 24 hours.");
+      setForm({ name: "", email: "", phone: "", message: "" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

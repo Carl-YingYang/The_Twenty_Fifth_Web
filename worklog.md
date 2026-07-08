@@ -604,3 +604,61 @@ Stage Summary:
 - Lint: 0 errors. Dev server: HTTP 200. No runtime errors.
 - Key architectural change: Booking card moved from absolute positioning inside hero (clipped by overflow-hidden) to a sibling section with negative margin-top (robust, no clipping, no overlap with following sections).
 - Key theme fix: All `bg-primary`/`bg-coral` buttons now use `text-primary-foreground`/`text-coral-foreground` instead of hardcoded `text-white`, ensuring automatic correct contrast in both light and dark mode.
+
+---
+Task ID: 6-a
+Agent: full-stack-developer (features + API)
+Task: Add FAQ items, create contact API, enhance room details
+
+Work Log:
+- Added 5 new FAQ items to FaqsPage.tsx: "wifi" and "safety" and "quiet-hours" (The Villa category), "smoking" and "damages" (House Rules category)
+- Created `/api/contact/route.ts` — POST endpoint with JSON body validation (name, email, message required), email format regex, console logging, and proper error responses (400/200)
+- Updated ContactPage.tsx — replaced mock `setTimeout` onSubmit with real `fetch("/api/contact")` call with error handling and try/catch/finally
+- Enhanced RoomDetailsPage.tsx — added `RoomCard` import, `RoomsApiResponse` interface, secondary query for all rooms, `otherRooms` memo (filtered, max 3), breadcrumb text changed from "Back to The Villa" to "The Villa", and new "Other configurations" section at bottom with RoomCard grid
+
+Stage Summary:
+- FAQ count increased from 10 to 15 items across 4 categories
+- Contact form now submits to real API endpoint with validation (no more mock delay)
+- Room details page now shows up to 3 other room configurations below the main content
+- Lint: 0 errors (2 pre-existing RHF warnings). Dev server: compiling successfully.
+
+---
+Task ID: 7
+Agent: lead (Z.ai Code) — Hero crossfade slideshow with 3 uploaded images
+
+Task: User requested replacing the single static Unsplash hero image with 3 uploaded images (hero-1.png pool with palms, hero-2.png beach sunset with lounge chairs, hero-3.png couple in infinity pool), with a simple fade in/out transition on loop. Must keep the existing flow (gradient overlay, headline, booking card) smooth and intact.
+
+Work Log:
+- Copied 3 user-uploaded images from /home/z/my-project/upload/ to /home/z/my-project/public/:
+  - hero-1(1).png → /public/hero-1.png (tropical pool with palms and thatched pavilions)
+  - hero-1(2).png → /public/hero-2.png (beach sunset with lounge chairs and umbrellas)
+  - hero-1(3).png → /public/hero-3.png (couple relaxing in infinity pool)
+- Analyzed all 3 images via VLM to confirm content and mood.
+- Replaced the `HERO_BG` constant (single Unsplash URL) with a `HERO_SLIDES` array of 3 local image paths.
+- Created a new `HeroSlideshow` component in HomePage.tsx:
+  - Stacks 3 `<div>` layers absolutely positioned (`absolute inset-0`)
+  - Each layer uses `background-image` with `bg-cover bg-center`
+  - Uses React state `index` (0→1→2→0) cycling every 6 seconds via `setInterval`
+  - Active layer: `opacity: 1`, inactive: `opacity: 0`
+  - Pure CSS opacity transition: `transition-opacity duration-[1500ms] ease-in-out` — GPU-accelerated, very smooth fade
+  - `aria-hidden` attribute toggled for accessibility (screen readers only announce active slide)
+  - `useEffect` cleanup clears the interval on unmount
+  - Initially added indicator dots but removed them because the booking card section (`z-20 -mt-16`) overlapped the dots positioned at `bottom-6` of the hero. Kept it simple per user's request ("simple fade in and fade out lang").
+- Replaced the old single-background `<div>` in the hero `<section>` with `<HeroSlideshow />`.
+- Kept the gradient overlay (`bg-gradient-to-t from-black/85 via-black/35 to-black/40`) on top of the slideshow so the headline and description remain readable across all 3 images.
+- Kept the text content (eyebrow "Botolan · Zambales", headline, description) and booking card section completely unchanged — the flow is preserved.
+- Ran `bun run lint`: 0 errors, 2 pre-existing RHF warnings.
+- Verified with agent-browser + VLM:
+  - Took 3 screenshots at 6-second intervals — confirmed all 3 images cycle in order (pool with palms → beach sunset → couple in pool → loops back).
+  - Verified via DOM eval that opacity transitions correctly (active slide opacity=1, others opacity=0).
+  - Confirmed headline "A beachfront villa all your own." is readable over all 3 images thanks to the gradient overlay.
+  - Confirmed booking card (Check-in/Check-out/Guests/Check Availability) is fully visible below the hero with no overlap.
+  - Tested mobile (375px): hero image shows, headline readable, booking card visible — no issues.
+
+Stage Summary:
+- Files changed (1): src/components/public/home/HomePage.tsx
+- Images added (3): /public/hero-1.png, /public/hero-2.png, /public/hero-3.png
+- Hero is now a smooth, looping 3-image crossfade slideshow with 1.5s fade transitions and 6s display per image.
+- Existing flow fully preserved: gradient overlay, text content, booking card overlap, "Our Story" section — all intact.
+- Lint: 0 errors. Dev server: HTTP 200, no runtime errors.
+- Simple, smooth, on-loop as requested.

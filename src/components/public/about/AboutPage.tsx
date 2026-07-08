@@ -175,13 +175,13 @@ export function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-coral py-16 text-white sm:py-20">
+      <section className="bg-coral py-16 text-coral-foreground sm:py-20">
         <div className="container-luxury flex flex-col items-center gap-6 text-center lg:flex-row lg:justify-between lg:text-left">
           <FadeUpSection>
             <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
               Come and stay a while.
             </h2>
-            <p className="mt-3 max-w-xl text-white/85">
+            <p className="mt-3 max-w-xl text-coral-foreground/85">
               The beach is waiting, the kettle is on, and the villa is yours
               for the asking.
             </p>
@@ -199,7 +199,7 @@ export function AboutPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full rounded-full border-white/40 bg-transparent text-white hover:bg-white/10 sm:w-auto"
+                className="w-full rounded-full border-coral-foreground/30 bg-transparent text-coral-foreground hover:bg-coral-foreground/10 sm:w-auto"
               >
                 <Phone className="h-4 w-4" />
                 Call the villa

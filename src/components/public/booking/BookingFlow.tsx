@@ -942,7 +942,7 @@ function ConfirmationScreen({
     <div className="py-12 sm:py-20">
       <div className="container-tight">
         <FadeUpSection className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success">
             <Check className="h-7 w-7" />
           </div>
           <p className="eyebrow mt-5">Booking received</p>
@@ -1008,7 +1008,7 @@ function ConfirmationScreen({
                 key={step.title}
                 className="flex gap-4 rounded-xl border border-border bg-card p-5 shadow-card"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                   {i + 1}
                 </span>
                 <div>

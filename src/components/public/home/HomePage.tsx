@@ -81,8 +81,40 @@ const GALLERY_TEASER = [
   },
 ];
 
-const HERO_BG =
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80";
+const HERO_SLIDES = [
+  "/hero-1.png",
+  "/hero-2.png",
+  "/hero-3.png",
+];
+
+// Hero crossfade — 3 images, simple opacity fade, loops forever.
+// Pure CSS opacity transition (GPU-accelerated, very smooth).
+function HeroSlideshow() {
+  const [index, setIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % HERO_SLIDES.length);
+    }, 6000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="absolute inset-0">
+      {HERO_SLIDES.map((src, i) => (
+        <div
+          key={src}
+          className="absolute inset-0 bg-cover bg-center transition-opacity duration-[1500ms] ease-in-out"
+          style={{
+            backgroundImage: `url('${src}')`,
+            opacity: i === index ? 1 : 0,
+          }}
+          aria-hidden={i !== index}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function HomePage() {
   const navigate = useViewStore((s) => s.navigate);
@@ -136,10 +168,7 @@ export function HomePage() {
           HERO
       ============================================================ */}
       <section className="relative flex min-h-[68vh] items-end overflow-hidden sm:min-h-[80vh] lg:min-h-[88vh]">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('${HERO_BG}')` }}
-        />
+        <HeroSlideshow />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/40" />
 
         <div className="container-luxury relative z-10 flex flex-col items-start pt-20 pb-16 text-white sm:pb-20 lg:pb-28">

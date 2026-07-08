@@ -80,6 +80,27 @@ const FAQS: Faq[] = [
     answer:
       "Yes — The Twenty-Fifth has direct access to a private stretch of Botolan coastline. Beach loungers and umbrellas are set up for guests. The water is calm and swimmable year-round, and the sunsets are spectacular.",
   },
+  {
+    id: "wifi",
+    category: "The Villa",
+    question: "Is there WiFi?",
+    answer:
+      "Yes — the villa has fast, reliable WiFi throughout. It's more than enough for video calls, streaming, and staying connected. That said, we encourage you to put the phone down and enjoy the beach.",
+  },
+  {
+    id: "safety",
+    category: "The Villa",
+    question: "Is the villa safe for children?",
+    answer:
+      "Absolutely. The pool area has a safety fence, and the beach entry is gentle and shallow. We provide life vests for kids on request. Our caretaker is also on-site if you need any assistance.",
+  },
+  {
+    id: "quiet-hours",
+    category: "The Villa",
+    question: "Are there quiet hours?",
+    answer:
+      "We ask guests to keep noise down after 10 PM out of respect for the nearby community and fellow guests. Daytime is all yours — play music, celebrate, enjoy the beach. We just ask for a peaceful evening wind-down.",
+  },
 
   // Getting There
   {
@@ -117,6 +138,20 @@ const FAQS: Faq[] = [
     category: "House Rules",
     question: "How do I contact the host?",
     answer: `The easiest way to reach us is by phone or Messenger. Call or text ${RESORT_INFO.phone}, or message us on Messenger via our Facebook page (facebook.com/the25thinzambales). Our caretaker is also on-site during your stay if you need anything in person.`,
+  },
+  {
+    id: "smoking",
+    category: "House Rules",
+    question: "Is smoking allowed?",
+    answer:
+      "Smoking is permitted in outdoor areas only — the deck, garden, and beach. No smoking inside the villa, please. Ashtrays are provided on the outdoor terraces.",
+  },
+  {
+    id: "damages",
+    category: "House Rules",
+    question: "What if something gets damaged?",
+    answer:
+      "Accidents happen, especially with groups. Just let us know right away so we can assess and arrange repairs. We ask guests to treat the villa as they would their own home. Significant damage beyond normal wear may incur a charge, but we always discuss it with you first.",
   },
 ];
 

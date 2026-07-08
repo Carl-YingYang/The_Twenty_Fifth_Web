@@ -22,9 +22,14 @@ import { useBookingStore } from "@/store/useBookingStore";
 import { RESORT_INFO } from "@/lib/constants";
 import type { Room } from "@/types";
 import { FadeUpSection, getAmenityIcon } from "../shared";
+import { RoomCard } from "../RoomCard";
 
 interface RoomResponse {
   room: Room;
+}
+
+interface RoomsApiResponse {
+  rooms: Room[];
 }
 
 export function RoomDetailsPage() {
@@ -41,6 +46,16 @@ export function RoomDetailsPage() {
     enabled: !!roomId,
   });
   const room = data?.room;
+
+  // Fetch all rooms for "Other configurations" section
+  const { data: allRoomsData } = useQuery({
+    queryKey: ["rooms", "list"],
+    queryFn: () => apiFetch<RoomsApiResponse>("/api/rooms"),
+  });
+  const otherRooms = React.useMemo(() => {
+    const list = allRoomsData?.rooms ?? [];
+    return list.filter((r) => r.id !== roomId).slice(0, 3);
+  }, [allRoomsData, roomId]);
 
   const [activeImage, setActiveImage] = React.useState(0);
 
@@ -115,7 +130,7 @@ export function RoomDetailsPage() {
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Back to The Villa
+            The Villa
           </button>
         </div>
       </div>
@@ -378,6 +393,36 @@ export function RoomDetailsPage() {
               </div>
             </div>
           </div>
+
+          {/* Other configurations */}
+          {otherRooms.length > 0 && (
+            <FadeUpSection delay={0.2}>
+              <div className="mt-16 border-t border-border pt-12">
+                <h2 className="font-display text-2xl font-semibold tracking-tight">
+                  Other configurations
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Explore more ways to stay at The Twenty-Fifth.
+                </p>
+                <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {otherRooms.map((r, i) => (
+                    <FadeUpSection key={r.id} delay={i * 0.06}>
+                      <RoomCard
+                        room={r}
+                        onDetails={(rm) =>
+                          navigate("room-details", { roomId: rm.id })
+                        }
+                        onBook={(rm) => {
+                          setSearch({ selectedRoomId: rm.id });
+                          navigate("book");
+                        }}
+                      />
+                    </FadeUpSection>
+                  ))}
+                </div>
+              </div>
+            </FadeUpSection>
+          )}
         </div>
       </section>
     </div>
