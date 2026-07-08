@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Menu, X, Leaf } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { PUBLIC_NAV } from "@/lib/constants";
 import { useViewStore } from "@/store/useViewStore";
+import { useMounted } from "@/hooks/useMounted";
 import type { View } from "@/types";
 
 export function PublicNav() {
@@ -22,6 +22,7 @@ export function PublicNav() {
   const currentView = useViewStore((s) => s.view);
   const [scrolled, setScrolled] = React.useState(false);
   const [open, setOpen] = React.useState(false);
+  const mounted = useMounted();
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -35,18 +36,20 @@ export function PublicNav() {
     setOpen(false);
   };
 
+  // Before mount, render a stable solid nav (matches SSR) to avoid hydration mismatch
+  // and prevent a transparent nav over content on first paint.
   const isHome = currentView === "home";
+  const solid = mounted && (scrolled || !isHome);
 
   return (
-    <motion.header
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+    <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-        scrolled || !isHome
-          ? "glass border-b border-border/60 shadow-luxury"
-          : "bg-transparent"
+        "fixed inset-x-0 top-0 z-50 transition-colors duration-300",
+        solid
+          ? "glass border-b border-border/60"
+          : isHome
+            ? "bg-transparent"
+            : "glass border-b border-border/60"
       )}
     >
       <div className="container-luxury">
@@ -60,7 +63,7 @@ export function PublicNav() {
             <span
               className={cn(
                 "flex h-9 w-9 items-center justify-center rounded-full border transition-colors",
-                scrolled || !isHome
+                solid
                   ? "border-primary/30 bg-primary/10 text-primary"
                   : "border-white/30 bg-white/10 text-white"
               )}
@@ -70,7 +73,7 @@ export function PublicNav() {
             <span
               className={cn(
                 "font-display text-lg font-semibold tracking-[0.3em] transition-colors",
-                scrolled || !isHome ? "text-foreground" : "text-white"
+                solid ? "text-foreground" : "text-white"
               )}
             >
               VERDARA
@@ -87,7 +90,7 @@ export function PublicNav() {
                   onClick={() => go(item.view as View)}
                   className={cn(
                     "relative rounded-full px-4 py-2 text-sm transition-colors",
-                    (scrolled || !isHome)
+                    solid
                       ? active
                         ? "text-primary font-medium"
                         : "text-foreground/70 hover:text-foreground"
@@ -98,11 +101,7 @@ export function PublicNav() {
                 >
                   {item.label}
                   {active && (
-                    <motion.span
-                      layoutId="nav-active"
-                      className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-primary"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
+                    <span className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-primary" />
                   )}
                 </button>
               );
@@ -115,7 +114,7 @@ export function PublicNav() {
               onClick={() => go("admin-login")}
               className={cn(
                 "hidden text-xs uppercase tracking-widest transition-colors md:inline-flex",
-                scrolled || !isHome
+                solid
                   ? "text-foreground/50 hover:text-foreground"
                   : "text-white/60 hover:text-white"
               )}
@@ -127,8 +126,8 @@ export function PublicNav() {
               onClick={() => go("book")}
               size="sm"
               className={cn(
-                "hidden rounded-full px-5 shadow-sm md:inline-flex",
-                !scrolled && isHome && "bg-white text-primary hover:bg-white/90"
+                "hidden rounded-full px-5 md:inline-flex",
+                !solid && isHome && "bg-white text-primary hover:bg-white/90"
               )}
             >
               Book Now
@@ -142,7 +141,7 @@ export function PublicNav() {
                   size="icon"
                   className={cn(
                     "lg:hidden",
-                    !scrolled && isHome && "text-white hover:bg-white/10 hover:text-white"
+                    !solid && isHome && "text-white hover:bg-white/10 hover:text-white"
                   )}
                   aria-label="Open menu"
                 >
@@ -156,25 +155,20 @@ export function PublicNav() {
                   </SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col gap-1 px-4">
-                  <AnimatePresence>
-                    {PUBLIC_NAV.map((item, i) => (
-                      <motion.button
-                        key={item.view}
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.05 + i * 0.04 }}
-                        onClick={() => go(item.view as View)}
-                        className={cn(
-                          "rounded-xl px-4 py-3 text-left text-base transition-colors",
-                          currentView === item.view
-                            ? "bg-primary/10 font-medium text-primary"
-                            : "text-foreground/80 hover:bg-muted"
-                        )}
-                      >
-                        {item.label}
-                      </motion.button>
-                    ))}
-                  </AnimatePresence>
+                  {PUBLIC_NAV.map((item) => (
+                    <button
+                      key={item.view}
+                      onClick={() => go(item.view as View)}
+                      className={cn(
+                        "rounded-xl px-4 py-3 text-left text-base transition-colors",
+                        currentView === item.view
+                          ? "bg-primary/10 font-medium text-primary"
+                          : "text-foreground/80 hover:bg-muted"
+                      )}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
 
                   <div className="my-3 h-px bg-border" />
 
@@ -213,6 +207,6 @@ export function PublicNav() {
           </div>
         </div>
       </div>
-    </motion.header>
+    </header>
   );
 }

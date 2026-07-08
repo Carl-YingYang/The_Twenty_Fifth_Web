@@ -55,6 +55,13 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { apiFetch } from "@/lib/api-client";
 import {
@@ -370,16 +377,17 @@ export function BookingsAdmin() {
       />
 
       {/* Create reservation dialog */}
-      <CreateReservationDialog
-        open={creating}
-        onClose={() => setCreating(false)}
-        onSuccess={() => {
-          setCreating(false);
-          qc.invalidateQueries({ queryKey: ["admin-reservations"] });
-          qc.invalidateQueries({ queryKey: ["dashboard"] });
-          qc.invalidateQueries({ queryKey: ["calendar"] });
-        }}
-      />
+      {creating && (
+        <CreateReservationDialog
+          onClose={() => setCreating(false)}
+          onSuccess={() => {
+            setCreating(false);
+            qc.invalidateQueries({ queryKey: ["admin-reservations"] });
+            qc.invalidateQueries({ queryKey: ["dashboard"] });
+            qc.invalidateQueries({ queryKey: ["calendar"] });
+          }}
+        />
+      )}
     </AdminLayout>
   );
 }
@@ -754,6 +762,245 @@ function RejectDialog({
             onClick={() => onConfirm(reason.trim())}
           >
             Reject reservation
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CreateReservationDialog({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    roomId: "",
+    checkIn: "",
+    checkOut: "",
+    adults: 2,
+    children: 0,
+    source: "WALK_IN",
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const { data: roomsData } = useQuery({
+    queryKey: ["rooms", "create-res"],
+    queryFn: () => apiFetch<{ rooms: Room[] }>("/api/rooms"),
+  });
+  const rooms = roomsData?.rooms ?? [];
+
+  const selectedRoom = rooms.find((r) => r.id === form.roomId);
+  const nights =
+    form.checkIn && form.checkOut
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date(form.checkOut).getTime() -
+              new Date(form.checkIn).getTime()) /
+              86400000
+          )
+        )
+      : 0;
+  const total = selectedRoom && nights ? selectedRoom.pricePerNight * nights : 0;
+
+  const canSubmit =
+    form.firstName &&
+    form.lastName &&
+    form.email &&
+    form.phone &&
+    form.roomId &&
+    form.checkIn &&
+    form.checkOut &&
+    nights > 0;
+
+  const handleSubmit = async () => {
+    if (!canSubmit || !selectedRoom) return;
+    setSubmitting(true);
+    try {
+      await apiFetch("/api/reservations", {
+        method: "POST",
+        body: JSON.stringify({
+          roomId: form.roomId,
+          checkIn: form.checkIn,
+          checkOut: form.checkOut,
+          adults: form.adults,
+          children: form.children,
+          guest: {
+            firstName: form.firstName,
+            lastName: form.lastName,
+            email: form.email,
+            phone: form.phone,
+          },
+          specialRequests: `Created by admin (${form.source})`,
+        }),
+      });
+      toast.success("Reservation created successfully");
+      qc.invalidateQueries({ queryKey: ["admin-reservations"] });
+      onSuccess();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to create reservation";
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>New Reservation</DialogTitle>
+          <DialogDescription>
+            Create a walk-in or phone reservation. The guest will be saved to the
+            guest directory.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Guest info */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">First name *</Label>
+              <Input
+                value={form.firstName}
+                onChange={(e) =>
+                  setForm({ ...form, firstName: e.target.value })
+                }
+                placeholder="Juan"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Last name *</Label>
+              <Input
+                value={form.lastName}
+                onChange={(e) =>
+                  setForm({ ...form, lastName: e.target.value })
+                }
+                placeholder="Dela Cruz"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Email *</Label>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="juan@email.com"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Phone *</Label>
+              <Input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="+63 917 000 0000"
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Stay info */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Check-in *</Label>
+              <Input
+                type="date"
+                value={form.checkIn}
+                onChange={(e) =>
+                  setForm({ ...form, checkIn: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Check-out *</Label>
+              <Input
+                type="date"
+                value={form.checkOut}
+                onChange={(e) =>
+                  setForm({ ...form, checkOut: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Room *</Label>
+            <Select
+              value={form.roomId}
+              onValueChange={(v) => setForm({ ...form, roomId: v })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a room" />
+              </SelectTrigger>
+              <SelectContent>
+                {rooms.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.name} (#{r.number}) — {formatCurrency(r.pricePerNight)}
+                    /night
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Adults</Label>
+              <Input
+                type="number"
+                min={1}
+                value={form.adults}
+                onChange={(e) =>
+                  setForm({ ...form, adults: parseInt(e.target.value) || 1 })
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Children</Label>
+              <Input
+                type="number"
+                min={0}
+                value={form.children}
+                onChange={(e) =>
+                  setForm({ ...form, children: parseInt(e.target.value) || 0 })
+                }
+              />
+            </div>
+          </div>
+
+          {total > 0 && (
+            <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+              <span className="text-sm text-muted-foreground">
+                {nights} night{nights > 1 ? "s" : ""} ×{" "}
+                {formatCurrency(selectedRoom?.pricePerNight ?? 0)}
+              </span>
+              <span className="font-display text-lg font-semibold">
+                {formatCurrency(total)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            disabled={!canSubmit || submitting}
+            onClick={handleSubmit}
+            className="bg-primary"
+          >
+            {submitting ? "Creating…" : "Create Reservation"}
           </Button>
         </div>
       </DialogContent>

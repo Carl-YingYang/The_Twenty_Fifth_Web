@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useViewStore } from "@/store/useViewStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useBookingStore } from "@/store/useBookingStore";
 import { AnimatePresence, motion } from "framer-motion";
 
 // Public components
@@ -42,6 +45,38 @@ const ADMIN_VIEWS = new Set([
 ]);
 
 export default function Home() {
+  // Hydration guard: stores use skipHydration, so we must rehydrate after mount.
+  // Until then, render a stable shell that matches SSR to prevent the
+  // blank-white-screen hydration error on mobile devices.
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    // Manually rehydrate all persisted stores on the client.
+    useViewStore.persist.rehydrate();
+    useAuthStore.persist.rehydrate();
+    useBookingStore.persist.rehydrate();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHydrated(true);
+  }, []);
+
+  // Stable loading shell shown during SSR + first client render (matches server output).
+  if (!hydrated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-pulse rounded-full border-2 border-primary/20 border-t-primary" />
+          <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            Verdara
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return <AppShell />;
+}
+
+function AppShell() {
   const { view } = useViewStore();
 
   const isAdminView = ADMIN_VIEWS.has(view);
@@ -51,17 +86,7 @@ export default function Home() {
   if (isLogin) {
     return (
       <main className="min-h-screen">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key="admin-login"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <AdminLogin />
-          </motion.div>
-        </AnimatePresence>
+        <AdminLogin />
       </main>
     );
   }
@@ -70,17 +95,7 @@ export default function Home() {
   if (isAdminView) {
     return (
       <main className="min-h-screen">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={view}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-          >
-            {renderAdminView(view)}
-          </motion.div>
-        </AnimatePresence>
+        {renderAdminView(view)}
       </main>
     );
   }
@@ -89,19 +104,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <PublicNav />
-      <main className="flex-1">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={view}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
-            {renderPublicView(view)}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+      <main className="flex-1">{renderPublicView(view)}</main>
       <PublicFooter />
     </div>
   );

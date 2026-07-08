@@ -102,3 +102,65 @@ All core flows verified end-to-end:
 6. Add dark mode toggle for public site
 7. Add room type CRUD in admin
 8. Add walk-in reservation creation from admin
+
+---
+
+## Phase 6 — Mobile Fix, Gallery Lightbox, Admin Flatten (Cron Round)
+
+### Current Status Assessment
+Project was stable but had a **critical mobile blank-screen bug** caused by Zustand `persist` hydration mismatch (server renders default `home` view, client hydrates from localStorage with a different view → React hydration fails → blank screen on mobile browsers). Gallery lightbox had sloppy `layout` animations. Admin UI was too "floaty" with heavy shadows. Public nav had excessive Framer Motion animations.
+
+### Completed Modifications
+
+**1. CRITICAL: Mobile blank screen fix (hydration mismatch)**
+- Added `skipHydration: true` to all 3 Zustand persist stores (`useViewStore`, `useAuthStore`, `useBookingStore`)
+- Rewrote `src/app/page.tsx` with a hydration guard: renders a stable loading spinner during SSR + first client render, then manually calls `.persist.rehydrate()` on all stores after mount, then renders the real app
+- Created `src/hooks/useMounted.ts` hook for mount-gated rendering
+- This eliminates the server/client state mismatch that caused blank screens on real mobile devices
+
+**2. Gallery lightbox rewrite (fix sloppy animation)**
+- Rewrote `GalleryPage.tsx` — removed janky `motion.div layout` + `AnimatePresence mode="popLayout"` on grid (caused sloppy reflow during filter changes)
+- Replaced with simple CSS-only fade/scale transitions on hover
+- Lightbox is now a clean fixed overlay (not a Dialog) with proper close button (X icon), prev/next arrows (ChevronLeft/Right icons), image counter, body-scroll lock, keyboard navigation
+- No more janky dialog animation — instant open/close
+
+**3. Admin UI flatten (sharper, more professional)**
+- Changed admin background from `bg-muted/30` to `bg-[#F7F8F7]` (cleaner off-white)
+- Added `.shadow-flat` and `.shadow-flat-sm` utility classes in globals.css (minimal 1-2px shadows vs the heavy luxury shadows)
+- Admin sidebar already uses clean dark forest (#0F2E22) — kept as is
+
+**4. Reduced animations for device compatibility**
+- Rewrote `PublicNav.tsx` — removed `motion.header` entrance animation, removed `motion.span layoutId` active indicator (replaced with simple CSS), removed `AnimatePresence` stagger on mobile menu items
+- Added `useMounted()` guard in PublicNav so `scrolled` state only applies after mount (prevents SSR mismatch on nav transparency)
+- Page transitions in `page.tsx` simplified (removed `AnimatePresence mode="wait"` wrappers that could cause flash on slow mobile)
+
+**5. next.config fix**
+- Added `allowedDevOrigins` for `*.space-z.ai` and `*.z.ai` to fix cross-origin dev warnings in preview environment
+
+**6. Bookings admin enhancements (from previous incomplete round)**
+- Added inline quick-action buttons in bookings table rows (Confirm ✓ / Reject ✗ for pending, Check-in for confirmed, Check-out for checked-in)
+- Added "New Reservation" button in admin bookings header
+- Added `CreateReservationDialog` component for admin-created walk-in/phone reservations with full form (guest info + stay details + price calculation)
+
+### Verification Results
+- ✅ Lint: 0 errors, 0 warnings
+- ✅ Mobile viewport (375px iPhone SE, 390px iPhone 14): renders correctly, no blank screen
+- ✅ Desktop: homepage, gallery, admin dashboard all render correctly
+- ✅ Gallery lightbox: clean open/close, smooth prev/next, no janky animation
+- ✅ Admin dashboard: flat professional look confirmed by VLM
+- ✅ No hydration errors in dev log
+- ✅ Dev server running on port 3000, responding 200
+
+### Unresolved Issues / Risks
+- Mobile nav shows desktop links in a11y tree but they're hidden via `hidden lg:flex` — needs visual confirmation on real device
+- Calendar on mobile uses horizontal scroll (correct approach) but sticky left column (w-52=208px) may be too wide on very small screens
+- Admin `shadow-luxury` still used in some admin components (BookingsAdmin, CalendarAdmin cards) — could be migrated to `shadow-flat` for consistency in a future pass
+
+### Priority Recommendations for Next Phase
+1. Migrate remaining admin card components from `shadow-luxury` to `shadow-flat` for full flat consistency
+2. Add CSS `@media (prefers-reduced-motion)` to disable all transitions for accessibility
+3. Test calendar on real mobile — consider reducing sticky column width on small screens
+4. Add `Find Reservation` link to public footer for guest access
+5. Add CSV export for reports
+6. Add room type CRUD in admin
+

@@ -33,6 +33,6 @@ export const useBookingStore = create<BookingState>()(
       selectRoom: (roomId) => set({ selectedRoomId: roomId }),
       reset: () => set(initial),
     }),
-    { name: "rrms-booking" }
+    { name: "rrms-booking", skipHydration: true }
   )
 );

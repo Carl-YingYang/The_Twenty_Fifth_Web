@@ -28,6 +28,9 @@ export const useViewStore = create<ViewState>()(
     }),
     {
       name: "rrms-view",
+      // Skip auto-hydration to avoid SSR/client mismatch (blank screen on mobile).
+      // We rehydrate manually after mount in the root page.
+      skipHydration: true,
       // Only persist view for convenience (so refresh keeps you on same page)
       partialize: (state) => ({ view: state.view, params: state.params }),
     }

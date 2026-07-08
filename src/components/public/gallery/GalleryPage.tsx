@@ -2,11 +2,8 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/api-client";
 import { GALLERY_CATEGORIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -31,34 +28,16 @@ export function GalleryPage() {
 
   const items = data?.gallery ?? [];
 
-  // Vary tile sizes for a masonry feel
-  const tileSpans = [
-    "sm:col-span-2 sm:row-span-2",
-    "",
-    "",
-    "sm:col-span-2",
-    "",
-    "",
-    "sm:row-span-2",
-    "",
-    "sm:col-span-2",
-    "",
-    "",
-    "sm:col-span-2 sm:row-span-2",
-    "",
-    "",
-    "",
-    "sm:col-span-2",
-    "sm:row-span-2",
-    "",
-  ];
-
   const openLightbox = (i: number) => setLightboxIndex(i);
   const closeLightbox = () => setLightboxIndex(null);
-  const goNext = () =>
-    setLightboxIndex((i) => (i === null ? i : (i + 1) % items.length));
-  const goPrev = () =>
-    setLightboxIndex((i) => (i === null ? i : (i - 1 + items.length) % items.length));
+  const goNext = React.useCallback(
+    () => setLightboxIndex((i) => (i === null ? i : (i + 1) % items.length)),
+    [items.length]
+  );
+  const goPrev = React.useCallback(
+    () => setLightboxIndex((i) => (i === null ? i : (i - 1 + items.length) % items.length)),
+    [items.length]
+  );
 
   // Keyboard navigation
   React.useEffect(() => {
@@ -70,8 +49,19 @@ export function GalleryPage() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-     
-  }, [lightboxIndex, items.length]);
+  }, [lightboxIndex, goNext, goPrev]);
+
+  // Lock body scroll when lightbox open
+  React.useEffect(() => {
+    if (lightboxIndex !== null) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [lightboxIndex]);
 
   const current = lightboxIndex !== null ? items[lightboxIndex] : null;
 
@@ -107,16 +97,16 @@ export function GalleryPage() {
       {/* Filter + Grid */}
       <section className="py-12 sm:py-16">
         <div className="container-luxury">
-          {/* Filter tabs */}
-          <div className="mb-8 flex flex-wrap gap-2">
+          {/* Filter tabs — scrollable on mobile */}
+          <div className="no-scrollbar -mx-4 mb-8 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
             {GALLERY_CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  "rounded-full border px-4 py-2 text-sm font-medium transition-all",
+                  "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                   activeCategory === cat
-                    ? "border-primary bg-primary text-white shadow-sm"
+                    ? "border-primary bg-primary text-white"
                     : "border-border bg-card text-foreground/70 hover:border-primary/40 hover:text-foreground"
                 )}
               >
@@ -137,95 +127,106 @@ export function GalleryPage() {
               </p>
             </Card>
           ) : (
-            <motion.div
-              layout
-              className="grid auto-rows-[200px] grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4"
-            >
-              <AnimatePresence mode="popLayout">
-                {items.map((item, i) => (
-                  <motion.button
-                    layout
-                    key={item.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.4 }}
-                    onClick={() => openLightbox(i)}
-                    className={cn(
-                      "group relative overflow-hidden rounded-2xl bg-muted shadow-luxury transition-all hover:shadow-luxury-lg",
-                      tileSpans[i % tileSpans.length]
-                    )}
-                  >
-                    { }
-                    <img
-                      src={item.url}
-                      alt={item.title}
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-60 transition-opacity group-hover:opacity-90" />
-                    <div className="absolute bottom-0 left-0 p-4 text-left">
-                      <p className="text-xs uppercase tracking-wider text-emerald-200 opacity-90">
-                        {item.category}
-                      </p>
-                      <p className="text-sm font-medium text-white">{item.title}</p>
-                    </div>
-                  </motion.button>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+              {items.map((item, i) => (
+                <button
+                  key={item.id}
+                  onClick={() => openLightbox(i)}
+                  className="group relative aspect-square overflow-hidden rounded-xl bg-muted sm:rounded-2xl"
+                >
+                  <img
+                    src={item.url}
+                    alt={item.title}
+                    className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-50 transition-opacity duration-300 group-hover:opacity-80" />
+                  <div className="absolute bottom-0 left-0 p-3 text-left sm:p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-emerald-200 opacity-90 sm:text-xs">
+                      {item.category}
+                    </p>
+                    <p className="text-xs font-medium text-white sm:text-sm">{item.title}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </section>
 
-      {/* Lightbox */}
-      <Dialog open={lightboxIndex !== null} onOpenChange={(o) => !o && closeLightbox()}>
-        <DialogContent className="max-w-4xl border-border/60 bg-black/95 p-0 sm:rounded-2xl">
-          <DialogTitle className="sr-only">{current?.title ?? "Gallery image"}</DialogTitle>
-          {current && (
-            <div className="relative">
-              { }
-              <img
-                src={current.url}
-                alt={current.title}
-                className="max-h-[80vh] w-full object-contain"
-              />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-6 text-white">
-                <p className="text-xs uppercase tracking-wider text-emerald-200">
-                  {current.category}
-                </p>
-                <h3 className="mt-1 font-display text-xl font-semibold">{current.title}</h3>
-                {current.description && (
-                  <p className="mt-1 text-sm text-white/80">{current.description}</p>
-                )}
-              </div>
+      {/* Lightbox — fixed overlay, no janky dialog animation */}
+      {current && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
+          onClick={closeLightbox}
+          role="dialog"
+          aria-modal="true"
+          aria-label={current.title}
+        >
+          {/* Close button */}
+          <button
+            onClick={closeLightbox}
+            aria-label="Close"
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <X className="h-5 w-5" />
+          </button>
 
-              {items.length > 1 && (
-                <>
-                  <button
-                    onClick={goPrev}
-                    aria-label="Previous image"
-                    className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition-colors hover:bg-white/30"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    onClick={goNext}
-                    aria-label="Next image"
-                    className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition-colors hover:bg-white/30"
-                  >
-                    ›
-                  </button>
-                </>
-              )}
+          {/* Counter */}
+          <div className="absolute left-4 top-4 z-10 rounded-full bg-white/10 px-3 py-1.5 text-xs text-white/80">
+            {(lightboxIndex ?? 0) + 1} / {items.length}
+          </div>
 
-              <div className="absolute right-4 top-4 flex items-center gap-2 text-xs text-white/60">
-                {(lightboxIndex ?? 0) + 1} / {items.length}
-              </div>
-            </div>
+          {/* Prev / Next */}
+          {items.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goPrev();
+                }}
+                aria-label="Previous image"
+                className="absolute left-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:left-4 sm:h-12 sm:w-12"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goNext();
+                }}
+                aria-label="Next image"
+                className="absolute right-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:right-4 sm:h-12 sm:w-12"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </>
           )}
-        </DialogContent>
-      </Dialog>
+
+          {/* Image + caption */}
+          <div
+            className="relative flex max-h-[90vh] w-full max-w-4xl flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={current.url}
+              alt={current.title}
+              className="max-h-[80vh] w-auto max-w-full object-contain"
+            />
+            <div className="mt-4 px-4 text-center text-white">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200">
+                {current.category}
+              </p>
+              <h3 className="mt-1 font-display text-lg font-semibold sm:text-xl">
+                {current.title}
+              </h3>
+              {current.description && (
+                <p className="mt-1 text-sm text-white/70">{current.description}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

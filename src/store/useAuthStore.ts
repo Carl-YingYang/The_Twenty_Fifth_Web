@@ -25,6 +25,6 @@ export const useAuthStore = create<AuthState>()(
       updateUser: (patch) =>
         set((state) => ({ user: state.user ? { ...state.user, ...patch } : null })),
     }),
-    { name: "rrms-auth" }
+    { name: "rrms-auth", skipHydration: true }
   )
 );
