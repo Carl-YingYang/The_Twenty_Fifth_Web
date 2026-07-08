@@ -81,30 +81,54 @@ const GALLERY_TEASER = [
   },
 ];
 
+// Order: villa pool showcase first (strongest establishing shot),
+// then beachfront sunset, then couple in infinity pool.
 const HERO_SLIDES = [
-  "/hero-1.png",
-  "/hero-2.png",
   "/hero-3.png",
+  "/hero-2.png",
+  "/hero-1.png",
 ];
 
 // Hero crossfade — 3 images, simple opacity fade, loops forever.
 // Pure CSS opacity transition (GPU-accelerated, very smooth).
+// Images preload on mount so the first fade is flash-free.
 function HeroSlideshow() {
   const [index, setIndex] = React.useState(0);
+  const [loaded, setLoaded] = React.useState(0);
+
+  // Preload all hero images so there's no white flash on first transition.
+  React.useEffect(() => {
+    let cancelled = false;
+    HERO_SLIDES.forEach((src) => {
+      const img = new window.Image();
+      img.src = src;
+      img.onload = () => {
+        if (!cancelled) setLoaded((n) => n + 1);
+      };
+      // If it fails, still count it so we don't block forever.
+      img.onerror = () => {
+        if (!cancelled) setLoaded((n) => n + 1);
+      };
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   React.useEffect(() => {
+    if (loaded < HERO_SLIDES.length) return; // wait until all images ready
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % HERO_SLIDES.length);
-    }, 6000);
+    }, 6500);
     return () => clearInterval(id);
-  }, []);
+  }, [loaded]);
 
   return (
     <div className="absolute inset-0">
       {HERO_SLIDES.map((src, i) => (
         <div
           key={src}
-          className="absolute inset-0 bg-cover bg-center transition-opacity duration-[1500ms] ease-in-out"
+          className="absolute inset-0 bg-cover bg-center transition-opacity duration-[1600ms] ease-in-out"
           style={{
             backgroundImage: `url('${src}')`,
             opacity: i === index ? 1 : 0,
@@ -112,6 +136,29 @@ function HeroSlideshow() {
           aria-hidden={i !== index}
         />
       ))}
+      {/* Subtle slide indicator dots — bottom-right, positioned above the
+          booking card overlap so they stay visible on all viewports. */}
+      <div className="absolute bottom-24 right-4 z-10 flex gap-2 sm:bottom-8 sm:right-8">
+        {HERO_SLIDES.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => setIndex(i)}
+            aria-label={`Show hero image ${i + 1}`}
+            className="group relative h-1.5 w-6 overflow-hidden rounded-full bg-white/30 transition-all duration-300 hover:bg-white/50 sm:w-8"
+          >
+            {i === index && (
+              <span
+                key={index}
+                className="absolute left-0 top-0 h-full rounded-full bg-white"
+                style={{
+                  animation: "hero-progress 6.5s linear forwards",
+                }}
+              />
+            )}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

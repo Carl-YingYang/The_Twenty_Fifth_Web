@@ -295,6 +295,12 @@
   }
 }
 
+/* Hero slideshow progress bar — fills the active dot over the slide duration */
+@keyframes hero-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
 /* Reduced motion — accessibility */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
