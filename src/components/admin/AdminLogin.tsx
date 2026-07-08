@@ -70,9 +70,9 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="relative grid min-h-screen grid-cols-1 lg:grid-cols-2">
-      {/* Left: brand panel */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-primary p-12 text-white lg:flex">
+    <div className="relative grid min-h-screen grid-cols-1 xl:grid-cols-[1.1fr_1fr]">
+      {/* Left: brand panel — hidden below xl to give form room on tablets/large phones */}
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#0A3D4A] p-10 text-white xl:flex lg:p-14">
         {/* Decorative ocean pattern */}
         <svg
           aria-hidden
@@ -116,14 +116,14 @@ export function AdminLogin() {
         </button>
 
         <div className="relative z-10 flex flex-col">
-          <div className="mb-6 flex size-14 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
+          <div className="mb-5 flex size-14 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
             <Waves className="size-7 text-white" />
           </div>
           <div className="eyebrow !text-coral">Admin Suite</div>
-          <h1 className="mt-3 font-display text-5xl font-medium tracking-tight text-white">
+          <h1 className="mt-3 font-display text-4xl font-medium tracking-tight text-white lg:text-5xl">
             {RESORT_INFO.name}
           </h1>
-          <p className="mt-4 max-w-md text-base leading-relaxed text-white/80">
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-white/80 lg:text-base">
             {RESORT_INFO.tagline}
           </p>
         </div>
@@ -134,32 +134,33 @@ export function AdminLogin() {
       </div>
 
       {/* Right: form panel */}
-      <div className="relative flex items-center justify-center bg-background px-4 py-12 sm:px-6">
-        {/* Mobile back link */}
+      <div className="relative flex items-center justify-center bg-background px-4 py-10 sm:px-6 xl:py-14">
+        {/* Mobile back link — visible below xl since brand panel is hidden */}
         <button
           onClick={() => navigate("home")}
-          className="group absolute left-5 top-5 inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground lg:hidden"
+          className="group absolute left-4 top-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground sm:left-5 sm:top-5 sm:text-sm xl:hidden"
         >
           <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
           Back
         </button>
 
-        <div className="w-full max-w-md">
-          {/* Mobile brand */}
-          <div className="mb-8 flex flex-col items-center text-center lg:hidden">
-            <div className="mb-3 flex size-12 items-center justify-center rounded-xl bg-primary">
+        <div className="w-full max-w-sm sm:max-w-md">
+          {/* Brand header — visible below xl since left brand panel is hidden */}
+          <div className="mb-6 flex flex-col items-center text-center xl:hidden">
+            <div className="mb-3 flex size-12 items-center justify-center rounded-xl bg-[#0A3D4A]">
               <Waves className="size-6 text-white" />
             </div>
             <div className="eyebrow">Admin Suite</div>
-            <h1 className="mt-1 font-display text-2xl font-medium tracking-tight text-foreground">
+            <h1 className="mt-1 font-display text-xl font-medium tracking-tight text-foreground sm:text-2xl">
               {RESORT_INFO.name}
             </h1>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-8 shadow-card">
-            <div className="mb-8 hidden lg:block">
+          <div className="rounded-xl border border-border bg-card p-5 shadow-card sm:p-7 xl:p-8">
+            {/* Form heading — always visible (hidden on xl only if brand panel shows it, but we show it always for clarity) */}
+            <div className="mb-6">
               <div className="eyebrow">Sign in</div>
-              <h2 className="mt-1 font-display text-2xl font-medium tracking-tight text-foreground">
+              <h2 className="mt-1 font-display text-xl font-medium tracking-tight text-foreground sm:text-2xl">
                 Welcome back
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -232,12 +233,12 @@ export function AdminLogin() {
             </form>
 
             {/* Demo credentials */}
-            <div className="mt-6 rounded-lg border border-border bg-sand/50 p-4">
+            <div className="mt-5 rounded-lg border border-border bg-muted/50 p-3 sm:p-4">
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <ShieldCheck className="size-3.5" />
                 Demo credentials
               </div>
-              <div className="space-y-0.5 font-mono text-xs text-foreground">
+              <div className="space-y-1 font-mono text-xs text-foreground break-all sm:text-sm">
                 <div>
                   <span className="text-muted-foreground">email:</span>{" "}
                   {ADMIN_CREDENTIALS.email}
@@ -252,7 +253,7 @@ export function AdminLogin() {
                 variant="outline"
                 size="sm"
                 onClick={fillDemo}
-                className="mt-3 h-8 w-full text-xs"
+                className="mt-3 h-9 w-full text-xs"
               >
                 Autofill credentials
               </Button>

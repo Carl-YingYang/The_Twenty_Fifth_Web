@@ -494,3 +494,61 @@ Stage Summary:
 - No regressions on desktop admin dashboard (4-col stats, sidebar, layout all intact).
 - Lint clean (0 errors). Dev server HTTP 200.
 - Files changed across both subagents (22 total): PublicNav, HomePage, page.tsx, constants.ts, FaqsPage, RoomsPage, RoomDetailsPage, AmenitiesPage, GalleryPage, BookingFlow, FindReservation, RoomCard (public); AdminLayout, DashboardAdmin, CalendarAdmin, BookingsAdmin, RoomsAdmin, GuestsAdmin, AmenitiesAdmin, GalleryAdmin, ReportsAdmin, SettingsAdmin (admin).
+
+---
+Task ID: 4
+Agent: lead (Z.ai Code) — UI bug fix round 2: admin login responsive, hero empty space, rooms card mobile, dark mode contrast
+
+Work Log:
+- Analyzed 3 new user-uploaded screenshots via VLM to identify remaining UI bugs:
+  1. Admin login two-panel layout showing side-by-side on tablet/narrow desktop (lg:grid-cols-2 triggered at 1024px, too low)
+  2. Homepage hero excessive empty space on mobile (min-h-[88vh] + translate-y card + h-40 spacer = big gap)
+  3. Admin Rooms page: truncated descriptions (line-clamp-2 too aggressive), small Edit/Status/Delete buttons (h-9 = 36px, below 44px touch target)
+  4. Dark mode theme color transparency — bg-primary renders as light blue (#4DBFD4) in dark mode, looks washed out on full-panel backgrounds; border/input colors too dark (#243F47) causing low contrast
+- Fixed AdminLogin.tsx:
+  - Changed grid breakpoint from lg:grid-cols-2 → xl:grid-cols-[1.1fr_1fr] so panels stack below 1280px (tablets and small laptops get single-column form)
+  - Left brand panel: changed bg-primary → bg-[#0A3D4A] (fixed deep ocean, consistent in both light/dark mode)
+  - Mobile brand icon: also changed bg-primary → bg-[#0A3D4A]
+  - Reduced brand panel title from text-5xl → text-4xl lg:text-5xl, tagline text-base → text-sm lg:text-base
+  - Mobile brand header: text-2xl → text-xl sm:text-2xl
+  - Form card padding: p-8 → p-5 sm:p-7 xl:p-8 (tighter on mobile)
+  - Demo credentials: bg-sand/50 → bg-muted/50 (better dark mode), text-xs → text-xs sm:text-sm, added break-all for long email, Autofill button h-8 → h-9
+  - Form heading now always visible (removed hidden lg:block) for consistency
+  - Back button: visible below xl (was lg:hidden), smaller text on mobile
+- Fixed HomePage.tsx hero section:
+  - Hero min-height: min-h-[88vh] sm:min-h-[92vh] → min-h-[68vh] sm:min-h-[80vh] lg:min-h-[88vh] (much shorter on mobile)
+  - Hero alignment: items-center → items-end (content sits at bottom, card overlaps naturally)
+  - Hero content padding: pt-24 pb-32 → pt-20 pb-40 sm:pb-40 lg:pb-32 (more bottom padding for card overlap)
+  - Mobile headline: text-4xl → text-3xl sm:text-5xl (smaller on mobile)
+  - Mobile eyebrow: added text-[0.65rem] sm:text-xs responsive size
+  - Mobile description: text-base → text-sm sm:text-lg
+  - Floating card: translate-y-1/3 sm:translate-y-1/2 → translate-y-1/2 (consistent half-translate)
+  - Spacer below hero: h-40 sm:h-48 → h-20 sm:h-32 lg:h-40 (much smaller on mobile)
+  - Darker gradient: from-black/80 → from-black/85 via-black/30 → via-black/35
+- Fixed RoomsAdmin.tsx room card:
+  - Card body padding: p-4 → p-4 sm:p-5
+  - Room name: text-base → text-base sm:text-lg
+  - Room type/number: added mt-0.5, text-xs sm:text-sm
+  - Capacity/view row: text-xs → text-xs sm:text-sm
+  - Description: line-clamp-2 → line-clamp-3, added leading-relaxed sm:text-sm sm:leading-relaxed (shows more text, better readability)
+  - Edit button: h-9 → h-10 (40px touch target), added text-sm
+  - Status dropdown: h-9 → h-10
+  - Delete button: size-9 → size-10
+- Fixed globals.css dark mode:
+  - Border color: #243F47 → #2D4A52 (lighter, better contrast)
+  - Input color: #243F47 → #2D4A52 (matches border)
+  - Added chart colors for dark mode (chart-1 through chart-5) — were missing, causing transparent/invisible chart elements
+- Ran `bun run lint`: 0 errors, 2 pre-existing RHF warnings (acceptable).
+- Verified with agent-browser + VLM on 3 viewports:
+  - Mobile (375px): admin login = single column, brand header centered, form readable, no empty space. Admin rooms = single column cards, 3-line descriptions, 40px buttons. Homepage hero = reasonable height, booking card visible.
+  - Tablet (768px): admin login = single column (stacks below xl), form well-sized, no two-panel side-by-side.
+  - Desktop (1440px): admin login = two-panel with deep teal brand panel + form panel. Homepage hero = booking card overlaps bottom, all fields + Check Availability button visible.
+
+Stage Summary:
+- Files changed (4): src/components/admin/AdminLogin.tsx, src/components/public/home/HomePage.tsx, src/components/admin/RoomsAdmin.tsx, src/app/globals.css
+- All 4 user-reported issues resolved and browser-verified on 375px + 768px + 1440px:
+  1. Admin login now stacks to single column below xl (1280px) — no more cramped two-panel on tablet
+  2. Homepage hero empty space eliminated on mobile (68vh instead of 88vh, smaller spacer)
+  3. Admin rooms cards: 3-line descriptions (was 2), 40px buttons (was 36px), responsive text sizes
+  4. Dark mode: fixed border/input contrast, added missing chart colors, brand panel uses fixed deep ocean (#0A3D4A) instead of theme primary
+- Lint: 0 errors. Dev server: HTTP 200.

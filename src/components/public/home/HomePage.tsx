@@ -135,29 +135,29 @@ export function HomePage() {
       {/* ============================================================
           HERO
       ============================================================ */}
-      <section className="relative flex min-h-[88vh] items-center overflow-hidden sm:min-h-[92vh]">
+      <section className="relative flex min-h-[68vh] items-end overflow-hidden sm:min-h-[80vh] lg:min-h-[88vh]">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url('${HERO_BG}')` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/40" />
 
-        <div className="container-luxury relative z-10 flex flex-col items-start pt-24 pb-32 text-white">
+        <div className="container-luxury relative z-10 flex flex-col items-start pt-20 pb-40 text-white sm:pb-40 lg:pb-32">
           <FadeUpSection>
-            <p className="text-xs font-medium uppercase tracking-[0.32em] text-white/80">
+            <p className="text-[0.65rem] font-medium uppercase tracking-[0.28em] text-white/80 sm:text-xs sm:tracking-[0.32em]">
               Botolan · Zambales
             </p>
-            <h1 className="mt-4 max-w-3xl font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="mt-3 max-w-3xl font-display text-3xl font-semibold leading-[1.1] tracking-tight sm:text-5xl sm:leading-[1.05] lg:text-6xl">
               A beachfront villa all your own.
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/85 sm:text-lg">
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/85 sm:text-lg">
               {RESORT_INFO.description}
             </p>
           </FadeUpSection>
         </div>
 
         {/* Floating Check Availability card */}
-        <div className="absolute inset-x-0 bottom-0 z-20 translate-y-1/3 px-4 sm:translate-y-1/2">
+        <div className="absolute inset-x-0 bottom-0 z-20 translate-y-1/2 px-4">
           <div className="container-luxury">
             <FadeUpSection delay={0.15}>
               <div className="rounded-xl border border-border bg-card p-4 shadow-card-hover sm:p-6">
@@ -234,7 +234,7 @@ export function HomePage() {
       </section>
 
       {/* Spacer to accommodate floating search */}
-      <div className="h-40 sm:h-48" />
+      <div className="h-20 sm:h-32 lg:h-40" />
 
       {/* ============================================================
           STORY / INTRO

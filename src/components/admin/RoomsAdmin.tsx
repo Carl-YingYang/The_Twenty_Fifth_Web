@@ -264,19 +264,19 @@ function RoomCard({
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="font-display text-base font-medium tracking-tight text-foreground">
+            <div className="font-display text-base font-medium tracking-tight text-foreground sm:text-lg">
               {room.name}
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
               {room.type?.name ?? "Room"} · {room.number}
             </div>
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground sm:text-sm">
           <span className="flex items-center gap-1">
             <Users className="size-3.5" />
             Sleeps {room.capacity}
@@ -289,7 +289,7 @@ function RoomCard({
           )}
         </div>
 
-        <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">
+        <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-muted-foreground sm:text-sm sm:leading-relaxed">
           {room.description}
         </p>
 
@@ -297,7 +297,7 @@ function RoomCard({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 flex-1 min-w-[100px]"
+            className="h-10 flex-1 min-w-[100px] text-sm"
             onClick={onEdit}
           >
             <Pencil className="size-3.5" />
@@ -308,7 +308,7 @@ function RoomCard({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 min-w-[44px] gap-1.5"
+                className="h-10 min-w-[44px] gap-1.5"
                 disabled={pending}
               >
                 <span
@@ -343,7 +343,7 @@ function RoomCard({
           <Button
             variant="ghost"
             size="icon"
-            className="size-9 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-700"
+            className="size-10 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-700"
             onClick={onDelete}
             aria-label="Remove room"
           >

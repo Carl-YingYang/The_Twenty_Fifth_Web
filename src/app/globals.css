@@ -153,9 +153,15 @@
   --danger: #E57373;
   --danger-foreground: #0F1F24;
 
-  --border: #243F47;
-  --input: #243F47;
+  --border: #2D4A52;
+  --input: #2D4A52;
   --ring: #4DBFD4;
+
+  --chart-1: #4DBFD4;
+  --chart-2: #E8987E;
+  --chart-3: #4ADE80;
+  --chart-4: #FBBF24;
+  --chart-5: #9FB0B5;
 
   --sidebar: #072B35;
   --sidebar-foreground: #C9DBE0;
