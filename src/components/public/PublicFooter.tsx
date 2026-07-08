@@ -1,86 +1,103 @@
 "use client";
 
 import * as React from "react";
-import { Instagram, Facebook, Twitter, Leaf, MapPin, Phone, Mail, Send } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Instagram,
+  Facebook,
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+} from "lucide-react";
 import { RESORT_INFO, PUBLIC_NAV } from "@/lib/constants";
 import { useViewStore } from "@/store/useViewStore";
 import type { View } from "@/types";
 
-const EXPERIENCES = [
-  { label: "Forest Spa", view: "amenities" as View },
-  { label: "Farm-to-Table Dining", view: "amenities" as View },
-  { label: "Private Beach", view: "amenities" as View },
-  { label: "Yoga Pavilion", view: "amenities" as View },
-  { label: "Nature Trails", view: "gallery" as View },
+// Room type slugs the footer "The Villa" column links to.
+const VILLA_LINKS: { label: string; view: View }[] = [
+  { label: "The Whole Villa", view: "rooms" },
+  { label: "Master Suite", view: "rooms" },
+  { label: "Beachfront Suite", view: "rooms" },
+  { label: "Garden Suite", view: "rooms" },
+  { label: "Poolside Room", view: "rooms" },
 ];
+
+// Messenger / WhatsApp icon (lucide doesn't ship these specific brand icons).
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 018.413 3.488 11.82 11.82 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.71.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z" />
+    </svg>
+  );
+}
+
+function MessengerIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.652V24l4.088-2.242c1.092.301 2.246.464 3.443.464 6.627 0 12-4.973 12-11.111S18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.259L19.752 8l-6.561 6.963z" />
+    </svg>
+  );
+}
 
 export function PublicFooter() {
   const navigate = useViewStore((s) => s.navigate);
-  const [email, setEmail] = React.useState("");
-
-  const onSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) {
-      toast.error("Please enter your email address");
-      return;
-    }
-    toast.success("Thank you for subscribing! Check your inbox for our welcome letter.");
-    setEmail("");
-  };
+  const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-auto bg-[#0F2E22] text-white/80">
-      <div className="container-luxury py-16 lg:py-20">
-        <div className="grid gap-12 lg:grid-cols-4">
-          {/* Resort info */}
-          <div className="lg:col-span-1">
-            <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white">
-                <Leaf className="h-4 w-4" />
+    <footer className="mt-auto bg-[#0A3D4A] text-white/80">
+      <div className="container-luxury py-14 lg:py-20">
+        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+          {/* Column 1 — Brand + story + socials */}
+          <div>
+            <div className="flex flex-col leading-none">
+              <span className="font-display text-xl font-semibold tracking-tight text-white">
+                {RESORT_INFO.name}
               </span>
-              <span className="font-display text-lg font-semibold tracking-[0.3em] text-white">
-                VERDARA
+              <span className="mt-1 text-[0.55rem] font-medium uppercase tracking-[0.32em] text-white/50">
+                Zambales
               </span>
             </div>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/60">
-              {RESORT_INFO.tagline}. An immersive luxury escape where the rainforest meets the coast.
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-white/70">
+              {RESORT_INFO.story}
             </p>
-            <div className="mt-5 space-y-2.5 text-sm text-white/70">
-              <a
-                href={`mailto:${RESORT_INFO.email}`}
-                className="flex items-center gap-2.5 transition-colors hover:text-white"
-              >
-                <Mail className="h-4 w-4 text-emerald-300" />
-                {RESORT_INFO.email}
-              </a>
-              <a
-                href={`tel:${RESORT_INFO.phone.replace(/\s/g, "")}`}
-                className="flex items-center gap-2.5 transition-colors hover:text-white"
-              >
-                <Phone className="h-4 w-4 text-emerald-300" />
-                {RESORT_INFO.phone}
-              </a>
-              <p className="flex items-start gap-2.5">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
-                <span>{RESORT_INFO.address}</span>
-              </p>
+
+            <div className="mt-6 flex items-center gap-3">
+              <SocialLink href={RESORT_INFO.social.instagram} label="Instagram">
+                <Instagram className="h-4 w-4" />
+              </SocialLink>
+              <SocialLink href={RESORT_INFO.social.facebook} label="Facebook">
+                <Facebook className="h-4 w-4" />
+              </SocialLink>
+              <SocialLink href={RESORT_INFO.social.messenger} label="Messenger">
+                <MessengerIcon className="h-4 w-4" />
+              </SocialLink>
+              <SocialLink href={RESORT_INFO.social.whatsapp} label="WhatsApp">
+                <WhatsAppIcon className="h-4 w-4" />
+              </SocialLink>
             </div>
           </div>
 
-          {/* Quick links */}
+          {/* Column 2 — Explore */}
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-widest text-white/40">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
               Explore
-            </h4>
-            <ul className="mt-4 space-y-2.5 text-sm">
+            </h3>
+            <ul className="mt-5 space-y-3 text-sm">
               {PUBLIC_NAV.map((item) => (
                 <li key={item.view}>
                   <button
                     onClick={() => navigate(item.view as View)}
-                    className="text-white/70 transition-colors hover:text-emerald-300"
+                    className="text-white/70 transition-colors hover:text-coral"
                   >
                     {item.label}
                   </button>
@@ -89,7 +106,7 @@ export function PublicFooter() {
               <li>
                 <button
                   onClick={() => navigate("book")}
-                  className="text-white/70 transition-colors hover:text-emerald-300"
+                  className="text-white/70 transition-colors hover:text-coral"
                 >
                   Book Your Stay
                 </button>
@@ -97,96 +114,104 @@ export function PublicFooter() {
               <li>
                 <button
                   onClick={() => navigate("find-reservation")}
-                  className="text-white/70 transition-colors hover:text-emerald-300"
+                  className="text-white/70 transition-colors hover:text-coral"
                 >
-                  Find My Reservation
+                  Find My Booking
                 </button>
               </li>
             </ul>
           </div>
 
-          {/* Experiences */}
+          {/* Column 3 — The Villa */}
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-widest text-white/40">
-              Experiences
-            </h4>
-            <ul className="mt-4 space-y-2.5 text-sm">
-              {EXPERIENCES.map((exp) => (
-                <li key={exp.label}>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
+              The Villa
+            </h3>
+            <ul className="mt-5 space-y-3 text-sm">
+              {VILLA_LINKS.map((link) => (
+                <li key={link.label}>
                   <button
-                    onClick={() => navigate(exp.view)}
-                    className="text-white/70 transition-colors hover:text-emerald-300"
+                    onClick={() => navigate(link.view)}
+                    className="text-white/70 transition-colors hover:text-coral"
                   >
-                    {exp.label}
+                    {link.label}
                   </button>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Newsletter */}
+          {/* Column 4 — Get in touch */}
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-widest text-white/40">
-              The Verdara Letter
-            </h4>
-            <p className="mt-4 text-sm text-white/60">
-              Seasonal stories, curated offers, and quiet moments from the forest. Sent monthly.
-            </p>
-            <form onSubmit={onSubscribe} className="mt-4 space-y-2.5">
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Your email address"
-                className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:border-emerald-300/60"
-              />
-              <Button
-                type="submit"
-                className="w-full rounded-full bg-emerald-500 text-white hover:bg-emerald-400"
+            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
+              Get in Touch
+            </h3>
+            <div className="mt-5 space-y-4 text-sm">
+              <a
+                href={`tel:${RESORT_INFO.phoneRaw}`}
+                className="flex items-start gap-3 text-white/70 transition-colors hover:text-coral"
               >
-                <Send className="h-3.5 w-3.5" />
-                Subscribe
-              </Button>
-            </form>
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-coral" />
+                <span>{RESORT_INFO.phone}</span>
+              </a>
+              <a
+                href={`mailto:${RESORT_INFO.email}`}
+                className="flex items-start gap-3 text-white/70 transition-colors hover:text-coral"
+              >
+                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-coral" />
+                <span>{RESORT_INFO.email}</span>
+              </a>
+              <p className="flex items-start gap-3 text-white/70">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-coral" />
+                <span>{RESORT_INFO.address}</span>
+              </p>
+              <p className="flex items-start gap-3 text-white/70">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-coral" />
+                <span>
+                  Check-in {RESORT_INFO.checkInTime}
+                  <br />
+                  Check-out {RESORT_INFO.checkOutTime}
+                </span>
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 md:flex-row">
           <p className="text-xs text-white/50">
-            © {new Date().getFullYear()} {RESORT_INFO.name}. All rights reserved. Crafted with care.
+            © {year} {RESORT_INFO.name}. All rights reserved.
           </p>
-          <div className="flex items-center gap-3">
-            <a
-              href={RESORT_INFO.social.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Instagram"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70 transition-colors hover:border-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-300"
-            >
-              <Instagram className="h-4 w-4" />
-            </a>
-            <a
-              href={RESORT_INFO.social.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Facebook"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70 transition-colors hover:border-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-300"
-            >
-              <Facebook className="h-4 w-4" />
-            </a>
-            <a
-              href={RESORT_INFO.social.twitter}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Twitter"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70 transition-colors hover:border-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-300"
-            >
-              <Twitter className="h-4 w-4" />
-            </a>
-          </div>
+          <button
+            onClick={() => navigate("admin-login")}
+            className="text-xs text-white/50 transition-colors hover:text-coral"
+          >
+            Admin Login
+          </button>
         </div>
       </div>
     </footer>
+  );
+}
+
+function SocialLink({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70 transition-colors hover:border-coral hover:bg-coral/10 hover:text-coral"
+    >
+      {children}
+    </a>
   );
 }

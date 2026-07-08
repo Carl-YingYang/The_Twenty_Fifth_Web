@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
-  Eye,
   Mail,
   MapPin,
-  Pencil,
   Phone,
+  Plus,
   Search,
-  Users as UsersIcon,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,12 +17,9 @@ import { AdminLayout } from "./AdminLayout";
 import { BookingStatusBadge } from "./StatusBadges";
 import { EmptyState } from "./StatCard";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -41,493 +37,359 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Separator } from "@/components/ui/separator";
 
-import { apiFetch, ApiError } from "@/lib/api-client";
-import {
-  formatCurrency,
-  formatDate,
-  formatDateShort,
-  getInitials,
-} from "@/lib/utils";
+import { apiFetch } from "@/lib/api-client";
+import { cn, formatDate, formatDateShort, getInitials } from "@/lib/utils";
+import { useBookingStore } from "@/store/useBookingStore";
+import { useViewStore } from "@/store/useViewStore";
 import type { Guest, Reservation } from "@/types";
 
-interface GuestsResponse {
-  guests: (Guest & {
-    reservations?: {
-      id: string;
-      status: string;
-      referenceNo: string;
-      checkIn: string;
-      checkOut: string;
-    }[];
-  })[];
-}
-
-interface GuestDetail extends Guest {
-  reservations: (Reservation & { rooms?: { room?: { name: string; number: string } }[] })[];
+interface GuestWithReservations extends Guest {
+  reservations?: Array<{
+    id: string;
+    status: string;
+    referenceNo: string;
+    checkIn: string;
+    checkOut: string;
+  }>;
 }
 
 export function GuestsAdmin() {
-  const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [debounced, setDebounced] = useState("");
-  const [viewId, setViewId] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Guest | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(search), 300);
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const qs = new URLSearchParams();
-  if (debounced) qs.set("search", debounced);
+  const queryParams = new URLSearchParams();
+  if (debouncedSearch) queryParams.set("search", debouncedSearch);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["guests", debounced],
-    queryFn: () => apiFetch<GuestsResponse>(`/api/guests?${qs.toString()}`),
+    queryKey: ["admin-guests", debouncedSearch],
+    queryFn: () =>
+      apiFetch<{ guests: GuestWithReservations[] }>(
+        `/api/guests?${queryParams.toString()}`
+      ),
   });
 
   const guests = data?.guests ?? [];
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
-      apiFetch(`/api/guests/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["guests"] });
-      toast.success("Guest updated");
-      setEditing(null);
-    },
-    onError: (err: unknown) => {
-      toast.error(err instanceof ApiError ? err.message : "Failed to update guest");
-    },
-  });
+  const selected = guests.find((g) => g.id === selectedGuestId) ?? null;
 
   return (
-    <AdminLayout title="Guests" subtitle="Manage guest profiles and history">
-      <Card className="rounded-2xl border-border/70 shadow-luxury">
-        <CardContent className="p-4">
-          <div className="relative w-full lg:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, email, phone…"
-              className="pl-9"
-            />
-          </div>
-        </CardContent>
-      </Card>
+    <AdminLayout title="Guests" subtitle="Search guests and view their stay history">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, email, or phone"
+            className="h-10 pl-9"
+          />
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {guests.length} {guests.length === 1 ? "guest" : "guests"}
+        </div>
+      </div>
 
-      <Card className="mt-4 rounded-2xl border-border/70 shadow-luxury">
-        <CardContent className="px-0 py-0">
-          {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : guests.length === 0 ? (
-            <EmptyState
-              icon={UsersIcon}
-              title="No guests found"
-              description="Try a different search query."
-            />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="pl-6">Name</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead className="hidden md:table-cell">Location</TableHead>
-                  <TableHead className="hidden sm:table-cell text-center">
-                    Reservations
-                  </TableHead>
-                  <TableHead className="hidden lg:table-cell">Joined</TableHead>
-                  <TableHead className="pr-6 text-right">Actions</TableHead>
+      {/* Desktop table */}
+      <Card className="hidden overflow-hidden rounded-xl border border-border shadow-card lg:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Guest
+              </TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Contact
+              </TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Location
+              </TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Stays
+              </TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Last stay
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={5}>
+                    <Skeleton className="h-8 w-full" />
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {guests.map((g) => (
-                  <TableRow key={g.id}>
-                    <TableCell className="pl-6">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="size-8">
-                          <AvatarFallback className="bg-emerald-50 text-[10px] font-semibold text-emerald-700">
+              ))
+            ) : guests.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="py-12">
+                  <EmptyState
+                    icon={Users}
+                    title="No guests found"
+                    description="Try a different search."
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              guests.map((g) => {
+                const lastStay = g.reservations?.[0];
+                return (
+                  <TableRow
+                    key={g.id}
+                    className="cursor-pointer"
+                    onClick={() => setSelectedGuestId(g.id)}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="size-8 border border-border">
+                          <AvatarFallback className="bg-sand text-[10px] font-semibold text-primary">
                             {getInitials(`${g.firstName} ${g.lastName}`)}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <div className="text-sm font-medium text-foreground">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium text-foreground">
                             {g.firstName} {g.lastName}
                           </div>
-                          <div className="text-xs text-muted-foreground sm:hidden">
-                            {g.email}
+                          <div className="truncate text-xs text-muted-foreground">
+                            Guest since {formatDateShort(g.createdAt)}
                           </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-0.5 text-xs">
-                        <span className="flex items-center gap-1 text-foreground">
-                          <Mail className="size-3 text-muted-foreground" />
-                          {g.email}
-                        </span>
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Phone className="size-3" />
+                    <TableCell className="text-sm text-foreground">
+                      <div className="flex flex-col">
+                        <span className="truncate">{g.email}</span>
+                        <span className="truncate text-xs text-muted-foreground">
                           {g.phone}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {g.city || g.country ? (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="size-3" />
-                          {[g.city, g.country].filter(Boolean).join(", ")}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground/50">—</span>
-                      )}
+                    <TableCell className="text-sm text-muted-foreground">
+                      {g.city || g.country
+                        ? [g.city, g.country].filter(Boolean).join(", ")
+                        : "—"}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-center">
-                      <Badge
-                        variant="secondary"
-                        className="h-6 min-w-8 tabular-nums"
-                      >
-                        {g.reservationCount ?? 0}
-                      </Badge>
+                    <TableCell className="text-sm font-medium text-foreground">
+                      {g.reservationCount ?? 0}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                      {formatDateShort(g.createdAt)}
-                    </TableCell>
-                    <TableCell className="pr-6 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={() => setViewId(g.id)}
-                          aria-label="View guest"
-                        >
-                          <Eye className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={() => setEditing(g)}
-                          aria-label="Edit guest"
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                      </div>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {lastStay ? formatDateShort(lastStay.checkIn) : "—"}
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
       </Card>
 
-      {/* View dialog */}
-      <ViewDialog id={viewId} onClose={() => setViewId(null)} />
+      {/* Mobile cards */}
+      <div className="space-y-3 lg:hidden">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+          ))
+        ) : guests.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No guests found"
+            description="Try a different search."
+          />
+        ) : (
+          guests.map((g) => (
+            <Card
+              key={g.id}
+              className="cursor-pointer rounded-xl border border-border p-4 shadow-card"
+              onClick={() => setSelectedGuestId(g.id)}
+            >
+              <div className="flex items-center gap-3">
+                <Avatar className="size-10 border border-border">
+                  <AvatarFallback className="bg-sand text-xs font-semibold text-primary">
+                    {getInitials(`${g.firstName} ${g.lastName}`)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-foreground">
+                    {g.firstName} {g.lastName}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {g.email}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-foreground">
+                    {g.reservationCount ?? 0}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    stays
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-3 border-t border-border pt-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Phone className="size-3" />
+                  {g.phone}
+                </span>
+                {(g.city || g.country) && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="size-3" />
+                    {[g.city, g.country].filter(Boolean).join(", ")}
+                  </span>
+                )}
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
 
-      {/* Edit dialog */}
-      <EditDialog
-        guest={editing}
-        onClose={() => setEditing(null)}
-        onSubmit={(payload) => {
-          if (editing) updateMutation.mutate({ id: editing.id, payload });
-        }}
-        submitting={updateMutation.isPending}
-      />
+      {/* Details dialog */}
+      {selected && (
+        <GuestDetailsDialog
+          guest={selected}
+          open={!!selected}
+          onClose={() => setSelectedGuestId(null)}
+        />
+      )}
     </AdminLayout>
   );
 }
 
-function ViewDialog({ id, onClose }: { id: string | null; onClose: () => void }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ["guest", id],
-    queryFn: () =>
-      id
-        ? apiFetch<{ guest: GuestDetail }>(`/api/guests/${id}`)
-        : Promise.reject(new Error("no id")),
-    enabled: !!id,
-  });
-
-  const g = data?.guest;
-
-  return (
-    <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl p-0">
-        <DialogHeader className="border-b p-6">
-          <DialogTitle className="text-base">Guest profile</DialogTitle>
-          <DialogDescription className="sr-only">Guest details and history</DialogDescription>
-        </DialogHeader>
-        {isLoading || !g ? (
-          <div className="space-y-3 p-6">
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-        ) : (
-          <div className="max-h-[70vh] overflow-y-auto p-6">
-            <div className="flex items-center gap-4">
-              <Avatar className="size-14">
-                <AvatarFallback className="bg-emerald-50 text-base font-semibold text-emerald-700">
-                  {getInitials(`${g.firstName} ${g.lastName}`)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="font-display text-lg font-semibold text-foreground">
-                  {g.firstName} {g.lastName}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Joined {formatDate(g.createdAt)}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <InfoTile icon={Mail} label="Email" value={g.email} />
-              <InfoTile icon={Phone} label="Phone" value={g.phone} />
-              <InfoTile
-                icon={MapPin}
-                label="Location"
-                value={
-                  [g.city, g.country].filter(Boolean).join(", ") || "—"
-                }
-              />
-              <InfoTile
-                icon={CalendarDays}
-                label="Reservations"
-                value={`${g.reservations?.length ?? 0} total`}
-              />
-            </div>
-
-            {g.address && (
-              <div className="mt-3 rounded-lg border bg-muted/30 p-3">
-                <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                  Address
-                </div>
-                <p className="mt-0.5 text-sm text-foreground">{g.address}</p>
-              </div>
-            )}
-
-            {g.notes && (
-              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-amber-700">
-                  Staff notes
-                </div>
-                <p className="mt-0.5 text-sm text-amber-900">{g.notes}</p>
-              </div>
-            )}
-
-            <Separator className="my-5" />
-
-            <div>
-              <div className="mb-3 text-sm font-semibold text-foreground">
-                Reservation history
-              </div>
-              {g.reservations && g.reservations.length > 0 ? (
-                <div className="space-y-2">
-                  {g.reservations.map((r) => (
-                    <div
-                      key={r.id}
-                      className="flex items-center justify-between rounded-lg border bg-card px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-medium text-emerald-700">
-                            {r.referenceNo}
-                          </span>
-                          <BookingStatusBadge status={r.status} />
-                        </div>
-                        <div className="mt-0.5 text-xs text-muted-foreground">
-                          {formatDateShort(r.checkIn)} →{" "}
-                          {formatDateShort(r.checkOut)}
-                          {r.rooms?.[0]?.room && (
-                            <>
-                              {" · "}
-                              {r.rooms[0].room.name} #{r.rooms[0].room.number}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      {"totalAmount" in r && typeof r.totalAmount === "number" && (
-                        <div className="text-right">
-                          <div className="text-sm font-semibold text-foreground">
-                            {formatCurrency(r.totalAmount as number)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-lg border bg-muted/30 px-3 py-6 text-center text-sm text-muted-foreground">
-                  No reservations yet
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function EditDialog({
+function GuestDetailsDialog({
   guest,
+  open,
   onClose,
-  onSubmit,
-  submitting,
 }: {
-  guest: Guest | null;
+  guest: GuestWithReservations;
+  open: boolean;
   onClose: () => void;
-  onSubmit: (payload: Record<string, unknown>) => void;
-  submitting: boolean;
 }) {
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    country: "",
-    notes: "",
-  });
+  const navigate = useViewStore((s) => s.navigate);
+  const { selectRoom } = useBookingStore();
 
-  useEffect(() => {
-    if (guest) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setForm({
-        firstName: guest.firstName,
-        lastName: guest.lastName,
-        email: guest.email,
-        phone: guest.phone,
-        address: guest.address ?? "",
-        city: guest.city ?? "",
-        country: guest.country ?? "",
-        notes: guest.notes ?? "",
-      });
-    }
-  }, [guest]);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    onSubmit(form);
-  }
+  const reservations = guest.reservations ?? [];
 
   return (
-    <Dialog
-      open={!!guest}
-      onOpenChange={(o) => !o && onClose()}
-    >
-      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto p-0">
-        <DialogHeader className="border-b p-6">
-          <DialogTitle className="text-base">Edit guest profile</DialogTitle>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl gap-0 p-0">
+        <DialogHeader className="border-b border-border px-6 py-5">
+          <DialogTitle className="font-display text-xl font-medium tracking-tight">
+            Guest profile
+          </DialogTitle>
           <DialogDescription>
-            Update contact information or add internal staff notes.
+            Stays and contact details
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 p-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="firstName">First name *</Label>
-              <Input
-                id="firstName"
-                required
-                value={form.firstName}
-                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="lastName">Last name *</Label>
-              <Input
-                id="lastName"
-                required
-                value={form.lastName}
-                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              />
+
+        <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
+          <div className="mb-5 flex items-center gap-3">
+            <Avatar className="size-12 border border-border">
+              <AvatarFallback className="bg-sand text-sm font-semibold text-primary">
+                {getInitials(`${guest.firstName} ${guest.lastName}`)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="text-base font-medium text-foreground">
+                {guest.firstName} {guest.lastName}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Guest since {formatDate(guest.createdAt)}
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                required
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">Phone *</Label>
-              <Input
-                id="phone"
-                required
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="address">Address</Label>
-            <Input
-              id="address"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
+
+          <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <InfoRow icon={Mail} label="Email" value={guest.email} />
+            <InfoRow icon={Phone} label="Phone" value={guest.phone} />
+            <InfoRow
+              icon={MapPin}
+              label="Location"
+              value={
+                guest.city || guest.country
+                  ? [guest.city, guest.country].filter(Boolean).join(", ")
+                  : "—"
+              }
+            />
+            <InfoRow
+              icon={CalendarDays}
+              label="Total stays"
+              value={String(guest.reservationCount ?? 0)}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-              />
+
+          {guest.notes && (
+            <div className="mb-5">
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Notes
+              </h4>
+              <p className="rounded-lg bg-muted/50 p-3 text-sm text-foreground">
+                {guest.notes}
+              </p>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                value={form.country}
-                onChange={(e) => setForm({ ...form, country: e.target.value })}
-              />
-            </div>
+          )}
+
+          <div>
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Reservation history
+            </h4>
+            {reservations.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                No reservations yet.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border rounded-lg border border-border">
+                {reservations.map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex items-center justify-between gap-2 px-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-foreground">
+                        {r.referenceNo}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatDateShort(r.checkIn)} →{" "}
+                        {formatDateShort(r.checkOut)}
+                      </div>
+                    </div>
+                    <BookingStatusBadge status={r.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="notes">Staff notes</Label>
-            <Textarea
-              id="notes"
-              rows={4}
-              placeholder="Internal notes — preferences, VIP status, special requirements…"
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
-          </div>
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              Save changes
-            </Button>
-          </DialogFooter>
-        </form>
+        </div>
+
+        <DialogFooter className="border-t border-border px-6 py-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              selectRoom("");
+              navigate("book");
+            }}
+          >
+            <Plus className="size-4" />
+            New booking for this guest
+          </Button>
+          <Button
+            variant="ghost"
+            className="ml-auto"
+            onClick={onClose}
+          >
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function InfoTile({
+function InfoRow({
   icon: Icon,
   label,
   value,
@@ -537,12 +399,12 @@ function InfoTile({
   value: string;
 }) {
   return (
-    <div className="rounded-lg border bg-card px-3 py-2">
-      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-        <Icon className="size-3" />
-        {label}
+    <div className="flex items-start gap-2 rounded-lg border border-border bg-card p-3">
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="truncate text-sm text-foreground">{value}</div>
       </div>
-      <div className="mt-0.5 text-sm font-medium text-foreground">{value}</div>
     </div>
   );
 }

@@ -26,12 +26,20 @@ import {
   Sun,
   Moon,
   ConciergeBell,
+  Droplets,
+  Flame,
+  Sofa,
+  BedDouble,
+  Dog,
+  PartyPopper,
+  UserCheck,
   type LucideIcon,
 } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 // ============================================================
-// Shared helpers for the public website
+// Shared helpers — The Twenty-Fifth public site
 // ============================================================
 
 // Map amenity icon names (stored as strings) -> Lucide components
@@ -60,7 +68,13 @@ const AMENITY_ICON_MAP: Record<string, LucideIcon> = {
   Sun,
   Moon,
   ConciergeBell,
-  Waves,
+  Droplets,
+  Flame,
+  Sofa,
+  BedDouble,
+  Dog,
+  PartyPopper,
+  UserCheck,
 };
 
 export function getAmenityIcon(name?: string | null): LucideIcon {
@@ -68,18 +82,21 @@ export function getAmenityIcon(name?: string | null): LucideIcon {
   return AMENITY_ICON_MAP[name] ?? Sparkles;
 }
 
-// Standard Framer Motion variants used across the site
+// Convenience alias kept for backwards-compatibility with older callers.
+export const amenityIcon = getAmenityIcon;
+
+// Simple opacity + small-y fade-up variant.
 export const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+  },
 };
 
-export const fadeIn: Variants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.8 } },
-};
-
-export const staggerContainer: Variants = {
+// Stagger container — children fade up in sequence.
+export const stagger: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -87,12 +104,7 @@ export const staggerContainer: Variants = {
   },
 };
 
-export const scaleIn: Variants = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
-};
-
-// Convenience motion component for a fade-up section
+// Convenience motion wrapper for a fade-up section.
 export const FadeUpSection: React.FC<
   React.PropsWithChildren<{ className?: string; delay?: number }>
 > = ({ children, className, delay = 0 }) => (
@@ -103,19 +115,60 @@ export const FadeUpSection: React.FC<
     viewport={{ once: true, margin: "-80px" }}
     variants={{
       hidden: { opacity: 0, y: 20 },
-      visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1], delay } },
+      visible: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1], delay },
+      },
     }}
   >
     {children}
   </motion.div>
 );
 
-// Standard Unsplash image used for the resort "brand" feel
-export const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1920&q=80";
+// ============================================================
+// SectionHeading — eyebrow + Playfair Display title + subtitle.
+// Used on every public page for visual consistency.
+// ============================================================
+export function SectionHeading({
+  eyebrow,
+  title,
+  subtitle,
+  center = false,
+  className,
+}: {
+  eyebrow?: string;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  center?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "max-w-3xl",
+        center && "mx-auto text-center",
+        className
+      )}
+    >
+      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+      <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1]">
+        {title}
+      </h2>
+      {subtitle && (
+        <p
+          className={cn(
+            "mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg",
+            center && "mx-auto"
+          )}
+        >
+          {subtitle}
+        </p>
+      )}
+    </div>
+  );
+}
 
-export const PLACEHOLDER_AVATARS = [
-  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
-  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80",
-  "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80",
-];
+// Standard Unsplash hero image — ocean beachfront.
+export const HERO_IMAGE =
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80";

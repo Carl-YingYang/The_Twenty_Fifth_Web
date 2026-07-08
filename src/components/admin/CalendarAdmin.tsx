@@ -1,36 +1,39 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Info,
-  Users as UsersIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminLayout } from "./AdminLayout";
 import { BookingStatusBadge } from "./StatusBadges";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Avatar,
+  AvatarFallback,
+} from "@/components/ui/avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 import { apiFetch } from "@/lib/api-client";
 import {
@@ -38,28 +41,59 @@ import {
   formatCurrency,
   formatDate,
   formatDateShort,
+  getInitials,
 } from "@/lib/utils";
-import { BOOKING_STATUS_CONFIG, CALENDAR_STATUS_COLORS } from "@/lib/constants";
-import type { CalendarCell, Reservation } from "@/types";
+import { CALENDAR_STATUS_COLORS } from "@/lib/constants";
+import type { Reservation, Room } from "@/types";
+
+type CellStatus =
+  | "AVAILABLE"
+  | "RESERVED"
+  | "OCCUPIED"
+  | "CLEANING"
+  | "MAINTENANCE"
+  | "BLOCKED";
+
+interface CalendarRow {
+  room: {
+    id: string;
+    number: string;
+    name: string;
+    type: string;
+    capacity: number;
+  };
+  cells: Array<{
+    roomId: string;
+    roomNumber: string;
+    roomName: string;
+    date: string;
+    status: CellStatus;
+    reservationId?: string;
+    referenceNo?: string;
+    guestName?: string;
+  }>;
+}
 
 interface CalendarResponse {
-  days: { date: string; day: number; weekday: string; isToday: boolean }[];
-  calendar: {
-    room: {
-      id: string;
-      number: string;
-      name: string;
-      type: string;
-      capacity: number;
-    };
-    cells: CalendarCell[];
-  }[];
+  days: Array<{
+    date: string;
+    day: number;
+    weekday: string;
+    isToday: boolean;
+  }>;
+  calendar: CalendarRow[];
   startDate: string;
   endDate: string;
 }
 
-const LEGEND = [
-  { status: "AVAILABLE", label: "Available" },
+const RANGE_OPTIONS = [
+  { value: 7, label: "7d" },
+  { value: 14, label: "14d" },
+  { value: 30, label: "30d" },
+] as const;
+
+const LEGEND: { status: CellStatus; label: string }[] = [
+  { status: "AVAILABLE", label: "Open" },
   { status: "RESERVED", label: "Reserved" },
   { status: "OCCUPIED", label: "Occupied" },
   { status: "CLEANING", label: "Cleaning" },
@@ -67,537 +101,465 @@ const LEGEND = [
   { status: "BLOCKED", label: "Blocked" },
 ];
 
-function toISODate(d: Date): string {
-  return d.toISOString().split("T")[0];
-}
-
 export function CalendarAdmin() {
-  const [start, setStart] = useState(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
-  const [rangeDays, setRangeDays] = useState(14);
+  const [range, setRange] = useState<number>(14);
+  const [anchor, setAnchor] = useState<Date>(new Date());
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
 
-  const end = useMemo(() => {
-    const e = new Date(start);
-    e.setDate(e.getDate() + rangeDays - 1);
-    return e;
-  }, [start, rangeDays]);
+  const { start, end } = useMemo(() => {
+    const s = new Date(anchor);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(s);
+    e.setDate(e.getDate() + range - 1);
+    e.setHours(23, 59, 59, 999);
+    return { start: s, end: e };
+  }, [anchor, range]);
 
-  const startISO = toISODate(start);
-  const endISO = toISODate(end);
+  const queryParams = new URLSearchParams({
+    start: start.toISOString(),
+    end: end.toISOString(),
+  });
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["calendar", startISO, endISO],
+  const { data: calendarData, isLoading: calendarLoading } = useQuery({
+    queryKey: ["admin-calendar", start.toISOString(), end.toISOString()],
+    queryFn: () => apiFetch<CalendarResponse>(`/api/calendar?${queryParams.toString()}`),
+  });
+
+  // Also fetch reservations to recompute cell statuses (fixes the "cleaning
+  // shows across all days" bug from the API — the API uses room.status ===
+  // "CLEANING" which persists beyond a single day).
+  const { data: reservationsData } = useQuery({
+    queryKey: ["admin-reservations", "calendar-all"],
     queryFn: () =>
-      apiFetch<CalendarResponse>(
-        `/api/calendar?start=${startISO}&end=${endISO}`
+      apiFetch<{ reservations: Reservation[] }>(
+        "/api/reservations?limit=200"
       ),
   });
 
-  function shift(days: number) {
-    const d = new Date(start);
-    d.setDate(d.getDate() + days);
-    setStart(d);
-  }
+  // Also fetch rooms for current room-level status (MAINTENANCE/BLOCKED)
+  const { data: roomsData } = useQuery({
+    queryKey: ["admin-rooms", "calendar"],
+    queryFn: () => apiFetch<{ rooms: Room[] }>("/api/rooms"),
+  });
 
-  function goToday() {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    setStart(d);
-  }
-
-  const rangeLabel = `${formatDateShort(start)} → ${formatDateShort(end)}`;
-
-  // Group rooms by type for visual grouping
-  const grouped = useMemo(() => {
-    if (!data) return [];
-    const map = new Map<string, CalendarResponse["calendar"]>();
-    for (const row of data.calendar) {
-      const type = row.room.type || "Room";
-      if (!map.has(type)) map.set(type, []);
-      map.get(type)!.push(row);
+  const roomStatusMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of roomsData?.rooms ?? []) {
+      m.set(r.id, r.status as string);
     }
-    return Array.from(map.entries());
-  }, [data]);
+    return m;
+  }, [roomsData]);
+
+  const reservationsByRoom = useMemo(() => {
+    const m = new Map<string, Reservation[]>();
+    for (const r of reservationsData?.reservations ?? []) {
+      for (const rr of r.rooms ?? []) {
+        const list = m.get(rr.roomId) ?? [];
+        list.push(r);
+        m.set(rr.roomId, list);
+      }
+    }
+    return m;
+  }, [reservationsData]);
+
+  // Recompute cell statuses with the proper per-day logic.
+  const rows = useMemo(() => {
+    if (!calendarData) return [];
+    return calendarData.calendar.map((row) => {
+      const roomRes = reservationsByRoom.get(row.room.id) ?? [];
+      const roomStatus = roomStatusMap.get(row.room.id) ?? "AVAILABLE";
+      const newCells = row.cells.map((cell) => {
+        const day = new Date(cell.date);
+        day.setHours(0, 0, 0, 0);
+        const computed = computeCellStatus(day, roomRes, roomStatus);
+        // Preserve original reservationId/ref/guestName from API cell when
+        // the computed cell still has a reservation attached.
+        const attachedRes = computed.reservation;
+        return {
+          ...cell,
+          status: computed.status,
+          reservationId: attachedRes?.id ?? cell.reservationId,
+          referenceNo: attachedRes?.referenceNo ?? cell.referenceNo,
+          guestName: attachedRes
+            ? `${attachedRes.guest?.firstName ?? ""} ${attachedRes.guest?.lastName ?? ""}`.trim() ||
+              cell.guestName
+            : cell.guestName,
+        };
+      });
+      return { ...row, cells: newCells };
+    });
+  }, [calendarData, reservationsByRoom, roomStatusMap]);
+
+  const days = calendarData?.days ?? [];
+
+  const selectedReservation = useMemo(() => {
+    if (!selectedReservationId) return null;
+    return (
+      reservationsData?.reservations.find(
+        (r) => r.id === selectedReservationId
+      ) ?? null
+    );
+  }, [selectedReservationId, reservationsData]);
+
+  function shift(days: number) {
+    const next = new Date(anchor);
+    next.setDate(next.getDate() + days);
+    setAnchor(next);
+  }
+
+  const rangeLabel = `${formatDateShort(start)} – ${formatDateShort(end)}`;
 
   return (
     <AdminLayout
-      title="Reservation Calendar"
-      subtitle="Visualize room availability across dates"
-      actions={
-        <div className="hidden items-center gap-1 rounded-lg border bg-card p-0.5 md:flex">
-          {[7, 14, 30].map((d) => (
-            <Button
-              key={d}
-              size="sm"
-              variant={rangeDays === d ? "default" : "ghost"}
-              className="h-7 px-2 text-xs"
-              onClick={() => setRangeDays(d)}
-            >
-              {d}d
-            </Button>
-          ))}
-        </div>
-      }
+      title="Calendar"
+      subtitle="See where every room is for every day"
     >
-      {/* Toolbar */}
-      <Card className="rounded-2xl border-border/70 shadow-luxury">
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-9"
-              onClick={() => shift(-7)}
-              aria-label="Previous week"
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button variant="outline" size="sm" className="h-9" onClick={goToday}>
-              Today
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-9"
-              onClick={() => shift(7)}
-              aria-label="Next week"
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-            <div className="ml-2 flex items-center gap-2">
-              <CalendarDays className="size-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">
-                {rangeLabel}
-              </span>
-            </div>
-          </div>
-
-          {/* Legend */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {LEGEND.map((l) => (
-              <div key={l.status} className="flex items-center gap-1.5">
-                <span
-                  className="size-3 rounded"
-                  style={{ backgroundColor: CALENDAR_STATUS_COLORS[l.status] }}
-                />
-                <span className="text-xs text-muted-foreground">{l.label}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Calendar grid */}
-      <Card className="mt-4 overflow-hidden rounded-2xl border-border/70 shadow-luxury">
-        <div className="overflow-x-auto">
-          <div className="min-w-[900px]">
-            {/* Header row */}
-            <div className="sticky top-0 z-20 flex border-b bg-card">
-              <div className="sticky left-0 z-30 w-52 shrink-0 border-r bg-card px-4 py-3">
-                <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                  Room
-                </div>
-              </div>
-              <div className="flex">
-                {isLoading
-                  ? Array.from({ length: rangeDays }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="flex w-20 shrink-0 flex-col items-center justify-center border-l py-3"
-                      >
-                        <Skeleton className="h-3 w-8" />
-                        <Skeleton className="mt-1 h-4 w-6" />
-                      </div>
-                    ))
-                  : data?.days.map((day) => (
-                      <div
-                        key={day.date}
-                        className={cn(
-                          "flex w-20 shrink-0 flex-col items-center justify-center border-l py-3",
-                          day.isToday && "bg-emerald-50"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "text-[10px] font-medium uppercase tracking-wide",
-                            day.isToday ? "text-emerald-700" : "text-muted-foreground"
-                          )}
-                        >
-                          {day.weekday}
-                        </div>
-                        <div
-                          className={cn(
-                            "font-display text-sm font-semibold",
-                            day.isToday
-                              ? "flex size-6 items-center justify-center rounded-full bg-emerald-600 text-white"
-                              : "text-foreground"
-                          )}
-                        >
-                          {day.day}
-                        </div>
-                      </div>
-                    ))}
-              </div>
-            </div>
-
-            {/* Body */}
-            <div>
-              {isLoading ? (
-                <div className="divide-y">
-                  {Array.from({ length: 8 }).map((_, ri) => (
-                    <div key={ri} className="flex">
-                      <div className="sticky left-0 z-10 w-52 shrink-0 border-r bg-card px-4 py-3">
-                        <Skeleton className="h-3 w-16" />
-                        <Skeleton className="mt-1 h-3 w-24" />
-                      </div>
-                      <div className="flex">
-                        {Array.from({ length: rangeDays }).map((_, ci) => (
-                          <Skeleton key={ci} className="m-1 h-14 w-[72px] rounded-md" />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : grouped.length === 0 ? (
-                <div className="px-4 py-16 text-center text-sm text-muted-foreground">
-                  No rooms to display
-                </div>
-              ) : (
-                grouped.map(([type, rows]) => (
-                  <div key={type}>
-                    {/* Group header */}
-                    <div className="sticky top-[57px] z-10 flex items-center gap-2 border-b border-t bg-muted/60 px-4 py-1.5">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        {type}
-                      </span>
-                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                        {rows.length}
-                      </Badge>
-                    </div>
-                    {rows.map((row, ri) => (
-                      <motion.div
-                        key={row.room.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.2, delay: Math.min(ri * 0.012, 0.2) }}
-                        className="flex border-b last:border-0 hover:bg-muted/20"
-                      >
-                        <div className="sticky left-0 z-10 w-52 shrink-0 border-r bg-card px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex size-8 items-center justify-center rounded-md bg-emerald-50 text-xs font-semibold text-emerald-700">
-                              {row.room.number}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium text-foreground">
-                                {row.room.name}
-                              </div>
-                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                <UsersIcon className="size-2.5" />
-                                {row.room.capacity} guests
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex">
-                          {row.cells.map((cell) => (
-                            <CalendarCellView
-                              key={cell.date}
-                              cell={cell}
-                              onClick={() => {
-                                if (cell.reservationId) {
-                                  setSelectedReservationId(cell.reservationId);
-                                }
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+      {/* Controls */}
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-9"
+            onClick={() => shift(-7)}
+            aria-label="Previous week"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={() => setAnchor(new Date())}
+          >
+            Today
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-9"
+            onClick={() => shift(7)}
+            aria-label="Next week"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+          <span className="ml-2 font-display text-base font-medium tracking-tight text-foreground">
+            {rangeLabel}
+          </span>
         </div>
-      </Card>
-
-      {/* Hint */}
-      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-        <Info className="size-3.5" />
-        Click any reserved or occupied cell to view reservation details. Use 7d / 14d / 30d to change the time window.
+        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+          {RANGE_OPTIONS.map((opt) => {
+            const active = range === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => setRange(opt.value)}
+                className={cn(
+                  "min-h-[32px] rounded-full px-3 text-xs font-medium transition-colors",
+                  active
+                    ? "bg-primary text-white"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Details dialog */}
-      <CalendarReservationDialog
-        id={selectedReservationId}
-        onClose={() => setSelectedReservationId(null)}
-      />
+      {/* Legend */}
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-xs">
+        {LEGEND.map((l) => (
+          <div key={l.status} className="flex items-center gap-1.5">
+            <span
+              className="size-2.5 rounded-full"
+              style={{ backgroundColor: CALENDAR_STATUS_COLORS[l.status] }}
+            />
+            <span className="text-muted-foreground">{l.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Grid */}
+      <Card className="overflow-hidden rounded-xl border border-border shadow-card">
+        {calendarLoading ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table className="w-full min-w-[900px] border-separate border-spacing-0">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="sticky left-0 z-10 w-44 min-w-[11rem] border-b border-r border-border bg-card text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Room
+                  </TableHead>
+                  {days.map((d) => (
+                    <TableHead
+                      key={d.date}
+                      className={cn(
+                        "border-b border-border px-2 py-2 text-center text-xs",
+                        d.isToday
+                          ? "bg-coral/10 font-semibold text-coral"
+                          : "font-medium text-muted-foreground"
+                      )}
+                    >
+                      <div className="text-[10px] uppercase tracking-wide">
+                        {d.weekday}
+                      </div>
+                      <div className="text-sm">{d.day}</div>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.room.id} className="hover:bg-transparent">
+                    <TableCell className="sticky left-0 z-10 w-44 min-w-[11rem] border-b border-r border-border bg-card px-3 py-2 align-top">
+                      <div className="text-sm font-medium text-foreground">
+                        {row.room.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {row.room.type} · sleeps {row.room.capacity}
+                      </div>
+                    </TableCell>
+                    {row.cells.map((cell) => (
+                      <TableCell
+                        key={cell.date}
+                        className="border-b border-border p-0 align-top"
+                      >
+                        <CellContent
+                          cell={cell}
+                          onClick={() => {
+                            if (cell.reservationId) {
+                              setSelectedReservationId(cell.reservationId);
+                            }
+                          }}
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <CalendarDays className="size-3.5" />
+        Click any booked cell to view the reservation details.
+      </p>
+
+      {/* Reservation details dialog */}
+      {selectedReservation && (
+        <ReservationDialog
+          reservation={selectedReservation}
+          open={!!selectedReservation}
+          onClose={() => setSelectedReservationId(null)}
+        />
+      )}
     </AdminLayout>
   );
 }
 
-function CalendarCellView({
+function CellContent({
   cell,
   onClick,
 }: {
-  cell: CalendarCell;
+  cell: CalendarRow["cells"][number];
   onClick: () => void;
 }) {
+  const isAvailable = cell.status === "AVAILABLE";
   const color = CALENDAR_STATUS_COLORS[cell.status] ?? CALENDAR_STATUS_COLORS.AVAILABLE;
-  const isToday = (() => {
-    const today = new Date();
-    const d = new Date(cell.date);
-    return (
-      d.getDate() === today.getDate() &&
-      d.getMonth() === today.getMonth() &&
-      d.getFullYear() === today.getFullYear()
-    );
-  })();
-
-  const hasReservation = ["RESERVED", "OCCUPIED"].includes(cell.status);
-
-  const bgStyle: React.CSSProperties =
-    cell.status === "AVAILABLE"
-      ? { backgroundColor: "transparent" }
-      : hasReservation
-      ? { backgroundColor: color }
-      : { backgroundColor: color + "33" }; // 20% opacity for cleaning/maintenance/blocked
-
-  const textColor = hasReservation ? "#FFFFFF" : color;
+  const hasReservation = !!cell.reservationId;
 
   return (
-    <TooltipProvider delayDuration={150}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={onClick}
-            disabled={!hasReservation}
-            className={cn(
-              "m-1 h-14 w-[72px] shrink-0 rounded-md border px-2 py-1.5 text-left transition-all",
-              isToday && "ring-1 ring-emerald-400 ring-offset-0",
-              hasReservation
-                ? "cursor-pointer hover:z-10 hover:scale-[1.03] hover:shadow-md"
-                : "cursor-default",
-              cell.status === "AVAILABLE" && "border-dashed border-border/70 bg-muted/30 hover:bg-muted/50"
-            )}
-            style={bgStyle}
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isAvailable}
+      aria-label={
+        hasReservation
+          ? `${cell.guestName ?? "Guest"} — ${cell.referenceNo ?? ""}`
+          : "Open"
+      }
+      className={cn(
+        "flex min-h-[44px] w-full flex-col items-start gap-0.5 px-2 py-1.5 text-left text-[11px] leading-tight transition-opacity",
+        isAvailable ? "cursor-default" : "hover:opacity-90"
+      )}
+      style={{
+        backgroundColor: isAvailable
+          ? "transparent"
+          : `${color}22`,
+        borderLeft: isAvailable
+          ? "1px solid transparent"
+          : `3px solid ${color}`,
+      }}
+    >
+      {hasReservation && (
+        <>
+          <span
+            className="line-clamp-1 w-full font-medium text-foreground"
+            title={cell.guestName}
           >
-            {hasReservation ? (
-              <div className="flex h-full flex-col justify-center">
-                <div
-                  className="truncate text-[10px] font-semibold leading-tight"
-                  style={{ color: textColor }}
-                >
-                  {cell.guestName}
-                </div>
-                <div
-                  className="truncate text-[9px] font-mono opacity-90"
-                  style={{ color: textColor }}
-                >
-                  {cell.referenceNo}
-                </div>
-              </div>
-            ) : cell.status !== "AVAILABLE" ? (
-              <div className="flex h-full items-center justify-center">
-                <span
-                  className="text-[9px] font-medium uppercase tracking-wide"
-                  style={{ color: textColor }}
-                >
-                  {cell.status.toLowerCase()}
-                </span>
-              </div>
-            ) : null}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent
-          side="top"
-          className="max-w-[220px] border-border bg-popover text-popover-foreground shadow-md"
-        >
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span
-                className="size-2 rounded-full"
-                style={{ backgroundColor: color }}
-              />
-              <span className="text-xs font-semibold">{cell.status}</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {cell.roomName} · #{cell.roomNumber}
-            </div>
-            <div className="text-xs text-muted-foreground">{cell.date}</div>
-            {cell.guestName && (
-              <div className="border-t border-border pt-1 text-xs">
-                <span className="font-medium">{cell.guestName}</span>
-                <br />
-                <span className="font-mono text-muted-foreground">
-                  {cell.referenceNo}
-                </span>
-              </div>
-            )}
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+            {cell.guestName}
+          </span>
+          <span className="line-clamp-1 w-full font-mono text-[10px] text-muted-foreground">
+            {cell.referenceNo}
+          </span>
+        </>
+      )}
+      {isAvailable && (
+        <span className="text-[10px] text-muted-foreground/40">Open</span>
+      )}
+    </button>
   );
 }
 
-function CalendarReservationDialog({
-  id,
+function ReservationDialog({
+  reservation,
+  open,
   onClose,
 }: {
-  id: string | null;
+  reservation: Reservation;
+  open: boolean;
   onClose: () => void;
 }) {
-  const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
-    queryKey: ["reservation", id],
-    queryFn: () =>
-      id
-        ? apiFetch<{ reservation: Reservation }>(`/api/reservations/${id}`)
-        : Promise.reject(new Error("no id")),
-    enabled: !!id,
-  });
-
-  const r = data?.reservation;
-
-  // Pre-warm / invalidate dashboard when modal closes
-  function handleClose(open: boolean) {
-    if (!open) {
-      qc.invalidateQueries({ queryKey: ["calendar"] });
-      onClose();
-    }
-  }
-
   return (
-    <Dialog open={!!id} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl p-0">
-        <DialogHeader className="border-b p-6">
-          <DialogTitle className="text-base">
-            {r ? (
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm text-emerald-700">
-                  {r.referenceNo}
-                </span>
-                <BookingStatusBadge status={r.status} />
-              </div>
-            ) : (
-              "Reservation details"
-            )}
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg gap-0 p-0">
+        <DialogHeader className="border-b border-border px-6 py-5">
+          <DialogTitle className="font-display text-xl font-medium tracking-tight">
+            Reservation
           </DialogTitle>
-          <DialogDescription className="sr-only">
-            Calendar reservation preview
+          <DialogDescription>
+            Reference{" "}
+            <span className="font-mono text-foreground">
+              {reservation.referenceNo}
+            </span>
           </DialogDescription>
         </DialogHeader>
-        {isLoading || !r ? (
-          <div className="space-y-3 p-6">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+
+        <div className="px-6 py-5">
+          <div className="mb-4 flex items-center gap-2">
+            <BookingStatusBadge status={reservation.status} friendly />
           </div>
-        ) : (
-          <div className="space-y-4 p-6">
-            <div className="flex items-center gap-3">
-              <div className="flex size-12 items-center justify-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-700">
-                {r.guest
-                  ? `${r.guest.firstName[0] ?? ""}${r.guest.lastName[0] ?? ""}`.toUpperCase()
-                  : "G"}
+
+          <div className="mb-4 flex items-center gap-3">
+            <Avatar className="size-10 border border-border">
+              <AvatarFallback className="bg-sand text-xs font-semibold text-primary">
+                {reservation.guest
+                  ? getInitials(
+                      `${reservation.guest.firstName} ${reservation.guest.lastName}`
+                    )
+                  : "??"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-foreground">
+                {reservation.guest?.firstName} {reservation.guest?.lastName}
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-foreground">
-                  {r.guest?.firstName} {r.guest?.lastName}
-                </div>
-                <div className="text-xs text-muted-foreground">{r.guest?.email}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {reservation.guest?.email} · {reservation.guest?.phone}
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <InfoBlock label="Check-in" value={formatDate(r.checkIn)} />
-              <InfoBlock label="Check-out" value={formatDate(r.checkOut)} />
-              <InfoBlock
-                label="Nights"
-                value={`${r.nights} ${r.nights === 1 ? "night" : "nights"}`}
-              />
-              <InfoBlock
-                label="Guests"
-                value={`${r.adults} adults · ${r.children} children`}
-              />
-            </div>
-
-            <div>
-              <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Room
-              </div>
-              {r.rooms?.map((rr) => (
-                <div
-                  key={rr.id}
-                  className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2"
-                >
-                  <div>
-                    <div className="text-sm font-medium text-foreground">
-                      {rr.room?.name}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      #{rr.room?.number} · {rr.room?.type?.name ?? "Room"}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-semibold text-foreground">
-                      {formatCurrency(rr.subtotal)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatCurrency(rr.pricePerNight)}/night
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-4 py-3">
-              <span className="text-sm font-medium text-emerald-900">Total</span>
-              <span className="font-display text-lg font-semibold text-emerald-900">
-                {formatCurrency(r.totalAmount)}
-              </span>
-            </div>
-
-            {r.specialRequests && (
-              <div className="rounded-lg border bg-muted/30 p-3">
-                <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                  Special requests
-                </div>
-                <p className="mt-1 text-sm text-foreground">{r.specialRequests}</p>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Info className="size-3.5" />
-              Source: {r.source} · Created {formatDateShort(r.createdAt)}
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              Status:{" "}
-              <span className="font-medium text-foreground">
-                {BOOKING_STATUS_CONFIG[r.status]?.label ?? r.status}
-              </span>
             </div>
           </div>
-        )}
+
+          <dl className="grid grid-cols-2 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Check in</dt>
+            <dd className="text-right text-foreground">
+              {formatDate(reservation.checkIn)}
+            </dd>
+            <dt className="text-muted-foreground">Check out</dt>
+            <dd className="text-right text-foreground">
+              {formatDate(reservation.checkOut)}
+            </dd>
+            <dt className="text-muted-foreground">Nights</dt>
+            <dd className="text-right text-foreground">
+              {reservation.nights}
+            </dd>
+            <dt className="text-muted-foreground">Room</dt>
+            <dd className="text-right text-foreground">
+              {reservation.rooms?.[0]?.room?.name ?? "—"}
+            </dd>
+            <dt className="text-muted-foreground">Total</dt>
+            <dd className="text-right font-medium text-foreground">
+              {formatCurrency(reservation.totalAmount)}
+            </dd>
+          </dl>
+        </div>
+
+        <DialogFooter className="border-t border-border px-6 py-4">
+          <Button variant="outline" className="ml-auto" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function InfoBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-card px-3 py-2">
-      <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-0.5 text-sm font-medium text-foreground">{value}</div>
-    </div>
-  );
+// ============================================================
+// Cell status computation — fixes the "cleaning across all
+// days" bug from the API. The API marks CLEANING based on
+// room.status which persists; we instead show CLEANING only
+// on the checkout day of a just-departed reservation.
+// ============================================================
+function computeCellStatus(
+  day: Date,
+  roomReservations: Reservation[],
+  roomStatus: string
+): { status: CellStatus; reservation?: Reservation } {
+  // 1. Room-level maintenance/blocked takes precedence
+  if (roomStatus === "MAINTENANCE") return { status: "MAINTENANCE" };
+  if (roomStatus === "BLOCKED") return { status: "BLOCKED" };
+
+  const dayStart = new Date(day);
+  dayStart.setHours(0, 0, 0, 0);
+
+  for (const r of roomReservations) {
+    if (["CANCELLED", "REJECTED"].includes(r.status)) continue;
+    const ci = new Date(r.checkIn);
+    ci.setHours(0, 0, 0, 0);
+    const co = new Date(r.checkOut);
+    co.setHours(0, 0, 0, 0);
+
+    const isCheckoutDay = co.getTime() === dayStart.getTime();
+    const coversDay =
+      ci.getTime() <= dayStart.getTime() && dayStart.getTime() < co.getTime();
+
+    if (coversDay) {
+      // Stay covers this night
+      if (r.status === "PENDING") {
+        return { status: "RESERVED", reservation: r };
+      }
+      // CHECKED_IN, CONFIRMED, COMPLETED (still in the stay window)
+      return { status: "OCCUPIED", reservation: r };
+    }
+
+    if (isCheckoutDay) {
+      // Checkout day — guest leaves in the morning
+      if (r.status === "COMPLETED") {
+        // Already checked out → room needs cleaning (single day only)
+        return { status: "CLEANING", reservation: r };
+      }
+      if (r.status === "CHECKED_IN") {
+        // Still physically there in the morning
+        return { status: "OCCUPIED", reservation: r };
+      }
+      if (r.status === "CONFIRMED") {
+        // Confirmed but not yet checked in on the checkout day
+        // (unusual but possible if check-in didn't happen)
+        return { status: "RESERVED", reservation: r };
+      }
+    }
+  }
+
+  return { status: "AVAILABLE" };
 }
 
 export default CalendarAdmin;

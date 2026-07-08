@@ -3,8 +3,15 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, Leaf, Lock, Mail, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  ShieldCheck,
+  Waves,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -14,7 +21,7 @@ import { loginSchema, type LoginInput } from "@/lib/validators";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useViewStore } from "@/store/useViewStore";
-import { ADMIN_CREDENTIALS } from "@/lib/constants";
+import { ADMIN_CREDENTIALS, RESORT_INFO } from "@/lib/constants";
 import type { User } from "@/types";
 
 export function AdminLogin() {
@@ -36,15 +43,21 @@ export function AdminLogin() {
   async function onSubmit(values: LoginInput) {
     setSubmitting(true);
     try {
-      const data = await apiFetch<{ user: User; token: string }>("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify(values),
-      });
+      const data = await apiFetch<{ user: User; token: string }>(
+        "/api/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify(values),
+        }
+      );
       login(data.user, data.token);
-      toast.success(`Welcome back, ${data.user.name.split(" ")[0]}!`);
+      toast.success(`Welcome back, ${data.user.name.split(" ")[0]}.`);
       navigate("admin-dashboard");
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Login failed. Please try again.";
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : "We couldn't sign you in. Please try again.";
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -57,150 +70,199 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#0F2E22] text-white">
-      {/* Decorative leaf pattern */}
-      <svg
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.07]"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <pattern id="leaves" width="120" height="120" patternUnits="userSpaceOnUse">
-            <path
-              d="M60 10 C 30 30, 30 70, 60 110 C 90 70, 90 30, 60 10 Z M60 30 L60 90"
-              stroke="#E6F0EA"
-              strokeWidth="1"
-              fill="none"
-            />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#leaves)" />
-      </svg>
-
-      {/* Gradient glow */}
-      <div className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-emerald-700/30 blur-3xl" />
-
-      {/* Back link */}
-      <button
-        onClick={() => navigate("home")}
-        className="group absolute left-6 top-6 z-10 inline-flex items-center gap-2 text-sm text-emerald-100/80 transition hover:text-white"
-      >
-        <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-        Back to website
-      </button>
-
-      <div className="relative flex min-h-screen items-center justify-center px-4 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 16, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="w-full max-w-md"
+    <div className="relative grid min-h-screen grid-cols-1 lg:grid-cols-2">
+      {/* Left: brand panel */}
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-primary p-12 text-white lg:flex">
+        {/* Decorative ocean pattern */}
+        <svg
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.10]"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 shadow-2xl backdrop-blur-xl">
-            {/* Logo */}
-            <div className="mb-8 flex flex-col items-center text-center">
-              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-700 shadow-lg shadow-emerald-900/40">
-                <Leaf className="size-7 text-white" />
-              </div>
-              <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
-                Verdara Admin
-              </h1>
-              <p className="mt-1 text-sm text-emerald-100/70">
-                Sign in to the Reservation Management System
+          <defs>
+            <pattern
+              id="waves"
+              width="160"
+              height="80"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M0 40 C 40 10, 80 10, 120 40 S 200 70, 240 40"
+                stroke="#E8F1F4"
+                strokeWidth="1.2"
+                fill="none"
+              />
+              <path
+                d="M0 70 C 40 40, 80 40, 120 70 S 200 100, 240 70"
+                stroke="#E8F1F4"
+                strokeWidth="1"
+                fill="none"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#waves)" />
+        </svg>
+
+        {/* Glow */}
+        <div className="pointer-events-none absolute -right-32 top-1/4 size-96 rounded-full bg-coral/20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-24 bottom-0 size-96 rounded-full bg-[#4DBFD4]/20 blur-3xl" />
+
+        <button
+          onClick={() => navigate("home")}
+          className="group relative z-10 inline-flex items-center gap-2 text-sm font-medium text-white/80 transition hover:text-white"
+        >
+          <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
+          Back to website
+        </button>
+
+        <div className="relative z-10 flex flex-col">
+          <div className="mb-6 flex size-14 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
+            <Waves className="size-7 text-white" />
+          </div>
+          <div className="eyebrow !text-coral">Admin Suite</div>
+          <h1 className="mt-3 font-display text-5xl font-medium tracking-tight text-white">
+            {RESORT_INFO.name}
+          </h1>
+          <p className="mt-4 max-w-md text-base leading-relaxed text-white/80">
+            {RESORT_INFO.tagline}
+          </p>
+        </div>
+
+        <div className="relative z-10 text-xs text-white/60">
+          {RESORT_INFO.addressShort} · Internal use only
+        </div>
+      </div>
+
+      {/* Right: form panel */}
+      <div className="relative flex items-center justify-center bg-background px-4 py-12 sm:px-6">
+        {/* Mobile back link */}
+        <button
+          onClick={() => navigate("home")}
+          className="group absolute left-5 top-5 inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground lg:hidden"
+        >
+          <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
+          Back
+        </button>
+
+        <div className="w-full max-w-md">
+          {/* Mobile brand */}
+          <div className="mb-8 flex flex-col items-center text-center lg:hidden">
+            <div className="mb-3 flex size-12 items-center justify-center rounded-xl bg-primary">
+              <Waves className="size-6 text-white" />
+            </div>
+            <div className="eyebrow">Admin Suite</div>
+            <h1 className="mt-1 font-display text-2xl font-medium tracking-tight text-foreground">
+              {RESORT_INFO.name}
+            </h1>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-8 shadow-card">
+            <div className="mb-8 hidden lg:block">
+              <div className="eyebrow">Sign in</div>
+              <h2 className="mt-1 font-display text-2xl font-medium tracking-tight text-foreground">
+                Welcome back
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Manage reservations, the villa, and guests.
               </p>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-emerald-50/90">
+                <Label htmlFor="email" className="text-sm font-medium">
                   Email address
                 </Label>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-emerald-200/60" />
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
                     autoComplete="email"
-                    placeholder="admin@verdararesort.com"
+                    placeholder="stay@the25thinzambales.com"
                     {...register("email")}
-                    className="border-white/10 bg-white/5 pl-9 text-white placeholder:text-emerald-100/40 focus-visible:border-emerald-400/60 focus-visible:ring-emerald-400/20"
+                    className="h-11 pl-9"
                   />
                 </div>
                 {errors.email && (
-                  <p className="text-xs text-rose-300">{errors.email.message}</p>
+                  <p className="text-xs text-red-700">{errors.email.message}</p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-emerald-50/90">
+                <Label htmlFor="password" className="text-sm font-medium">
                   Password
                 </Label>
                 <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-emerald-200/60" />
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     placeholder="••••••••"
                     {...register("password")}
-                    className="border-white/10 bg-white/5 pl-9 pr-10 text-white placeholder:text-emerald-100/40 focus-visible:border-emerald-400/60 focus-visible:ring-emerald-400/20"
+                    className="h-11 pl-9 pr-10"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-200/60 transition hover:text-emerald-100"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {showPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-xs text-rose-300">{errors.password.message}</p>
+                  <p className="text-xs text-red-700">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
               <Button
                 type="submit"
                 disabled={submitting}
-                className="mt-2 h-10 w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-900/30 hover:from-emerald-400 hover:to-emerald-500"
+                className="mt-2 h-11 w-full bg-primary text-white hover:bg-primary/90"
               >
-                {submitting ? "Signing in…" : "Sign in to Dashboard"}
+                {submitting ? "Signing in…" : "Sign in"}
               </Button>
             </form>
 
             {/* Demo credentials */}
-            <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-emerald-200/80">
+            <div className="mt-6 rounded-lg border border-border bg-sand/50 p-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <ShieldCheck className="size-3.5" />
                 Demo credentials
               </div>
-              <div className="space-y-1 font-mono text-xs text-emerald-100/80">
+              <div className="space-y-0.5 font-mono text-xs text-foreground">
                 <div>
-                  <span className="text-emerald-200/60">email:</span>{" "}
+                  <span className="text-muted-foreground">email:</span>{" "}
                   {ADMIN_CREDENTIALS.email}
                 </div>
                 <div>
-                  <span className="text-emerald-200/60">password:</span>{" "}
+                  <span className="text-muted-foreground">password:</span>{" "}
                   {ADMIN_CREDENTIALS.password}
                 </div>
               </div>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={fillDemo}
-                className="mt-3 h-7 w-full justify-center border border-white/10 text-xs text-emerald-100/80 hover:bg-white/10 hover:text-white"
+                className="mt-3 h-8 w-full text-xs"
               >
                 Autofill credentials
               </Button>
             </div>
           </div>
 
-          <p className="mt-6 text-center text-xs text-emerald-100/50">
-            © {new Date().getFullYear()} Verdara Resort · Internal use only
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            © {new Date().getFullYear()} {RESORT_INFO.name} · Internal use only
           </p>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

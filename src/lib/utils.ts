@@ -94,11 +94,11 @@ export function getInitials(name: string): string {
     .toUpperCase();
 }
 
-// Generate a reservation reference number
+// Generate a reservation reference number — The Twenty-Fifth (TTF-YYYY-XXXXXX)
 export function generateReferenceNo(): string {
   const year = new Date().getFullYear();
   const random = Math.floor(100000 + Math.random() * 900000);
-  return `RRMS-${year}-${random}`;
+  return `TTF-${year}-${random}`;
 }
 
 // Truncate text

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -10,12 +9,16 @@ import {
   ArrowRight,
   Calendar as CalendarIcon,
   Check,
-  CheckCircle2,
   Loader2,
-  PartyPopper,
-  Search,
+  Minus,
+  Plus,
+  Phone,
   Users,
-  X,
+  BedDouble,
+  Download,
+  MessageSquare,
+  Home,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,13 +27,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -48,70 +44,57 @@ import {
 } from "@/lib/utils";
 import { useViewStore } from "@/store/useViewStore";
 import { useBookingStore } from "@/store/useBookingStore";
+import { BOOKING_STATUS_CONFIG, RESORT_INFO } from "@/lib/constants";
 import { guestInfoSchema, type GuestInfoInput } from "@/lib/validators";
-import type { AvailableRoom, Reservation } from "@/types";
-import { RoomCard } from "../RoomCard";
+import type { Reservation, Room } from "@/types";
+import { RoomCard, RoomCardSkeleton } from "../RoomCard";
+import { FadeUpSection } from "../shared";
 
-interface AvailabilityResponse {
-  available: AvailableRoom[];
-  unavailable: AvailableRoom[];
-  nights: number;
+interface RoomsResponse {
+  rooms: Room[];
 }
 interface ReservationResponse {
   reservation: Reservation;
 }
 
-const STEPS = [
-  { id: 1, label: "Dates", short: "Search" },
-  { id: 2, label: "Room", short: "Select" },
-  { id: 3, label: "Guest", short: "Details" },
-  { id: 4, label: "Review", short: "Confirm" },
-  { id: 5, label: "Done", short: "Confirmed" },
-];
+type Step = 1 | 2 | 3;
 
-function defaultDate(daysFromNow: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + daysFromNow);
-  return d.toISOString().slice(0, 10);
-}
+const STEPS: { value: Step; label: string }[] = [
+  { value: 1, label: "Dates" },
+  { value: 2, label: "Details" },
+  { value: 3, label: "Confirm" },
+];
 
 export function BookingFlow() {
   const navigate = useViewStore((s) => s.navigate);
-  const params = useViewStore((s) => s.params);
   const booking = useBookingStore();
   const setSearch = useBookingStore((s) => s.setSearch);
   const selectRoom = useBookingStore((s) => s.selectRoom);
-  const resetBooking = useBookingStore((s) => s.reset);
 
-  const [step, setStep] = React.useState(1);
-  const [checkIn, setCheckIn] = React.useState(booking.checkIn || defaultDate(1));
-  const [checkOut, setCheckOut] = React.useState(booking.checkOut || defaultDate(3));
-  const [adults, setAdults] = React.useState(String(booking.adults || 2));
-  const [children, setChildren] = React.useState(String(booking.children || 0));
-  const [selectedRoomId, setSelectedRoomId] = React.useState<string | null>(
-    booking.selectedRoomId || params.roomId || null
-  );
-  const [guestInfo, setGuestInfo] = React.useState<GuestInfoInput | null>(null);
-  const [confirmedReservation, setConfirmedReservation] = React.useState<Reservation | null>(null);
-
-  const nights = nightsBetween(checkIn, checkOut);
-
-  // Availability query (only triggered on step 2)
-  const availabilityQuery = useQuery({
-    queryKey: ["availability", "booking", checkIn, checkOut, adults, children],
-    queryFn: () =>
-      apiFetch<AvailabilityResponse>(
-        `/api/rooms/availability?checkIn=${checkIn}&checkOut=${checkOut}&adults=${adults}&children=${children}`
-      ),
-    enabled: step === 2 && !!checkIn && !!checkOut && new Date(checkOut) > new Date(checkIn),
+  const [step, setStep] = React.useState<Step>(1);
+  const [confirmed, setConfirmed] = React.useState<Reservation | null>(null);
+  // Guest details captured in Step 2 — kept in local state because the booking
+  // store only holds dates/guests/room (per the lead agent's foundation design).
+  const [guestInfo, setGuestInfo] = React.useState<GuestInfoInput>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    city: "",
+    country: "",
+    specialRequests: "",
   });
 
-  const selectedRoom =
-    availabilityQuery.data?.available.find((r) => r.id === selectedRoomId) ??
-    availabilityQuery.data?.unavailable.find((r) => r.id === selectedRoomId) ??
-    null;
+  const {
+    data: roomsData,
+    isLoading: roomsLoading,
+  } = useQuery({
+    queryKey: ["rooms", "booking-flow"],
+    queryFn: () => apiFetch<RoomsResponse>("/api/rooms"),
+  });
+  const rooms = roomsData?.rooms ?? [];
+  const selectedRoom = rooms.find((r) => r.id === booking.selectedRoomId);
 
-  // Create reservation mutation
   const createMutation = useMutation({
     mutationFn: (payload: {
       roomId: string;
@@ -127,482 +110,445 @@ export function BookingFlow() {
         body: JSON.stringify(payload),
       }),
     onSuccess: (data) => {
-      setConfirmedReservation(data.reservation);
-      setStep(5);
-      toast.success("Reservation created!", {
-        description: `Reference ${data.reservation.referenceNo}`,
-      });
+      setConfirmed(data.reservation);
+      setStep(3);
+      toast.success("Booking request received!");
     },
     onError: (err) => {
-      const message = err instanceof ApiError ? err.message : "Failed to create reservation";
-      toast.error(message);
-      setStep(4);
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : "Something went wrong. Please try again.";
+      toast.error(msg);
     },
   });
 
-  // ---- Step handlers ----
+  // Reset confirmation when leaving the flow.
+  React.useEffect(() => {
+    return () => {
+      if (confirmed) {
+        // If we have a confirmed booking, reset store on unmount so a fresh
+        // visit starts at step 1.
+        booking.reset();
+      }
+    };
+  }, [confirmed, booking]);
 
-  const onSearchAvailability = () => {
-    if (!checkIn || !checkOut) {
-      toast.error("Please select your check-in and check-out dates");
-      return;
-    }
-    if (new Date(checkOut) <= new Date(checkIn)) {
-      toast.error("Check-out must be after check-in");
-      return;
-    }
-    setSearch({
-      checkIn,
-      checkOut,
-      adults: parseInt(adults, 10),
-      children: parseInt(children, 10),
-    });
-    setStep(2);
-  };
-
-  const onSelectRoom = (room: AvailableRoom) => {
-    if (!room.isAvailable) {
-      toast.error("This room is not available for the selected dates");
-      return;
-    }
-    setSelectedRoomId(room.id);
-    selectRoom(room.id);
-    setStep(3);
-  };
-
-  const onGuestInfoSubmit = (values: GuestInfoInput) => {
-    setGuestInfo(values);
-    setStep(4);
-  };
-
-  const onConfirmReservation = () => {
-    if (!selectedRoomId || !guestInfo) {
-      toast.error("Missing reservation details");
-      return;
-    }
-    setStep(5); // show loading state
-    createMutation.mutate({
-      roomId: selectedRoomId,
-      checkIn,
-      checkOut,
-      adults: parseInt(adults, 10),
-      children: parseInt(children, 10),
-      guest: guestInfo,
-      specialRequests: guestInfo.specialRequests,
-    });
-  };
-
-  const restart = () => {
-    resetBooking();
-    setStep(1);
-    setCheckIn(defaultDate(1));
-    setCheckOut(defaultDate(3));
-    setAdults("2");
-    setChildren("0");
-    setSelectedRoomId(null);
-    setGuestInfo(null);
-    setConfirmedReservation(null);
-    navigate("home");
-  };
+  // ============== Confirmation screen ==============
+  if (confirmed) {
+    return (
+      <ConfirmationScreen
+        reservation={confirmed}
+        onReset={() => {
+          booking.reset();
+          setConfirmed(null);
+          setStep(1);
+          navigate("home");
+        }}
+      />
+    );
+  }
 
   return (
-    <div className="pt-16 md:pt-20">
-      {/* Header */}
-      <section className="border-b border-border/60 bg-section">
-        <div className="container-luxury py-8">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.25em] text-primary">
-                Reserve Your Stay
-              </p>
-              <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-                Book Verdara
-              </h1>
-            </div>
-            {step > 1 && step < 5 && (
-              <Button
-                variant="ghost"
-                onClick={() => setStep(step - 1)}
-                className="rounded-full"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-            )}
-          </div>
-        </div>
-      </section>
-
+    <div className="pt-8 sm:pt-12">
       {/* Progress indicator */}
-      {step < 5 && (
-        <div className="border-b border-border/60 bg-background">
-          <div className="container-luxury py-5">
-            <ol className="flex items-center justify-between gap-1 overflow-x-auto">
-              {STEPS.slice(0, 4).map((s, idx) => {
-                const status =
-                  step === s.id ? "current" : step > s.id ? "complete" : "upcoming";
-                return (
-                  <li key={s.id} className="flex flex-1 items-center gap-3">
-                    <button
-                      onClick={() => {
-                        if (s.id < step) setStep(s.id);
-                      }}
-                      disabled={s.id >= step}
-                      className="flex items-center gap-3"
+      <div className="border-b border-border bg-section">
+        <div className="container-luxury py-5">
+          <div className="flex items-center justify-center gap-2 sm:gap-4">
+            {STEPS.map((s, i) => {
+              const active = step === s.value;
+              const done = step > s.value;
+              return (
+                <React.Fragment key={s.value}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Allow going back to previous steps.
+                      if (s.value < step) setStep(s.value);
+                    }}
+                    disabled={s.value > step}
+                    className="flex items-center gap-2"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors",
+                        active
+                          ? "bg-primary text-white"
+                          : done
+                            ? "bg-primary/15 text-primary"
+                            : "bg-muted text-muted-foreground"
+                      )}
                     >
-                      <span
-                        className={cn(
-                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm font-medium transition-all",
-                          status === "current" && "border-primary bg-primary text-white",
-                          status === "complete" && "border-primary bg-primary/10 text-primary",
-                          status === "upcoming" && "border-border bg-card text-muted-foreground"
-                        )}
-                      >
-                        {status === "complete" ? <Check className="h-4 w-4" /> : idx + 1}
-                      </span>
-                      <div className="hidden sm:block">
-                        <div
-                          className={cn(
-                            "text-xs uppercase tracking-wider",
-                            status === "upcoming" ? "text-muted-foreground" : "text-foreground"
-                          )}
-                        >
-                          Step {idx + 1}
-                        </div>
-                        <div
-                          className={cn(
-                            "text-sm font-medium",
-                            status === "current" && "text-primary",
-                            status === "complete" && "text-foreground",
-                            status === "upcoming" && "text-muted-foreground"
-                          )}
-                        >
-                          {s.label}
-                        </div>
-                      </div>
-                    </button>
-                    {idx < 3 && (
-                      <div
-                        className={cn(
-                          "ml-1 h-px flex-1",
-                          step > s.id ? "bg-primary" : "bg-border"
-                        )}
-                      />
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
+                      {done ? <Check className="h-4 w-4" /> : s.value}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-sm font-medium transition-colors",
+                        active
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {s.label}
+                    </span>
+                  </button>
+                  {i < STEPS.length - 1 && (
+                    <span
+                      className={cn(
+                        "h-px w-8 sm:w-16",
+                        step > s.value ? "bg-primary/40" : "bg-border"
+                      )}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
-      )}
+      </div>
 
-      <section className="py-10 sm:py-14">
+      <div className="py-8 sm:py-12">
         <div className="container-luxury">
-          <AnimatePresence mode="wait">
-            {/* STEP 1: Search */}
-            {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="mx-auto max-w-3xl"
-              >
-                <Card className="rounded-2xl border-border/60 p-6 shadow-luxury sm:p-10">
-                  <div className="text-center">
-                    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <CalendarIcon className="h-5 w-5" />
-                    </span>
-                    <h2 className="mt-4 font-display text-2xl font-semibold tracking-tight">
-                      When would you like to stay?
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Choose your dates and party size to see available residences.
-                    </p>
-                  </div>
+          {/* ============================================================
+              STEP 1 — Dates & Guests + Choose your stay
+          ============================================================ */}
+          {step === 1 && (
+            <Step1Dates
+              booking={booking}
+              setSearch={setSearch}
+              selectRoom={selectRoom}
+              rooms={rooms}
+              roomsLoading={roomsLoading}
+              selectedRoom={selectedRoom}
+              onContinue={() => setStep(2)}
+            />
+          )}
 
-                  <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="bf-checkin" className="text-xs uppercase tracking-wider text-muted-foreground">
-                        Check-in
-                      </Label>
-                      <div className="relative">
-                        <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          id="bf-checkin"
-                          type="date"
-                          value={checkIn}
-                          onChange={(e) => setCheckIn(e.target.value)}
-                          className="rounded-xl pl-9"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="bf-checkout" className="text-xs uppercase tracking-wider text-muted-foreground">
-                        Check-out
-                      </Label>
-                      <div className="relative">
-                        <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          id="bf-checkout"
-                          type="date"
-                          value={checkOut}
-                          onChange={(e) => setCheckOut(e.target.value)}
-                          className="rounded-xl pl-9"
-                        />
-                      </div>
-                    </div>
-                  </div>
+          {/* ============================================================
+              STEP 2 — Your Details
+          ============================================================ */}
+          {step === 2 && (
+            <Step2Details
+              defaultValues={guestInfo}
+              onBack={() => setStep(1)}
+              onContinue={(values) => {
+                setGuestInfo(values);
+                setStep(3);
+              }}
+            />
+          )}
 
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Adults</Label>
-                      <Select value={adults} onValueChange={setAdults}>
-                        <SelectTrigger className="w-full rounded-xl">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[1, 2, 3, 4, 5, 6].map((n) => (
-                            <SelectItem key={n} value={String(n)}>
-                              {n} {n === 1 ? "Adult" : "Adults"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Children</Label>
-                      <Select value={children} onValueChange={setChildren}>
-                        <SelectTrigger className="w-full rounded-xl">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[0, 1, 2, 3, 4].map((n) => (
-                            <SelectItem key={n} value={String(n)}>
-                              {n} {n === 1 ? "Child" : "Children"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={onSearchAvailability}
-                    size="lg"
-                    className="mt-8 w-full rounded-full"
-                  >
-                    <Search className="h-4 w-4" />
-                    Search availability
-                  </Button>
-
-                  <p className="mt-4 text-center text-xs text-muted-foreground">
-                    No payment required to hold your reservation — our concierge will reach out
-                    within 24 hours to confirm details.
-                  </p>
-                </Card>
-              </motion.div>
-            )}
-
-            {/* STEP 2: Select Room */}
-            {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <h2 className="font-display text-2xl font-semibold tracking-tight">
-                      Available residences
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {formatDate(checkIn)} → {formatDate(checkOut)} · {nights} night{nights > 1 ? "s" : ""} ·{" "}
-                      {parseInt(adults, 10) + parseInt(children, 10)} guest
-                      {parseInt(adults, 10) + parseInt(children, 10) > 1 ? "s" : ""}
-                    </p>
-                  </div>
-                  <Button variant="outline" onClick={() => setStep(1)} className="rounded-full">
-                    <CalendarIcon className="h-4 w-4" />
-                    Edit dates
-                  </Button>
-                </div>
-
-                {availabilityQuery.isLoading ? (
-                  <div className="flex items-center justify-center gap-3 py-20 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Checking availability…
-                  </div>
-                ) : availabilityQuery.data ? (
-                  <>
-                    {availabilityQuery.data.available.length === 0 ? (
-                      <Card className="rounded-2xl border-dashed py-12 text-center">
-                        <p className="font-medium">No residences available for these dates</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Try adjusting your dates or party size.
-                        </p>
-                        <Button onClick={() => setStep(1)} className="mt-4 rounded-full">
-                          Edit search
-                        </Button>
-                      </Card>
-                    ) : (
-                      <>
-                        <p className="mb-4 text-sm text-muted-foreground">
-                          {availabilityQuery.data.available.length} residence
-                          {availabilityQuery.data.available.length === 1 ? "" : "s"} available
-                        </p>
-                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                          {availabilityQuery.data.available.map((room) => (
-                            <RoomCard
-                              key={room.id}
-                              room={room}
-                              nights={nights}
-                              totalPrice={room.totalPrice}
-                              isAvailable
-                              selected={room.id === selectedRoomId}
-                              showBookButton={false}
-                              showSelectButton
-                              onSelect={(r) => onSelectRoom(r as AvailableRoom)}
-                              onDetails={(r) =>
-                                navigate("room-details", { roomId: r.id })
-                              }
-                            />
-                          ))}
-                        </div>
-                      </>
-                    )}
-
-                    {availabilityQuery.data.unavailable.length > 0 && (
-                      <div className="mt-12">
-                        <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                          Currently unavailable
-                        </h3>
-                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                          {availabilityQuery.data.unavailable.slice(0, 6).map((room) => (
-                            <RoomCard
-                              key={room.id}
-                              room={room}
-                              nights={nights}
-                              totalPrice={room.totalPrice}
-                              isAvailable={false}
-                              showBookButton={false}
-                              showSelectButton
-                              onSelect={() =>
-                                toast.error("This room is unavailable for your dates")
-                              }
-                              onDetails={(r) =>
-                                navigate("room-details", { roomId: r.id })
-                              }
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : null}
-              </motion.div>
-            )}
-
-            {/* STEP 3: Guest Information */}
-            {step === 3 && (
-              <GuestInfoStep
-                key="step3"
-                defaultValues={guestInfo}
-                onSubmit={onGuestInfoSubmit}
-                onBack={() => setStep(2)}
-              />
-            )}
-
-            {/* STEP 4: Review & Confirm */}
-            {step === 4 && (
-              <motion.div
-                key="step4"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="mx-auto max-w-4xl"
-              >
-                <ReviewStep
-                  checkIn={checkIn}
-                  checkOut={checkOut}
-                  adults={parseInt(adults, 10)}
-                  childCount={parseInt(children, 10)}
-                  nights={nights}
-                  room={selectedRoom}
-                  guest={guestInfo}
-                  onBack={() => setStep(3)}
-                  onConfirm={onConfirmReservation}
-                  submitting={createMutation.isPending}
-                />
-              </motion.div>
-            )}
-
-            {/* STEP 5: Confirmation */}
-            {step === 5 && (
-              <ConfirmationStep
-                reservation={confirmedReservation}
-                onCreateAnother={restart}
-              />
-            )}
-          </AnimatePresence>
+          {/* ============================================================
+              STEP 3 — Review & Confirm
+          ============================================================ */}
+          {step === 3 && (
+            <Step3Confirm
+              booking={booking}
+              guestInfo={guestInfo}
+              selectedRoom={selectedRoom}
+              onBack={() => setStep(2)}
+              onConfirm={() => {
+                if (!selectedRoom) {
+                  toast.error("Please choose your stay first");
+                  setStep(1);
+                  return;
+                }
+                createMutation.mutate({
+                  roomId: selectedRoom.id,
+                  checkIn: booking.checkIn,
+                  checkOut: booking.checkOut,
+                  adults: booking.adults,
+                  children: booking.children,
+                  guest: guestInfo,
+                  specialRequests: guestInfo.specialRequests || undefined,
+                });
+              }}
+              submitting={createMutation.isPending}
+            />
+          )}
         </div>
-      </section>
+      </div>
     </div>
   );
 }
 
 // ============================================================
-// Step 3: Guest Info Form
+// STEP 1
 // ============================================================
-function GuestInfoStep({
-  defaultValues,
-  onSubmit,
-  onBack,
+function Step1Dates({
+  booking,
+  setSearch,
+  selectRoom,
+  rooms,
+  roomsLoading,
+  selectedRoom,
+  onContinue,
 }: {
-  defaultValues: GuestInfoInput | null;
-  onSubmit: (values: GuestInfoInput) => void;
-  onBack: () => void;
+  booking: ReturnType<typeof useBookingStore.getState>;
+  setSearch: (patch: Partial<{ checkIn: string; checkOut: string; adults: number; children: number; selectedRoomId: string | null }>) => void;
+  selectRoom: (id: string) => void;
+  rooms: Room[];
+  roomsLoading: boolean;
+  selectedRoom?: Room;
+  onContinue: () => void;
 }) {
-  const form = useForm<GuestInfoInput>({
-    resolver: zodResolver(guestInfoSchema),
-    defaultValues: defaultValues ?? {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      address: "",
-      city: "",
-      country: "",
-      specialRequests: "",
-    },
-    mode: "onBlur",
-  });
+  const checkIn = booking.checkIn || defaultDate(1);
+  const checkOut = booking.checkOut || defaultDate(3);
+  const nights = nightsBetween(checkIn, checkOut);
+
+  const onContinueClick = () => {
+    if (!booking.checkIn || !booking.checkOut) {
+      setSearch({ checkIn, checkOut });
+    }
+    if (!selectedRoom) {
+      toast.error("Please pick your stay below first");
+      return;
+    }
+    onContinue();
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.3 }}
-      className="mx-auto max-w-3xl"
-    >
-      <Card className="rounded-2xl border-border/60 p-6 shadow-luxury sm:p-10">
-        <h2 className="font-display text-2xl font-semibold tracking-tight">
-          Guest details
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          We'll use these details to prepare your reservation and reach out to confirm.
+    <div className="mx-auto max-w-4xl">
+      <FadeUpSection>
+        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+          Pick your dates
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Tell us when you&rsquo;d like to visit and how many guests. Then
+          choose the whole villa or a single bedroom.
         </p>
+      </FadeUpSection>
 
+      {/* Dates + Guests card */}
+      <FadeUpSection delay={0.05} className="mt-6">
+        <Card className="rounded-xl border border-border bg-card p-5 shadow-card sm:p-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="bk-checkin"
+                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              >
+                Check-in
+              </Label>
+              <div className="relative">
+                <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
+                <Input
+                  id="bk-checkin"
+                  type="date"
+                  value={checkIn}
+                  min={defaultDate(0)}
+                  onChange={(e) =>
+                    setSearch({ checkIn: e.target.value })
+                  }
+                  className="rounded-lg pl-9"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="bk-checkout"
+                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              >
+                Check-out
+              </Label>
+              <div className="relative">
+                <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
+                <Input
+                  id="bk-checkout"
+                  type="date"
+                  value={checkOut}
+                  min={checkIn || defaultDate(1)}
+                  onChange={(e) =>
+                    setSearch({ checkOut: e.target.value })
+                  }
+                  className="rounded-lg pl-9"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Guests steppers */}
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <Stepper
+              label="Adults"
+              hint="Ages 13+"
+              value={booking.adults}
+              min={1}
+              max={25}
+              onChange={(v) => setSearch({ adults: v })}
+            />
+            <Stepper
+              label="Children"
+              hint="Ages 0–12"
+              value={booking.children}
+              min={0}
+              max={20}
+              onChange={(v) => setSearch({ children: v })}
+            />
+          </div>
+
+          {/* Summary */}
+          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-section px-4 py-3 text-sm">
+            <span className="inline-flex items-center gap-1.5 text-foreground">
+              <CalendarIcon className="h-3.5 w-3.5 text-primary" />
+              {formatDate(checkIn)} → {formatDate(checkOut)}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-foreground">
+              <Users className="h-3.5 w-3.5 text-primary" />
+              {booking.adults + booking.children} guest
+              {booking.adults + booking.children === 1 ? "" : "s"}
+            </span>
+            <span className="text-muted-foreground">
+              {nights} night{nights === 1 ? "" : "s"}
+            </span>
+          </div>
+        </Card>
+      </FadeUpSection>
+
+      {/* Selected room summary OR room picker */}
+      {selectedRoom ? (
+        <FadeUpSection delay={0.1} className="mt-8">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-2xl font-semibold tracking-tight">
+              Your stay
+            </h2>
+            <button
+              onClick={() => selectRoom("")}
+              className="text-sm font-medium text-primary transition-colors hover:text-coral"
+            >
+              Change
+            </button>
+          </div>
+          <Card className="mt-4 flex overflow-hidden rounded-xl border border-border bg-card shadow-card">
+            <div className="relative aspect-[4/3] w-32 shrink-0 bg-muted sm:w-48">
+              {selectedRoom.images?.[0] ? (
+                <img
+                  src={selectedRoom.images[0].url}
+                  alt={selectedRoom.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <BedDouble className="h-8 w-8 text-muted-foreground/40" />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
+              <div>
+                <p className="eyebrow text-[0.6rem]">
+                  {selectedRoom.type?.name}
+                </p>
+                <h3 className="mt-1 font-display text-lg font-semibold">
+                  {selectedRoom.name}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Sleeps {selectedRoom.capacity}
+                </p>
+              </div>
+              <div className="mt-3 font-display text-lg font-semibold text-primary">
+                {formatCurrency(selectedRoom.pricePerNight)}
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  / night
+                </span>
+              </div>
+            </div>
+          </Card>
+        </FadeUpSection>
+      ) : (
+        <FadeUpSection delay={0.1} className="mt-8">
+          <h2 className="font-display text-2xl font-semibold tracking-tight">
+            Choose your stay
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pick the whole villa for a group celebration, or a single bedroom
+            for a quieter escape.
+          </p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {roomsLoading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <RoomCardSkeleton key={i} />
+                ))
+              : rooms.map((room) => (
+                  <RoomCard
+                    key={room.id}
+                    room={room}
+                    selected={room.id === booking.selectedRoomId}
+                    onSelect={(r) => selectRoom(r.id)}
+                  />
+                ))}
+          </div>
+        </FadeUpSection>
+      )}
+
+      {/* Mobile sticky continue bar */}
+      <MobileStickyBar>
+        <Button
+          onClick={onContinueClick}
+          size="lg"
+          className="w-full rounded-full"
+        >
+          Continue
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </MobileStickyBar>
+
+      {/* Desktop continue */}
+      <div className="mt-8 hidden justify-end sm:flex">
+        <Button
+          onClick={onContinueClick}
+          size="lg"
+          className="rounded-full"
+        >
+          Continue
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// STEP 2
+// ============================================================
+type Step2Form = GuestInfoInput;
+
+function Step2Details({
+  defaultValues,
+  onBack,
+  onContinue,
+}: {
+  defaultValues: Step2Form;
+  onBack: () => void;
+  onContinue: (values: Step2Form) => void;
+}) {
+  const form = useForm<Step2Form>({
+    resolver: zodResolver(guestInfoSchema),
+    defaultValues,
+    mode: "onTouched",
+  });
+
+  const onSubmit = (values: Step2Form) => {
+    onContinue(values);
+  };
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <FadeUpSection>
+        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+          Your details
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          We&rsquo;ll use this to confirm your booking and reach out by phone
+          or Messenger.
+        </p>
+      </FadeUpSection>
+
+      <FadeUpSection delay={0.05} className="mt-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-6">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-5 rounded-xl border border-border bg-card p-5 shadow-card sm:p-7"
+          >
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
@@ -612,8 +558,8 @@ function GuestInfoStep({
                     <FormLabel>First name *</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Eleanor"
-                        className="rounded-xl"
+                        placeholder="Juan"
+                        className="rounded-lg"
                         {...field}
                       />
                     </FormControl>
@@ -629,8 +575,8 @@ function GuestInfoStep({
                     <FormLabel>Last name *</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Whitfield"
-                        className="rounded-xl"
+                        placeholder="Dela Cruz"
+                        className="rounded-lg"
                         {...field}
                       />
                     </FormControl>
@@ -651,7 +597,7 @@ function GuestInfoStep({
                       <Input
                         type="email"
                         placeholder="you@email.com"
-                        className="rounded-xl"
+                        className="rounded-lg"
                         {...field}
                       />
                     </FormControl>
@@ -667,8 +613,9 @@ function GuestInfoStep({
                     <FormLabel>Phone *</FormLabel>
                     <FormControl>
                       <Input
+                        type="tel"
                         placeholder="+63 917 555 0101"
-                        className="rounded-xl"
+                        className="rounded-lg"
                         {...field}
                       />
                     </FormControl>
@@ -678,24 +625,6 @@ function GuestInfoStep({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Address</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Street, building, unit"
-                      className="rounded-xl"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
@@ -704,7 +633,11 @@ function GuestInfoStep({
                   <FormItem>
                     <FormLabel>City</FormLabel>
                     <FormControl>
-                      <Input placeholder="London" className="rounded-xl" {...field} />
+                      <Input
+                        placeholder="Manila"
+                        className="rounded-lg"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -718,8 +651,8 @@ function GuestInfoStep({
                     <FormLabel>Country</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="United Kingdom"
-                        className="rounded-xl"
+                        placeholder="Philippines"
+                        className="rounded-lg"
                         {...field}
                       />
                     </FormControl>
@@ -737,399 +670,538 @@ function GuestInfoStep({
                   <FormLabel>Special requests</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Dietary needs, accessibility, celebration notes, early check-in preference…"
-                      className="min-h-[100px] rounded-xl"
+                      placeholder="Anything we should know? Early check-in, celebration setup, accessibility needs…"
+                      className="min-h-[100px] rounded-lg"
                       {...field}
                     />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Optional. We&rsquo;ll do our best to accommodate.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-between">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={onBack}
                 className="rounded-full"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
-              <Button type="submit" size="lg" className="rounded-full">
-                Continue to review
+              <Button
+                type="submit"
+                size="lg"
+                className="rounded-full sm:px-8"
+              >
+                Continue
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </form>
         </Form>
-      </Card>
-    </motion.div>
+      </FadeUpSection>
+    </div>
   );
 }
 
 // ============================================================
-// Step 4: Review & Confirm
+// STEP 3 — Review & Confirm
 // ============================================================
-function ReviewStep({
-  checkIn,
-  checkOut,
-  adults,
-  childCount,
-  nights,
-  room,
-  guest,
+function Step3Confirm({
+  booking,
+  guestInfo,
+  selectedRoom,
   onBack,
   onConfirm,
   submitting,
 }: {
-  checkIn: string;
-  checkOut: string;
-  adults: number;
-  childCount: number;
-  nights: number;
-  room: AvailableRoom | null;
-  guest: GuestInfoInput | null;
+  booking: ReturnType<typeof useBookingStore.getState>;
+  guestInfo: GuestInfoInput;
+  selectedRoom?: Room;
   onBack: () => void;
   onConfirm: () => void;
   submitting: boolean;
 }) {
-  if (!room || !guest) {
+  const nights = nightsBetween(booking.checkIn, booking.checkOut);
+  const pricePerNight = selectedRoom?.pricePerNight ?? 0;
+  const subtotal = pricePerNight * Math.max(nights, 1);
+  const total = subtotal; // taxRate = 0 per settings
+
+  if (!selectedRoom || !booking.checkIn || !booking.checkOut) {
     return (
-      <Card className="rounded-2xl border-dashed p-10 text-center">
-        <p className="text-sm text-muted-foreground">
-          Missing reservation details. Please go back.
+      <div className="mx-auto max-w-2xl text-center">
+        <p className="text-muted-foreground">
+          Something&rsquo;s missing. Please go back and pick your dates and
+          stay.
         </p>
         <Button onClick={onBack} className="mt-4 rounded-full">
-          Go back
+          <ArrowLeft className="h-4 w-4" />
+          Back
         </Button>
-      </Card>
+      </div>
     );
   }
 
-  const subtotal = room.pricePerNight * nights;
-  const serviceFee = subtotal * 0.05;
-  const tax = subtotal * 0.12;
-  const total = subtotal + serviceFee + tax;
-
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-      {/* Left: reservation summary */}
-      <div className="space-y-6">
-        <Card className="overflow-hidden rounded-2xl border-border/60 shadow-luxury">
-          {room.images?.[0] && (
-            <div className="aspect-[16/10] w-full overflow-hidden">
-              { }
+    <div className="mx-auto max-w-3xl">
+      <FadeUpSection>
+        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+          Review &amp; confirm
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Take a look at the details below. When you&rsquo;re ready,
+          we&rsquo;ll send your request to the villa.
+        </p>
+      </FadeUpSection>
+
+      <FadeUpSection delay={0.05} className="mt-6">
+        <Card className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+          {/* Stay header */}
+          <div className="flex items-center gap-4 border-b border-border bg-section p-5">
+            {selectedRoom.images?.[0] ? (
               <img
-                src={room.images[0].url}
-                alt={room.name}
-                className="h-full w-full object-cover"
+                src={selectedRoom.images[0].url}
+                alt={selectedRoom.name}
+                className="h-16 w-16 rounded-lg object-cover sm:h-20 sm:w-20"
               />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-muted sm:h-20 sm:w-20">
+                <BedDouble className="h-6 w-6 text-muted-foreground/40" />
+              </div>
+            )}
+            <div>
+              <p className="eyebrow text-[0.6rem]">
+                {selectedRoom.type?.name}
+              </p>
+              <h3 className="mt-0.5 font-display text-lg font-semibold">
+                {selectedRoom.name}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Sleeps {selectedRoom.capacity}
+              </p>
             </div>
-          )}
-          <div className="p-5">
-            <div className="flex items-center gap-2">
-              {room.type && (
-                <Badge className="rounded-full bg-primary/10 text-primary hover:bg-primary/10">
-                  {room.type.name}
-                </Badge>
+          </div>
+
+          {/* Details */}
+          <div className="space-y-5 p-5 sm:p-7">
+            <Section title="Dates">
+              <Row label="Check-in" value={`${formatDate(booking.checkIn)}`} />
+              <Row
+                label="Check-out"
+                value={`${formatDate(booking.checkOut)}`}
+              />
+              <Row
+                label="Length of stay"
+                value={`${nights} night${nights === 1 ? "" : "s"}`}
+              />
+            </Section>
+
+            <Section title="Guests">
+              <Row
+                label="Adults"
+                value={`${booking.adults}`}
+              />
+              {booking.children > 0 && (
+                <Row
+                  label="Children"
+                  value={`${booking.children}`}
+                />
               )}
-              <span className="text-xs text-muted-foreground">Room {room.number}</span>
-            </div>
-            <h3 className="mt-2 font-display text-xl font-semibold">{room.name}</h3>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                Up to {room.capacity} guests
-              </span>
-              {room.view && <span>· {room.view} view</span>}
-            </div>
-          </div>
-        </Card>
+              <Row
+                label="Total"
+                value={`${booking.adults + booking.children} guest${
+                  booking.adults + booking.children === 1 ? "" : "s"
+                }`}
+              />
+            </Section>
 
-        <Card className="rounded-2xl border-border/60 p-5 shadow-luxury">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Stay details
-          </h3>
-          <div className="mt-3 space-y-2.5 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Check-in</span>
-              <span className="font-medium">{formatDate(checkIn)} · 3:00 PM</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Check-out</span>
-              <span className="font-medium">{formatDate(checkOut)} · 11:00 AM</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Length of stay</span>
-              <span className="font-medium">
-                {nights} night{nights > 1 ? "s" : ""}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Guests</span>
-              <span className="font-medium">
-                {adults} adult{adults > 1 ? "s" : ""}
-                {childCount > 0 ? `, ${childCount} child${childCount > 1 ? "ren" : ""}` : ""}
-              </span>
-            </div>
-          </div>
-        </Card>
+            <Section title="Primary guest">
+              <Row
+                label="Name"
+                value={`${guestInfo.firstName ?? ""} ${guestInfo.lastName ?? ""}`.trim()}
+              />
+              <Row label="Email" value={guestInfo.email ?? ""} />
+              <Row label="Phone" value={guestInfo.phone ?? ""} />
+              {guestInfo.city || guestInfo.country ? (
+                <Row
+                  label="From"
+                  value={[guestInfo.city, guestInfo.country].filter(Boolean).join(", ")}
+                />
+              ) : null}
+            </Section>
 
-        <Card className="rounded-2xl border-border/60 p-5 shadow-luxury">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Primary guest
-          </h3>
-          <div className="mt-3 space-y-1.5 text-sm">
-            <div className="font-medium">
-              {guest.firstName} {guest.lastName}
-            </div>
-            <div className="text-muted-foreground">{guest.email}</div>
-            <div className="text-muted-foreground">{guest.phone}</div>
-            {guest.address && (
-              <div className="text-muted-foreground">
-                {guest.address}
-                {guest.city ? `, ${guest.city}` : ""}
-                {guest.country ? `, ${guest.country}` : ""}
-              </div>
+            {guestInfo.specialRequests && (
+              <Section title="Special requests">
+                <p className="text-sm text-muted-foreground">
+                  {guestInfo.specialRequests}
+                </p>
+              </Section>
             )}
-            {guest.specialRequests && (
-              <div className="mt-3 rounded-lg bg-section p-3 text-xs">
-                <span className="font-medium">Special requests: </span>
-                <span className="text-muted-foreground">{guest.specialRequests}</span>
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
 
-      {/* Right: price breakdown + confirm */}
-      <div>
-        <div className="lg:sticky lg:top-24">
-          <Card className="rounded-2xl border-border/60 p-6 shadow-luxury-lg">
-            <h3 className="font-display text-lg font-semibold">Price breakdown</h3>
-            <div className="mt-5 space-y-3 text-sm">
-              <div className="flex items-center justify-between">
+            {/* Price breakdown */}
+            <div className="rounded-lg border border-border bg-section p-4">
+              <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {formatCurrency(room.pricePerNight)} × {nights} night{nights > 1 ? "s" : ""}
+                  {formatCurrency(pricePerNight)} × {nights} night
+                  {nights === 1 ? "" : "s"}
                 </span>
                 <span className="font-medium">{formatCurrency(subtotal)}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Service fee (5%)</span>
-                <span className="font-medium">{formatCurrency(serviceFee)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Taxes (12%)</span>
-                <span className="font-medium">{formatCurrency(tax)}</span>
-              </div>
               <div className="my-3 h-px bg-border" />
-              <div className="flex items-center justify-between text-base font-semibold">
-                <span>Total</span>
-                <span className="text-primary">{formatCurrency(total)}</span>
+              <div className="flex items-center justify-between">
+                <span className="font-display text-base font-semibold">
+                  Total
+                </span>
+                <span className="font-display text-xl font-semibold text-primary">
+                  {formatCurrency(total)}
+                </span>
               </div>
-            </div>
-
-            <div className="mt-5 rounded-xl bg-section p-4 text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">No payment required now</p>
-              <p className="mt-1">
-                Your reservation will be held as Pending. Our concierge will email you within 24
-                hours to confirm and arrange the 30% deposit.
+              <p className="mt-2 text-xs text-muted-foreground">
+                No taxes or service fees.
               </p>
             </div>
 
-            <Button
-              onClick={onConfirm}
-              size="lg"
-              disabled={submitting}
-              className="mt-5 w-full rounded-full"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating reservation…
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4" />
-                  Confirm reservation
-                </>
-              )}
-            </Button>
+            {/* Plain-language note */}
+            <div className="rounded-lg bg-coral/10 p-4 text-sm text-foreground">
+              <p className="font-medium">No payment needed now.</p>
+              <p className="mt-1 text-muted-foreground">
+                We&rsquo;ll review your request, confirm your dates, and reach
+                out by phone or Messenger to arrange deposit and details.
+              </p>
+            </div>
 
+            {/* Actions */}
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onBack}
+                disabled={submitting}
+                className="rounded-full"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                disabled={submitting}
+                onClick={() => onConfirm()}
+                className="rounded-full sm:px-8"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Sending…
+                  </>
+                ) : (
+                  <>Confirm My Booking</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </FadeUpSection>
+    </div>
+  );
+}
+
+// ============================================================
+// CONFIRMATION SCREEN
+// ============================================================
+function ConfirmationScreen({
+  reservation,
+  onReset,
+}: {
+  reservation: Reservation;
+  onReset: () => void;
+}) {
+  const navigate = useViewStore((s) => s.navigate);
+  const statusConfig =
+    BOOKING_STATUS_CONFIG[reservation.status] ?? BOOKING_STATUS_CONFIG.PENDING;
+
+  const downloadIcs = () => {
+    const ics = buildIcs(reservation);
+    const blob = new Blob([ics], { type: "text/calendar" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `the-twenty-fifth-${reservation.referenceNo}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="py-12 sm:py-20">
+      <div className="container-tight">
+        <FadeUpSection className="text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            <Check className="h-7 w-7" />
+          </div>
+          <p className="eyebrow mt-5">Booking received</p>
+          <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            We&rsquo;ve got your request.
+          </h1>
+
+          {/* Reference number */}
+          <div className="mx-auto mt-8 max-w-xl rounded-xl border border-border bg-card p-6 shadow-card">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              Your reference number
+            </p>
+            <p className="mt-2 font-display text-3xl font-semibold tracking-tight text-primary sm:text-4xl">
+              {reservation.referenceNo}
+            </p>
+            <div className="mt-4 flex justify-center">
+              <Badge
+                className={cn(
+                  "rounded-full border-0 px-4 py-1.5 text-sm",
+                  statusConfig.bg,
+                  statusConfig.text
+                )}
+              >
+                {statusConfig.friendly}
+              </Badge>
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground">
+              {statusConfig.description}
+            </p>
+          </div>
+
+          <p className="mx-auto mt-6 max-w-md text-sm text-muted-foreground">
+            Save your reference number — you&rsquo;ll use it to look up your
+            booking later. We&rsquo;ll also email it to{" "}
+            <span className="font-medium text-foreground">
+              {reservation.guest?.email}
+            </span>
+            .
+          </p>
+        </FadeUpSection>
+
+        {/* What happens next */}
+        <FadeUpSection delay={0.1} className="mx-auto mt-12 max-w-2xl">
+          <h2 className="font-display text-2xl font-semibold tracking-tight">
+            What happens next
+          </h2>
+          <ol className="mt-5 space-y-4">
+            {[
+              {
+                title: "We review your request",
+                body: "We check the dates and availability, usually within a few hours.",
+              },
+              {
+                title: "We confirm by phone or Messenger",
+                body: "We'll reach out to lock in your dates and arrange the deposit.",
+              },
+              {
+                title: "See you at the beach!",
+                body: `Check-in from 2:00 PM at ${RESORT_INFO.addressShort}.`,
+              },
+            ].map((step, i) => (
+              <li
+                key={step.title}
+                className="flex gap-4 rounded-xl border border-border bg-card p-5 shadow-card"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="font-medium">{step.title}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {step.body}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </FadeUpSection>
+
+        {/* Action buttons */}
+        <FadeUpSection delay={0.15} className="mx-auto mt-10 max-w-2xl">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Button
-              variant="ghost"
-              onClick={onBack}
-              className="mt-2 w-full rounded-full"
+              onClick={downloadIcs}
+              variant="outline"
+              className="rounded-full"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to edit details
+              <Download className="h-4 w-4" />
+              Add to Calendar
             </Button>
-          </Card>
-        </div>
+            <a
+              href={RESORT_INFO.social.messenger}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button className="w-full rounded-full">
+                <MessageSquare className="h-4 w-4" />
+                Message us on Messenger
+              </Button>
+            </a>
+            <a href={`tel:${RESORT_INFO.phoneRaw}`}>
+              <Button
+                variant="outline"
+                className="w-full rounded-full"
+              >
+                <Phone className="h-4 w-4" />
+                Call the villa
+              </Button>
+            </a>
+            <Button
+              onClick={() => navigate("find-reservation")}
+              variant="outline"
+              className="rounded-full"
+            >
+              <Search className="h-4 w-4" />
+              Find my booking later
+            </Button>
+          </div>
+
+          <div className="mt-6 flex justify-center">
+            <Button
+              onClick={onReset}
+              variant="ghost"
+              className="rounded-full text-muted-foreground"
+            >
+              <Home className="h-4 w-4" />
+              Back to home
+            </Button>
+          </div>
+        </FadeUpSection>
       </div>
     </div>
   );
 }
 
 // ============================================================
-// Step 5: Confirmation
+// Shared small components
 // ============================================================
-function ConfirmationStep({
-  reservation,
-  onCreateAnother,
+function Stepper({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  onChange,
 }: {
-  reservation: Reservation | null;
-  onCreateAnother: () => void;
+  label: string;
+  hint?: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
 }) {
-  const navigate = useViewStore((s) => s.navigate);
-
-  if (!reservation) {
-    return (
-      <Card className="rounded-2xl border-dashed p-10 text-center">
-        <p className="text-sm text-muted-foreground">
-          Something went wrong. No reservation was found.
-        </p>
-        <Button onClick={onCreateAnother} className="mt-4 rounded-full">
-          Start over
-        </Button>
-      </Card>
-    );
-  }
-
-  const room = reservation.rooms?.[0]?.room;
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
-      className="mx-auto max-w-2xl"
-    >
-      {/* Confetti-like checkmark */}
-      <div className="text-center">
-        <motion.div
-          initial={{ scale: 0, rotate: -30 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 18, delay: 0.1 }}
-          className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg"
-        >
-          <CheckCircle2 className="h-10 w-10" />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <h2 className="mt-6 font-display text-3xl font-semibold tracking-tight">
-            Your reservation is confirmed!
-          </h2>
-          <p className="mt-2 text-muted-foreground">
-            We've received your booking and our concierge will reach out within 24 hours to
-            finalize the details.
-          </p>
-        </motion.div>
-      </div>
-
-      <Card className="mt-8 overflow-hidden rounded-2xl border-border/60 shadow-luxury-lg">
-        <div className="bg-[#0F2E22] p-6 text-center text-white sm:p-8">
-          <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">
-            Reservation reference
-          </p>
-          <p className="mt-2 font-mono text-3xl font-bold tracking-tight sm:text-4xl">
-            {reservation.referenceNo}
-          </p>
-          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs">
-            <PartyPopper className="h-3 w-3" />
-            Save this reference to manage your booking
-          </p>
-        </div>
-
-        <div className="p-6 sm:p-8">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Check-in</p>
-              <p className="mt-1 font-medium">{formatDate(reservation.checkIn)} · 3:00 PM</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Check-out</p>
-              <p className="mt-1 font-medium">{formatDate(reservation.checkOut)} · 11:00 AM</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Length of stay</p>
-              <p className="mt-1 font-medium">
-                {reservation.nights} night{reservation.nights > 1 ? "s" : ""}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Guests</p>
-              <p className="mt-1 font-medium">
-                {reservation.adults} adult{reservation.adults > 1 ? "s" : ""}
-                {reservation.children > 0
-                  ? `, ${reservation.children} child${reservation.children > 1 ? "ren" : ""}`
-                  : ""}
-              </p>
-            </div>
-          </div>
-
-          {room && (
-            <div className="mt-6 rounded-xl bg-section p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-mono">{room.number}</span> · {room.type?.name}
-              </div>
-              <div className="mt-1 font-display text-lg font-semibold">{room.name}</div>
-            </div>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">{label}</p>
+          {hint && (
+            <p className="text-xs text-muted-foreground">{hint}</p>
           )}
-
-          <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-4">
-            <span className="text-sm text-muted-foreground">Total</span>
-            <span className="font-display text-xl font-semibold text-primary">
-              {formatCurrency(reservation.totalAmount)}
-            </span>
-          </div>
         </div>
-      </Card>
-
-      {/* What's next */}
-      <Card className="mt-6 rounded-2xl border-border/60 p-6 shadow-luxury">
-        <h3 className="font-display text-lg font-semibold">What happens next?</h3>
-        <ol className="mt-4 space-y-3 text-sm">
-          {[
-            "You'll receive a confirmation email shortly with your reservation details.",
-            "Our concierge will reach out within 24 hours to confirm and arrange your deposit.",
-            "Once confirmed, you'll receive a welcome letter with arrival instructions and concierge contacts.",
-            "We'll be in touch a few days before your stay with a weather forecast and tailored suggestions.",
-          ].map((step, i) => (
-            <li key={i} className="flex items-start gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                {i + 1}
-              </span>
-              <span className="text-muted-foreground">{step}</span>
-            </li>
-          ))}
-        </ol>
-      </Card>
-
-      <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-        <Button
-          onClick={() => navigate("find-reservation")}
-          className="rounded-full"
-          size="lg"
-        >
-          <Search className="h-4 w-4" />
-          Find my reservation
-        </Button>
-        <Button
-          onClick={() => navigate("home")}
-          variant="outline"
-          className="rounded-full"
-          size="lg"
-        >
-          <X className="h-4 w-4" />
-          Back to home
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onChange(Math.max(min, value - 1))}
+            disabled={value <= min}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+            aria-label={`Decrease ${label}`}
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <span className="w-8 text-center font-display text-lg font-semibold tabular-nums">
+            {value}
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange(Math.min(max, value + 1))}
+            disabled={value >= max}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+            aria-label={`Increase ${label}`}
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
+}
+
+function MobileStickyBar({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-4 backdrop-blur sm:hidden">
+      {children}
+    </div>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {title}
+      </h3>
+      <div className="mt-2 space-y-1.5 text-sm">{children}</div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-medium text-foreground">{value}</span>
+    </div>
+  );
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+function defaultDate(daysFromNow: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  return d.toISOString().slice(0, 10);
+}
+
+function buildIcs(reservation: Reservation): string {
+  const dt = (s: string) => {
+    const d = new Date(s);
+    // All-day event: check-out day is exclusive.
+    return (
+      d.getUTCFullYear() +
+      String(d.getUTCMonth() + 1).padStart(2, "0") +
+      String(d.getUTCDate()).padStart(2, "0")
+    );
+  };
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//The Twenty-Fifth//Booking//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${reservation.referenceNo}@the25thinzambales.com`,
+    `DTSTAMP:${dt(new Date().toISOString())}T000000Z`,
+    `DTSTART;VALUE=DATE:${dt(reservation.checkIn)}`,
+    `DTEND;VALUE=DATE:${dt(reservation.checkOut)}`,
+    `SUMMARY:Stay at The Twenty-Fifth`,
+    `LOCATION:${RESORT_INFO.address}`,
+    `DESCRIPTION:Reference: ${reservation.referenceNo}\\nGuests: ${reservation.adults + reservation.children}\\nStatus: ${reservation.status}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ];
+  return lines.join("\r\n");
 }

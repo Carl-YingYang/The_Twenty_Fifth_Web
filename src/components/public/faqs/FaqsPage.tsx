@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
-import { HelpCircle, Mail, Phone, Calendar, CreditCard, PawPrint, Baby, Wifi, Plane } from "lucide-react";
+import { HelpCircle, MessageSquare } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -12,7 +11,8 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useViewStore } from "@/store/useViewStore";
-import { FadeUpSection } from "../shared";
+import { RESORT_INFO } from "@/lib/constants";
+import { FadeUpSection, SectionHeading } from "../shared";
 
 interface Faq {
   id: string;
@@ -22,206 +22,194 @@ interface Faq {
 }
 
 const FAQS: Faq[] = [
+  // Booking & Payment
   {
-    id: "checkin",
-    category: "Arrival & Departure",
-    question: "What time is check-in and check-out?",
+    id: "how-book",
+    category: "Booking & Payment",
+    question: "How do I book?",
     answer:
-      "Check-in is from 3:00 PM onward, and check-out is by 11:00 AM. Early check-in and late check-out are subject to availability — please request these in advance through your reservation or by contacting our concierge. We will always do our best to accommodate your travel schedule.",
+      "Pick your dates on the homepage or on The Villa page, choose the whole villa or a single bedroom, and fill in your details. When you submit, you'll get a reference number (something like TTF-2026-123456). No payment is needed at this stage — we'll reach out by phone or Messenger to confirm.",
   },
   {
-    id: "booking",
-    category: "Booking Process",
-    question: "How do I make a reservation at Verdara?",
+    id: "after-book",
+    category: "Booking & Payment",
+    question: "What happens after I request a booking?",
     answer:
-      "You can book directly through our website using the booking flow — simply select your dates, choose your villa, and complete the guest details form. You'll receive an instant confirmation email with your reference number. Alternatively, you may call our reservations team at +63 (2) 8888 4400 or email stay@verdararesort.com.",
-  },
-  {
-    id: "payment",
-    category: "Payment",
-    question: "When and how do I pay for my stay?",
-    answer:
-      "A reservation made through our website is held as Pending until confirmed by our team. Once confirmed, a 30% deposit is required to secure the booking, with the balance due 14 days before arrival. We accept major credit cards, bank transfer, and selected digital wallets. Payment details are sent in your confirmation email.",
+      "We review your request and confirm availability, usually within a few hours (and always within 24 hours). Once we've confirmed, we'll arrange a deposit to lock in your dates. You'll see the status update if you search for your booking with the reference number and your email.",
   },
   {
     id: "cancellation",
-    category: "Cancellation Policy",
-    question: "What is your cancellation policy?",
+    category: "Booking & Payment",
+    question: "What's the cancellation policy?",
     answer:
-      "Cancellations made 14 or more days before arrival receive a full refund of any deposit paid. Cancellations 7–13 days before arrival receive a 50% refund. Cancellations within 7 days of arrival are non-refundable. We are happy to reschedule your stay to a later date (within 12 months) at no charge, subject to availability.",
+      "If your plans change, just message us. We're flexible — we'd rather reschedule your stay than lose you. Full refunds are available for cancellations made 14 days or more before check-in. For cancellations within 7 days, we'll work with you on a case-by-case basis.",
   },
   {
-    id: "transfer",
-    category: "Arrival & Departure",
-    question: "Do you offer airport transfers?",
+    id: "payment",
+    category: "Booking & Payment",
+    question: "How do I pay?",
     answer:
-      "Yes. We offer private car transfers from Ninoy Aquino International Airport (Manila) — approximately 3 hours — or helicopter transfers (20 minutes) for an additional fee. Please share your flight details with our concierge at least 48 hours before arrival, and we will arrange everything for you.",
+      "Once your dates are confirmed, we'll send payment details by Messenger, SMS, or email. We accept bank transfer, GCash, and major credit cards. The balance is due on or before arrival.",
+  },
+
+  // The Villa
+  {
+    id: "check-in",
+    category: "The Villa",
+    question: "When is check-in and check-out?",
+    answer: `Check-in is from 2:00 PM onwards, and check-out is by 12:00 noon. If you need early check-in or late check-out, just ask — we'll always do our best to accommodate your travel schedule, subject to availability.`,
   },
   {
-    id: "children",
-    category: "Families",
-    question: "Are children welcome at Verdara?",
+    id: "extra-guests",
+    category: "The Villa",
+    question: "Can I bring extra guests?",
     answer:
-      "Absolutely. Children of all ages are welcome. We offer family-friendly villas (Garden and Pool Villas sleep up to 4 guests), complimentary cribs and rollaway beds on request, a kids' menu at our restaurant, and a supervised nature club for children aged 4–12. Babysitting services are available with 24 hours' notice.",
+      "The whole villa comfortably sleeps up to 25 guests. If you're booking a single bedroom, the capacity is shown on the room card (usually 2–4 guests). For day visitors or extra sleeping arrangements, please message us in advance so we can prepare.",
+  },
+  {
+    id: "meals",
+    category: "The Villa",
+    question: "Are meals included?",
+    answer:
+      "Meals are not included, but the villa has a fully equipped kitchen with cookware, dinnerware, and a full-size fridge. There's also an outdoor BBQ and grill area. Many guests bring their own food, or we can recommend local caterers — just ask when you book.",
+  },
+  {
+    id: "private-beach",
+    category: "The Villa",
+    question: "Is the beach private?",
+    answer:
+      "Yes — The Twenty-Fifth has direct access to a private stretch of Botolan coastline. Beach loungers and umbrellas are set up for guests. The water is calm and swimmable year-round, and the sunsets are spectacular.",
+  },
+
+  // Getting There
+  {
+    id: "from-manila",
+    category: "Getting There",
+    question: "How do I get there from Manila?",
+    answer:
+      "The drive from Manila to Botolan, Zambales is about 3 to 4 hours via NLEX and SCTEX. The most direct route takes you through Subic-Clark-Tarlac Expressway, exiting at Subic and following the coast north. Once you book, we'll send detailed driving directions and pin location.",
+  },
+  {
+    id: "parking",
+    category: "Getting There",
+    question: "Is there parking?",
+    answer:
+      "Yes — free on-site parking is available for all guests. There's space for several vehicles, so no need to carpool unless you want to.",
   },
   {
     id: "pets",
-    category: "Families",
-    question: "Can I bring my pet?",
+    category: "Getting There",
+    question: "Is it pet-friendly?",
     answer:
-      "We are a pet-friendly resort for well-behaved dogs up to 15kg. A pet fee of ₱1,500 per night applies, and pets must remain on a leash in public areas. Please let us know in advance so we can prepare a pet welcome basket and assign a ground-floor villa. Unfortunately, we cannot accommodate cats or other animals at this time.",
+      "We're pet-friendly on request. Please let us know in advance if you'd like to bring a pet so we can prepare — a small cleaning fee may apply for larger dogs. Please message us first.",
+  },
+
+  // House Rules
+  {
+    id: "events",
+    category: "House Rules",
+    question: "Can I host an event?",
+    answer:
+      "Absolutely — The Twenty-Fifth was built for celebrations. Birthdays, family reunions, intimate weddings, barkada getaways are all welcome. We can help arrange decor and setup. Please mention the event when you book so we can plan accordingly.",
   },
   {
-    id: "wifi",
-    category: "In-Residence",
-    question: "Is Wi-Fi available throughout the resort?",
-    answer:
-      "Yes — complimentary high-speed fiber Wi-Fi is available in all villas, restaurants, and common areas. We have also installed Wi-Fi extenders along the beach and at the spa pavilion, so you can stay connected wherever you wander. That said, we hope you'll be tempted to disconnect.",
-  },
-  {
-    id: "dining",
-    category: "Dining",
-    question: "What dining options are available?",
-    answer:
-      "Verdara offers two main venues: The Farm (our farm-to-table fine dining restaurant, open for breakfast, lunch, and dinner) and The Beach Bar (sunset cocktails, light bites, and all-day coffee). In-villa dining is available 24 hours. A tropical breakfast is included in every stay. Special dietary requirements — vegan, gluten-free, halal, kosher — are happily accommodated with prior notice.",
-  },
-  {
-    id: "spa",
-    category: "Wellness",
-    question: "Do I need to book spa treatments in advance?",
-    answer:
-      "We strongly recommend booking spa treatments in advance, especially during peak season (December–April) and weekends. Our Forest Spa has just six open-air pavilions, and these tend to fill quickly. You can add treatments to your reservation at the time of booking, or email spa@verdararesort.com up to 7 days before arrival.",
+    id: "contact-host",
+    category: "House Rules",
+    question: "How do I contact the host?",
+    answer: `The easiest way to reach us is by phone or Messenger. Call or text ${RESORT_INFO.phone}, or message us on Messenger via our Facebook page (facebook.com/the25thinzambales). Our caretaker is also on-site during your stay if you need anything in person.`,
   },
 ];
 
-const CATEGORIES = ["All", "Booking Process", "Arrival & Departure", "Payment", "Cancellation Policy", "Families", "In-Residence", "Dining", "Wellness"];
-
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  "Booking Process": <Calendar className="h-3.5 w-3.5" />,
-  "Arrival & Departure": <Plane className="h-3.5 w-3.5" />,
-  "Payment": <CreditCard className="h-3.5 w-3.5" />,
-  "Cancellation Policy": <HelpCircle className="h-3.5 w-3.5" />,
-  "Families": <Baby className="h-3.5 w-3.5" />,
-  "In-Residence": <Wifi className="h-3.5 w-3.5" />,
-  "Dining": <PawPrint className="h-3.5 w-3.5" />,
-  "Wellness": <HelpCircle className="h-3.5 w-3.5" />,
-};
+const CATEGORIES = [
+  "Booking & Payment",
+  "The Villa",
+  "Getting There",
+  "House Rules",
+] as const;
 
 export function FaqsPage() {
   const navigate = useViewStore((s) => s.navigate);
-  const [activeCategory, setActiveCategory] = React.useState("All");
-
-  const filteredFaqs = React.useMemo(() => {
-    if (activeCategory === "All") return FAQS;
-    return FAQS.filter((f) => f.category === activeCategory);
-  }, [activeCategory]);
 
   return (
-    <div className="pt-16 md:pt-20">
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-section py-16 sm:py-20">
-        <div
-          className="absolute inset-0 opacity-15"
-          style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-        <div className="container-luxury relative">
-          <FadeUpSection className="max-w-3xl">
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-primary">
-              Frequently Asked
-            </p>
-            <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-              Good to know before you arrive
-            </h1>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Everything from check-in times to cancellation policy, pets to pillow menus. Can't
-              find your answer? Our concierge is one message away.
-            </p>
+    <div className="pt-12 sm:pt-16">
+      {/* Header */}
+      <section className="border-b border-border bg-section py-14 sm:py-20">
+        <div className="container-luxury">
+          <FadeUpSection>
+            <SectionHeading
+              eyebrow="Good to Know"
+              title="Good to know"
+              subtitle="Everything you need before you arrive — booking, check-in, getting here, and the small print. Still have a question? We're a message away."
+            />
           </FadeUpSection>
         </div>
       </section>
 
       <section className="py-12 sm:py-16">
         <div className="container-luxury">
-          <div className="grid gap-10 lg:grid-cols-[260px_1fr]">
-            {/* Category nav */}
-            <aside className="lg:sticky lg:top-24 lg:self-start">
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Categories
-              </h2>
-              <nav className="flex flex-wrap gap-2 lg:flex-col">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`rounded-full px-3 py-2 text-left text-sm transition-colors ${
-                      activeCategory === cat
-                        ? "bg-primary text-white"
-                        : "text-foreground/70 hover:bg-muted hover:text-foreground"
-                    }`}
-                  >
+          <div className="mx-auto max-w-3xl">
+            {CATEGORIES.map((cat, idx) => {
+              const items = FAQS.filter((f) => f.category === cat);
+              return (
+                <FadeUpSection key={cat} delay={idx * 0.05} className="mb-10">
+                  <h2 className="mb-4 font-display text-2xl font-semibold tracking-tight">
                     {cat}
-                  </button>
-                ))}
-              </nav>
-            </aside>
-
-            {/* Accordion */}
-            <div>
-              <motion.div
-                key={activeCategory}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-              >
-                <Card className="rounded-2xl border-border/60 p-6 shadow-luxury sm:p-8">
-                  <Accordion type="single" collapsible className="w-full">
-                    {filteredFaqs.map((faq) => (
-                      <AccordionItem
-                        key={faq.id}
-                        value={faq.id}
-                        className="border-b border-border/60 last:border-b-0"
-                      >
-                        <AccordionTrigger className="text-left text-base font-medium hover:no-underline">
-                          <span className="flex items-start gap-3">
-                            <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                              {CATEGORY_ICONS[faq.category] ?? <HelpCircle className="h-3.5 w-3.5" />}
+                  </h2>
+                  <Card className="overflow-hidden rounded-xl border border-border bg-card p-2 shadow-card">
+                    <Accordion type="single" collapsible className="w-full">
+                      {items.map((faq) => (
+                        <AccordionItem
+                          key={faq.id}
+                          value={faq.id}
+                          className="border-b border-border last:border-b-0"
+                        >
+                          <AccordionTrigger className="px-4 text-left text-base font-medium hover:no-underline">
+                            <span className="flex items-start gap-3">
+                              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sand text-primary">
+                                <HelpCircle className="h-3.5 w-3.5" />
+                              </span>
+                              <span>{faq.question}</span>
                             </span>
-                            <span>{faq.question}</span>
-                          </span>
-                        </AccordionTrigger>
-                        <AccordionContent className="pl-9 text-sm leading-relaxed text-muted-foreground">
-                          {faq.answer}
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </Card>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-4 pl-12 text-sm leading-relaxed text-muted-foreground">
+                            {faq.answer}
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </Card>
+                </FadeUpSection>
+              );
+            })}
 
-                {/* Still have questions CTA */}
-                <Card className="mt-6 rounded-2xl border-dashed bg-section p-6 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Still have a question? Our concierge would love to help.
-                  </p>
-                  <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
-                    <Button onClick={() => navigate("contact")} className="rounded-full">
-                      <Mail className="h-4 w-4" />
-                      Contact concierge
+            {/* Bottom CTA */}
+            <FadeUpSection>
+              <Card className="rounded-xl border-dashed border-border bg-section p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Still have questions? Message us on Messenger and
+                  we&rsquo;ll get back to you quickly.
+                </p>
+                <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
+                  <a
+                    href={RESORT_INFO.social.messenger}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="w-full rounded-full sm:w-auto">
+                      <MessageSquare className="h-4 w-4" />
+                      Message us on Messenger
                     </Button>
-                    <a href="tel:+63288884400">
-                      <Button variant="outline" className="w-full rounded-full sm:w-auto">
-                        <Phone className="h-4 w-4" />
-                        +63 (2) 8888 4400
-                      </Button>
-                    </a>
-                  </div>
-                </Card>
-              </motion.div>
-            </div>
+                  </a>
+                  <Button
+                    onClick={() => navigate("contact")}
+                    variant="outline"
+                    className="w-full rounded-full sm:w-auto"
+                  >
+                    Contact Page
+                  </Button>
+                </div>
+              </Card>
+            </FadeUpSection>
           </div>
         </div>
       </section>

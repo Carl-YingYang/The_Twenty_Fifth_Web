@@ -8,11 +8,23 @@ import { apiFetch } from "@/lib/api-client";
 import { GALLERY_CATEGORIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { GalleryItem } from "@/types";
-import { FadeUpSection } from "../shared";
+import { FadeUpSection, SectionHeading } from "../shared";
 
 interface GalleryResponse {
   gallery: GalleryItem[];
 }
+
+// Varying row spans for an editorial masonry feel.
+const SPAN_PATTERNS = [
+  "row-span-2",
+  "row-span-1",
+  "row-span-1",
+  "row-span-2",
+  "row-span-1",
+  "row-span-2",
+  "row-span-1",
+  "row-span-1",
+];
 
 export function GalleryPage() {
   const [activeCategory, setActiveCategory] = React.useState<string>("ALL");
@@ -35,7 +47,10 @@ export function GalleryPage() {
     [items.length]
   );
   const goPrev = React.useCallback(
-    () => setLightboxIndex((i) => (i === null ? i : (i - 1 + items.length) % items.length)),
+    () =>
+      setLightboxIndex((i) =>
+        i === null ? i : (i - 1 + items.length) % items.length
+      ),
     [items.length]
   );
 
@@ -66,30 +81,16 @@ export function GalleryPage() {
   const current = lightboxIndex !== null ? items[lightboxIndex] : null;
 
   return (
-    <div className="pt-16 md:pt-20">
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-section py-16 sm:py-20">
-        <div
-          className="absolute inset-0 opacity-15"
-          style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1920&q=80')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-        <div className="container-luxury relative">
-          <FadeUpSection className="max-w-3xl">
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-primary">
-              Visual Journal
-            </p>
-            <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-              The Verdara Gallery
-            </h1>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Moments of light, texture, and quiet — collected from across the resort, the
-              rainforest, and the cove.
-            </p>
+    <div className="pt-12 sm:pt-16">
+      {/* Header */}
+      <section className="border-b border-border bg-section py-14 sm:py-20">
+        <div className="container-luxury">
+          <FadeUpSection>
+            <SectionHeading
+              eyebrow="Gallery"
+              title="Moments by the sea"
+              subtitle="Sunrises over the water, golden hour by the pool, long dinners under the palms. A few frames from life at The Twenty-Fifth."
+            />
           </FadeUpSection>
         </div>
       </section>
@@ -97,7 +98,7 @@ export function GalleryPage() {
       {/* Filter + Grid */}
       <section className="py-12 sm:py-16">
         <div className="container-luxury">
-          {/* Filter tabs — scrollable on mobile */}
+          {/* Filter tabs */}
           <div className="no-scrollbar -mx-4 mb-8 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
             {GALLERY_CATEGORIES.map((cat) => (
               <button
@@ -121,31 +122,36 @@ export function GalleryPage() {
               Loading gallery…
             </div>
           ) : items.length === 0 ? (
-            <Card className="rounded-2xl border-dashed py-16 text-center">
+            <Card className="rounded-xl border-dashed py-16 text-center">
               <p className="text-sm text-muted-foreground">
                 No images in this category yet. Check back soon.
               </p>
             </Card>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+            <div className="grid auto-rows-[160px] grid-cols-2 gap-3 sm:auto-rows-[220px] sm:gap-4 lg:grid-cols-4">
               {items.map((item, i) => (
                 <button
                   key={item.id}
                   onClick={() => openLightbox(i)}
-                  className="group relative aspect-square overflow-hidden rounded-xl bg-muted sm:rounded-2xl"
+                  className={cn(
+                    "group relative overflow-hidden rounded-xl bg-muted",
+                    SPAN_PATTERNS[i % SPAN_PATTERNS.length]
+                  )}
                 >
                   <img
                     src={item.url}
                     alt={item.title}
-                    className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                    className="img-zoom h-full w-full object-cover"
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-50 transition-opacity duration-300 group-hover:opacity-80" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-60 transition-opacity duration-300 group-hover:opacity-90" />
                   <div className="absolute bottom-0 left-0 p-3 text-left sm:p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-emerald-200 opacity-90 sm:text-xs">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-coral opacity-95 sm:text-xs">
                       {item.category}
                     </p>
-                    <p className="text-xs font-medium text-white sm:text-sm">{item.title}</p>
+                    <p className="text-xs font-medium text-white sm:text-sm">
+                      {item.title}
+                    </p>
                   </div>
                 </button>
               ))}
@@ -154,20 +160,20 @@ export function GalleryPage() {
         </div>
       </section>
 
-      {/* Lightbox — fixed overlay, no janky dialog animation */}
+      {/* Lightbox — fixed overlay, 150ms opacity fade only */}
       {current && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 opacity-0 transition-opacity duration-150 [animation:fadeIn_150ms_ease-out_forwards]"
           onClick={closeLightbox}
           role="dialog"
           aria-modal="true"
           aria-label={current.title}
         >
-          {/* Close button */}
+          {/* Close */}
           <button
             onClick={closeLightbox}
             aria-label="Close"
-            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
           >
             <X className="h-5 w-5" />
           </button>
@@ -214,14 +220,16 @@ export function GalleryPage() {
               className="max-h-[80vh] w-auto max-w-full object-contain"
             />
             <div className="mt-4 px-4 text-center text-white">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-coral">
                 {current.category}
               </p>
               <h3 className="mt-1 font-display text-lg font-semibold sm:text-xl">
                 {current.title}
               </h3>
               {current.description && (
-                <p className="mt-1 text-sm text-white/70">{current.description}</p>
+                <p className="mt-1 text-sm text-white/70">
+                  {current.description}
+                </p>
               )}
             </div>
           </div>

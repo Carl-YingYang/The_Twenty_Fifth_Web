@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 const inter = Inter({
   variable: "--font-inter",
@@ -16,30 +10,40 @@ const inter = Inter({
   display: "swap",
 });
 
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
-  title: "Verdara Resort — Luxury Resort Reservations",
+  title: "The Twenty-Fifth — Beachfront Villa in Zambales",
   description:
-    "Book your escape at Verdara Resort, a luxury forest sanctuary. Reserve elegant villas, world-class amenities, and unforgettable experiences.",
+    "Book your exclusive beachfront villa escape at The Twenty-Fifth in Botolan, Zambales. Private beach access, infinity pool, and a whole villa perfect for family getaways and celebrations.",
   keywords: [
-    "luxury resort",
-    "resort reservation",
-    "forest resort",
-    "villa booking",
-    "Verdara Resort",
+    "The Twenty-Fifth",
+    "25th Zambales",
+    "beachfront villa Zambales",
+    "Botolan resort",
+    "villa booking Zambales",
+    "private beach resort Philippines",
+    "whole villa rental",
   ],
-  authors: [{ name: "Verdara Resort" }],
+  authors: [{ name: "The Twenty-Fifth" }],
   openGraph: {
-    title: "Verdara Resort — Luxury Resort Reservations",
+    title: "The Twenty-Fifth — A Beachfront Villa in Zambales Awaits",
     description:
-      "Book your escape at Verdara Resort, a luxury forest sanctuary.",
-    siteName: "Verdara Resort",
+      "An exclusive private villa escape in Botolan, Zambales. Perfect for group or family getaways, celebrations, and relaxing stays.",
+    siteName: "The Twenty-Fifth",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Verdara Resort — Luxury Resort Reservations",
+    title: "The Twenty-Fifth — Beachfront Villa in Zambales",
     description:
-      "Book your escape at Verdara Resort, a luxury forest sanctuary.",
+      "An exclusive private villa escape in Botolan, Zambales.",
   },
 };
 
@@ -51,15 +55,17 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${inter.variable} antialiased bg-background text-foreground`}
+        className={`${inter.variable} ${playfair.variable} antialiased bg-background text-foreground`}
       >
         <Providers>{children}</Providers>
         <Toaster
           position="top-right"
           toastOptions={{
             style: {
-              borderRadius: "0.75rem",
-              border: "1px solid #E2E8F0",
+              borderRadius: "0.625rem",
+              border: "1px solid #E5DED0",
+              background: "#FFFFFF",
+              color: "#1B2A2E",
             },
           }}
         />

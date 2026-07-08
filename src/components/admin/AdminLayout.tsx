@@ -2,33 +2,33 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   BarChart3,
-  BedDouble,
   Bell,
   CalendarCheck,
   CalendarDays,
   CheckCheck,
-  ChevronRight,
   ExternalLink,
+  Home,
   Images,
   LayoutDashboard,
-  Leaf,
   LogOut,
   Menu,
+  Moon,
   Settings,
   Sparkles,
+  Sun,
   Users,
-  X,
+  Waves,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn, getInitials, timeAgo } from "@/lib/utils";
-import { ADMIN_NAV } from "@/lib/constants";
+import { ADMIN_NAV, RESORT_INFO } from "@/lib/constants";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useViewStore } from "@/store/useViewStore";
+import { useMounted } from "@/hooks/useMounted";
 import type { Notification, User, View } from "@/types";
 
 import { AdminLogin } from "./AdminLogin";
@@ -38,24 +38,21 @@ import {
   Sheet,
   SheetContent,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
   CalendarCheck,
   CalendarDays,
-  BedDouble,
+  Home,
   Users,
   Sparkles,
   Images,
@@ -74,6 +71,8 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
   const { isAuthenticated, user, logout } = useAuthStore();
   const { view, navigate } = useViewStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const mounted = useMounted();
 
   // Verify token validity on mount
   const { data: meData, isLoading: verifying } = useQuery({
@@ -89,14 +88,56 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
     }
   }, [meData, logout, navigate]);
 
+  // Theme init — read from localStorage on mount (legitimate hydration pattern)
+  useEffect(() => {
+    const stored = (typeof window !== "undefined"
+      ? localStorage.getItem("rrms-theme")
+      : null) as "light" | "dark" | null;
+    const initial = stored ?? "light";
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTheme(initial);
+    if (initial === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  function toggleTheme() {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("rrms-theme", next);
+      if (next === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    }
+  }
+
+  if (!mounted) {
+    return <AdminLayoutSkeleton />;
+  }
+
   if (!isAuthenticated) {
     return <AdminLogin />;
   }
 
-  // While verifying token, show a brief skeleton so we don't flash the login page
   if (isAuthenticated && verifying && !meData) {
     return <AdminLayoutSkeleton />;
   }
+
+  const onLogout = async () => {
+    try {
+      await apiFetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // ignore
+    }
+    logout();
+    toast.success("Signed out");
+    navigate("home");
+  };
 
   const SidebarContent = (
     <SidebarBody
@@ -106,21 +147,12 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
         navigate(v);
         setMobileNavOpen(false);
       }}
-      onLogout={async () => {
-        try {
-          await apiFetch("/api/auth/logout", { method: "POST" });
-        } catch {
-          // ignore
-        }
-        logout();
-        toast.success("Signed out");
-        navigate("home");
-      }}
+      onLogout={onLogout}
     />
   );
 
   return (
-    <div className="min-h-screen bg-[#F7F8F7] text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="flex min-h-screen">
         {/* Desktop sidebar */}
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 lg:block">
@@ -131,7 +163,7 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetContent
             side="left"
-            className="w-72 border-0 p-0 data-[state=open]:slide-in-from-left"
+            className="w-72 border-0 p-0"
           >
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             {SidebarContent}
@@ -146,6 +178,8 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
             actions={actions}
             onOpenMobileNav={() => setMobileNavOpen(true)}
             user={user}
+            theme={theme}
+            onToggleTheme={toggleTheme}
           />
           <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
         </div>
@@ -166,27 +200,27 @@ function SidebarBody({
   onLogout: () => void;
 }) {
   return (
-    <div className="flex h-full w-full flex-col bg-[#0F2E22] text-emerald-50">
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-6">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-700 shadow-lg shadow-emerald-900/40">
-          <Leaf className="size-5 text-white" />
+    <div className="flex h-full w-full flex-col bg-sidebar text-sidebar-foreground">
+      {/* Brand */}
+      <div className="flex items-center gap-3 px-5 py-6">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-white/10">
+          <Waves className="size-5 text-coral" />
         </div>
-        <div>
-          <div className="font-display text-lg font-semibold leading-tight text-white">
-            Verdara
+        <div className="leading-tight">
+          <div className="font-display text-base font-medium tracking-tight text-white">
+            {RESORT_INFO.name}
           </div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/60">
-            Admin Suite
+          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-coral">
+            Admin
           </div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
-        <div className="px-3 pb-2 pt-1 text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-200/40">
-          Manage
-        </div>
+      <nav
+        className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3"
+        aria-label="Admin navigation"
+      >
         {ADMIN_NAV.map((item) => {
           const Icon = ICON_MAP[item.icon] ?? LayoutDashboard;
           const active = currentView === item.view;
@@ -194,21 +228,27 @@ function SidebarBody({
             <button
               key={item.view}
               onClick={() => onNavigate(item.view as View)}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                "group relative flex w-full min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 active
-                  ? "bg-emerald-500/15 text-emerald-300 shadow-[inset_2px_0_0_0_#34D399]"
-                  : "text-emerald-100/70 hover:bg-white/5 hover:text-emerald-50"
+                  ? "bg-sidebar-accent text-white"
+                  : "text-sidebar-foreground/70 hover:bg-white/5 hover:text-white"
               )}
             >
+              {active && (
+                <span
+                  className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-coral"
+                  aria-hidden
+                />
+              )}
               <Icon
                 className={cn(
                   "size-4 shrink-0 transition-colors",
-                  active ? "text-emerald-300" : "text-emerald-200/60 group-hover:text-emerald-100"
+                  active ? "text-coral" : "text-sidebar-foreground/60 group-hover:text-white"
                 )}
               />
               <span className="flex-1 text-left">{item.label}</span>
-              {active && <ChevronRight className="size-3.5 text-emerald-300/80" />}
             </button>
           );
         })}
@@ -217,8 +257,8 @@ function SidebarBody({
       {/* User block */}
       <div className="border-t border-white/5 p-3">
         <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-          <Avatar className="size-9 border border-white/10 bg-emerald-700/40">
-            <AvatarFallback className="bg-emerald-700/40 text-xs font-semibold text-emerald-50">
+          <Avatar className="size-9 border border-white/10 bg-white/10">
+            <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">
               {user ? getInitials(user.name) : "AD"}
             </AvatarFallback>
           </Avatar>
@@ -226,7 +266,7 @@ function SidebarBody({
             <div className="truncate text-sm font-medium text-white">
               {user?.name ?? "Admin"}
             </div>
-            <div className="truncate text-[11px] capitalize text-emerald-200/60">
+            <div className="truncate text-[11px] capitalize text-sidebar-foreground/60">
               {String(user?.role ?? "admin").toLowerCase().replace("_", " ")}
             </div>
           </div>
@@ -234,8 +274,9 @@ function SidebarBody({
             variant="ghost"
             size="icon"
             onClick={onLogout}
-            className="size-8 text-emerald-200/60 hover:bg-white/5 hover:text-rose-300"
+            className="size-8 text-sidebar-foreground/60 hover:bg-white/5 hover:text-coral"
             title="Sign out"
+            aria-label="Sign out"
           >
             <LogOut className="size-4" />
           </Button>
@@ -251,16 +292,20 @@ function TopBar({
   actions,
   onOpenMobileNav,
   user,
+  theme,
+  onToggleTheme,
 }: {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
   onOpenMobileNav: () => void;
   user: User | null;
+  theme: "light" | "dark";
+  onToggleTheme: () => void;
 }) {
   const { navigate } = useViewStore();
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/80 bg-background/85 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background px-4 sm:px-6 lg:px-8">
       <Button
         variant="ghost"
         size="icon"
@@ -272,7 +317,7 @@ function TopBar({
       </Button>
 
       <div className="min-w-0 flex-1">
-        <h1 className="truncate font-display text-lg font-semibold tracking-tight text-foreground">
+        <h1 className="truncate font-display text-xl font-medium tracking-tight text-foreground">
           {title}
         </h1>
         {subtitle && (
@@ -280,8 +325,22 @@ function TopBar({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {actions}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-9"
+          onClick={onToggleTheme}
+          aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          title={theme === "light" ? "Dark mode" : "Light mode"}
+        >
+          {theme === "light" ? (
+            <Moon className="size-4" />
+          ) : (
+            <Sun className="size-4" />
+          )}
+        </Button>
         <NotificationsBell />
         <Button
           variant="outline"
@@ -293,7 +352,7 @@ function TopBar({
           View Site
         </Button>
         <Avatar className="size-9 border border-border">
-          <AvatarFallback className="bg-emerald-50 text-xs font-semibold text-emerald-700">
+          <AvatarFallback className="bg-sand text-xs font-semibold text-primary">
             {user ? getInitials(user.name) : "AD"}
           </AvatarFallback>
         </Avatar>
@@ -330,26 +389,27 @@ function NotificationsBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-9 w-9"
+          className="relative size-9"
           aria-label="Notifications"
         >
           <Bell className="size-4" />
           {unread.length > 0 && (
-            <span className="absolute right-1.5 top-1.5 flex size-2 items-center justify-center">
-              <span className="absolute size-2 animate-ping rounded-full bg-rose-400/70" />
-              <span className="size-2 rounded-full bg-rose-500" />
+            <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-coral text-[9px] font-bold text-white">
+              {unread.length > 9 ? "9+" : unread.length}
             </span>
           )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-0">
-        <div className="flex items-center justify-between border-b px-3 py-2.5">
-          <div className="text-sm font-semibold">Notifications</div>
+        <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+          <div className="text-sm font-semibold text-foreground">
+            Notifications
+          </div>
           {unread.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1 px-2 text-xs text-emerald-700 hover:text-emerald-800"
+              className="h-7 gap-1 px-2 text-xs text-primary hover:text-primary"
               disabled={markAllRead.isPending}
               onClick={() => markAllRead.mutate()}
             >
@@ -368,27 +428,33 @@ function NotificationsBell() {
           ) : items.length === 0 ? (
             <div className="px-3 py-10 text-center">
               <Bell className="mx-auto mb-2 size-6 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">No notifications</p>
+              <p className="text-sm text-muted-foreground">
+                You&apos;re all caught up
+              </p>
             </div>
           ) : (
             items.map((n) => (
               <div
                 key={n.id}
                 className={cn(
-                  "flex gap-3 border-b px-3 py-2.5 transition-colors last:border-0 hover:bg-muted/50",
-                  !n.isRead && "bg-emerald-50/50"
+                  "flex gap-3 border-b border-border px-3 py-2.5 transition-colors last:border-0 hover:bg-muted/50",
+                  !n.isRead && "bg-coral/5"
                 )}
               >
                 <div className="mt-1.5">
                   {!n.isRead ? (
-                    <span className="size-2 rounded-full bg-emerald-500" />
+                    <span className="size-2 rounded-full bg-coral" />
                   ) : (
                     <span className="size-2 rounded-full bg-transparent" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-foreground">{n.title}</div>
-                  <div className="text-xs text-muted-foreground">{n.message}</div>
+                  <div className="text-sm font-medium text-foreground">
+                    {n.title}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {n.message}
+                  </div>
                   <div className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">
                     {timeAgo(n.createdAt)}
                   </div>
@@ -397,17 +463,6 @@ function NotificationsBell() {
             ))
           )}
         </div>
-        <DropdownMenuSeparator className="m-0" />
-        <div className="p-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-full justify-center text-xs"
-            onClick={() => {}}
-          >
-            View all activity
-          </Button>
-        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -415,13 +470,13 @@ function NotificationsBell() {
 
 function AdminLayoutSkeleton() {
   return (
-    <div className="flex min-h-screen bg-muted/30">
-      <div className="hidden w-64 shrink-0 bg-[#0F2E22] lg:block" />
+    <div className="flex min-h-screen bg-background">
+      <div className="hidden w-64 shrink-0 bg-sidebar lg:block" />
       <div className="flex flex-1 flex-col">
-        <div className="flex h-16 items-center gap-3 border-b bg-background px-8">
+        <div className="flex h-16 items-center gap-3 border-b border-border bg-background px-8">
           <Skeleton className="h-5 w-40" />
           <div className="flex-1" />
-          <Skeleton className="h-9 w-9 rounded-full" />
+          <Skeleton className="size-9 rounded-full" />
         </div>
         <div className="space-y-4 p-8">
           <Skeleton className="h-8 w-56" />

@@ -66,7 +66,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 animate-pulse rounded-full border-2 border-primary/20 border-t-primary" />
           <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            Verdara
+            The Twenty-Fifth
           </span>
         </div>
       </div>

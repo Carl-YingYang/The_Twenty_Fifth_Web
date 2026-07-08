@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { type LucideIcon } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
@@ -8,21 +7,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 interface StatCardProps {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   label: string;
   value: string | number;
   hint?: string;
-  trend?: "up" | "down" | "neutral";
-  accent?: "emerald" | "amber" | "sky" | "rose" | "violet";
+  delta?: string;
+  deltaTone?: "up" | "down" | "neutral";
   loading?: boolean;
+  className?: string;
 }
 
-const ACCENT: Record<NonNullable<StatCardProps["accent"]>, string> = {
-  emerald: "bg-emerald-50 text-emerald-700",
-  amber: "bg-amber-50 text-amber-700",
-  sky: "bg-sky-50 text-sky-700",
-  rose: "bg-rose-50 text-rose-700",
-  violet: "bg-violet-50 text-violet-700",
+const DELTA_TONE: Record<NonNullable<StatCardProps["deltaTone"]>, string> = {
+  up: "text-emerald-700",
+  down: "text-red-700",
+  neutral: "text-muted-foreground",
 };
 
 export function StatCard({
@@ -30,52 +28,56 @@ export function StatCard({
   label,
   value,
   hint,
-  trend,
-  accent = "emerald",
+  delta,
+  deltaTone = "neutral",
   loading,
+  className,
 }: StatCardProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+    <Card
+      className={cn(
+        "gap-0 rounded-xl border border-border shadow-card transition-opacity",
+        className
+      )}
     >
-      <Card className="gap-0 rounded-2xl border-border/70 shadow-luxury">
-        <div className="flex items-start justify-between px-5 pt-5">
+      <div className="flex items-start justify-between px-5 pt-5">
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+        </div>
+        {Icon && (
           <div
-            className={cn(
-              "flex size-10 items-center justify-center rounded-xl",
-              ACCENT[accent]
-            )}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-sand text-primary"
+            aria-hidden
           >
             <Icon className="size-5" />
           </div>
-          {trend && (
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-                trend === "up" && "bg-emerald-50 text-emerald-700",
-                trend === "down" && "bg-rose-50 text-rose-700",
-                trend === "neutral" && "bg-muted text-muted-foreground"
-              )}
-            >
-              {trend}
-            </span>
-          )}
-        </div>
-        <div className="px-5 pb-5 pt-3">
-          {loading ? (
-            <Skeleton className="h-8 w-20" />
-          ) : (
-            <div className="font-display text-3xl font-semibold tracking-tight text-foreground">
-              {value}
-            </div>
-          )}
-          <div className="mt-1 text-sm font-medium text-foreground/80">{label}</div>
-          {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
-        </div>
-      </Card>
-    </motion.div>
+        )}
+      </div>
+      <div className="px-5 pb-5 pt-3">
+        {loading ? (
+          <Skeleton className="h-9 w-24" />
+        ) : (
+          <div className="font-display text-3xl font-medium tracking-tight text-foreground">
+            {value}
+          </div>
+        )}
+        {delta && (
+          <div
+            className={cn(
+              "mt-1 text-xs font-medium",
+              DELTA_TONE[deltaTone]
+            )}
+          >
+            {delta}
+          </div>
+        )}
+        {!delta && hint && (
+          <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -95,18 +97,25 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center px-6 py-12 text-center",
+        "flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center",
         className
       )}
     >
-      <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+      <div
+        className="mb-3 flex size-12 items-center justify-center rounded-full bg-sand text-muted-foreground"
+        aria-hidden
+      >
         <Icon className="size-5" />
       </div>
       <div className="text-sm font-medium text-foreground">{title}</div>
       {description && (
-        <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p>
+        <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+          {description}
+        </p>
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
+
+export default StatCard;

@@ -4,88 +4,140 @@ import type {
 } from "@/types";
 
 // ============================================================
-// RRMS — Application Constants
+// THE TWENTY-FIFTH — Application Constants
+// All resort data is REAL, sourced from the resort's official
+// Facebook (facebook.com/the25thinzambales), Instagram
+// (@thetwentyfifthzambales), and Airbnb listing.
 // ============================================================
 
 export const RESORT_INFO = {
-  name: "Verdara Resort",
-  tagline: "A Sanctuary Between Forest & Sea",
+  name: "The Twenty-Fifth",
+  shortName: "The 25th",
+  tagline: "A luxurious beachfront villa in Zambales awaits.",
+  story:
+    "Shaped by the ocean, softened by coastal pine — you're not just booking a villa, you're creating space for connection.",
   description:
-    "Nestled where the rainforest meets the coast, Verdara Resort offers an immersive luxury escape — private villas, farm-to-table dining, and curated wellness experiences.",
-  email: "stay@verdararesort.com",
-  phone: "+63 (2) 8888 4400",
-  address: "Coastal Road, Brgy. Luyang, San Juan, Batangas, Philippines",
-  checkInTime: "15:00",
-  checkOutTime: "11:00",
+    "An exclusive private beachfront villa in Botolan, Zambales. With four bedrooms, an infinity pool overlooking the sea, a fully equipped kitchen, and direct beach access — The Twenty-Fifth is perfect for group or family getaways, celebrations, and quiet escapes.",
+  email: "stay@the25thinzambales.com",
+  phone: "+63 969 601 4369",
+  phoneRaw: "+639696014369",
+  address: "Panan, Botolan, Zambales, Philippines",
+  addressShort: "Panan, Botolan, Zambales",
+  // Resort-ish check-in/out (typical PH villa policy)
+  checkInTime: "14:00",
+  checkOutTime: "12:00",
+  // Whole-villa capacity from Airbnb listing
+  maxGuests: 25,
+  bedrooms: 4,
+  beds: 21,
+  baths: 5.5,
   social: {
-    instagram: "https://instagram.com",
-    facebook: "https://facebook.com",
-    twitter: "https://twitter.com",
+    instagram: "https://www.instagram.com/thetwentyfifthzambales",
+    instagramHandle: "@thetwentyfifthzambales",
+    facebook: "https://www.facebook.com/the25thinzambales",
+    facebookHandle: "The 25th in Zambales",
+    website: "https://the25thinzambales.com",
+    messenger: "https://m.me/the25thinzambales",
+    whatsapp: "https://wa.me/639696014369",
+    airbnb: "https://www.airbnb.com/rooms/1634697640593448410",
   },
 };
 
+// Plain-language booking status — designed for non-technical users.
+// "label" = short admin-facing word; "friendly" = guest-facing phrase.
 export const BOOKING_STATUS_CONFIG: Record<
   BookingStatus | string,
-  { label: string; color: string; bg: string; text: string; border: string }
+  {
+    label: string;
+    friendly: string;
+    description: string;
+    color: string;
+    bg: string;
+    text: string;
+    border: string;
+    dot: string;
+  }
 > = {
   PENDING: {
     label: "Pending",
-    color: "#F59E0B",
+    friendly: "We're reviewing your request",
+    description: "We've received your booking and will confirm it shortly.",
+    color: "#D9943C",
     bg: "bg-amber-50",
     text: "text-amber-700",
     border: "border-amber-200",
+    dot: "bg-amber-500",
   },
   CONFIRMED: {
     label: "Confirmed",
-    color: "#38A169",
+    friendly: "Your stay is confirmed",
+    description: "Your dates are locked in. See you at the beach!",
+    color: "#2E8B6F",
     bg: "bg-emerald-50",
     text: "text-emerald-700",
     border: "border-emerald-200",
+    dot: "bg-emerald-500",
   },
   CHECKED_IN: {
     label: "Checked In",
-    color: "#1F6F50",
-    bg: "bg-green-50",
-    text: "text-green-700",
-    border: "border-green-200",
+    friendly: "Guests have arrived",
+    description: "Your group is currently enjoying the villa.",
+    color: "#0E5A6F",
+    bg: "bg-teal-50",
+    text: "text-teal-700",
+    border: "border-teal-200",
+    dot: "bg-teal-600",
   },
   COMPLETED: {
     label: "Completed",
-    color: "#718096",
+    friendly: "Stay finished",
+    description: "This stay has wrapped up. Thanks for visiting!",
+    color: "#6B7A7E",
     bg: "bg-slate-50",
     text: "text-slate-700",
     border: "border-slate-200",
+    dot: "bg-slate-500",
   },
   CANCELLED: {
     label: "Cancelled",
-    color: "#DC2626",
+    friendly: "Booking cancelled",
+    description: "This reservation was cancelled by the guest or resort.",
+    color: "#C0392B",
     bg: "bg-red-50",
     text: "text-red-700",
     border: "border-red-200",
+    dot: "bg-red-500",
   },
   REJECTED: {
-    label: "Rejected",
-    color: "#B91C1C",
-    bg: "bg-red-50",
-    text: "text-red-700",
-    border: "border-red-200",
-  },
-  NO_SHOW: {
-    label: "No Show",
+    label: "Declined",
+    friendly: "We couldn't accommodate this request",
+    description: "Unfortunately the dates weren't available.",
     color: "#9F1239",
     bg: "bg-rose-50",
     text: "text-rose-700",
     border: "border-rose-200",
+    dot: "bg-rose-600",
+  },
+  NO_SHOW: {
+    label: "No Show",
+    friendly: "Guests didn't arrive",
+    description: "The reserved dates passed without check-in.",
+    color: "#9F1239",
+    bg: "bg-rose-50",
+    text: "text-rose-700",
+    border: "border-rose-200",
+    dot: "bg-rose-600",
   },
 };
 
 export const ROOM_STATUS_CONFIG: Record<
   RoomStatus | string,
-  { label: string; color: string; bg: string; text: string; border: string; dot: string }
+  { label: string; friendly: string; color: string; bg: string; text: string; border: string; dot: string }
 > = {
   AVAILABLE: {
-    label: "Available",
-    color: "#16A34A",
+    label: "Open",
+    friendly: "Available to book",
+    color: "#2E8B6F",
     bg: "bg-emerald-50",
     text: "text-emerald-700",
     border: "border-emerald-200",
@@ -93,7 +145,8 @@ export const ROOM_STATUS_CONFIG: Record<
   },
   RESERVED: {
     label: "Reserved",
-    color: "#F59E0B",
+    friendly: "Held for an upcoming stay",
+    color: "#D9943C",
     bg: "bg-amber-50",
     text: "text-amber-700",
     border: "border-amber-200",
@@ -101,15 +154,17 @@ export const ROOM_STATUS_CONFIG: Record<
   },
   OCCUPIED: {
     label: "Occupied",
-    color: "#1F6F50",
-    bg: "bg-green-50",
-    text: "text-green-700",
-    border: "border-green-200",
-    dot: "bg-green-600",
+    friendly: "Guests currently staying",
+    color: "#0E5A6F",
+    bg: "bg-teal-50",
+    text: "text-teal-700",
+    border: "border-teal-200",
+    dot: "bg-teal-600",
   },
   CLEANING: {
     label: "Cleaning",
-    color: "#0EA5E9",
+    friendly: "Being tidied for the next guests",
+    color: "#4DBFD4",
     bg: "bg-sky-50",
     text: "text-sky-700",
     border: "border-sky-200",
@@ -117,7 +172,8 @@ export const ROOM_STATUS_CONFIG: Record<
   },
   MAINTENANCE: {
     label: "Maintenance",
-    color: "#DC2626",
+    friendly: "Briefly offline for upkeep",
+    color: "#C0392B",
     bg: "bg-red-50",
     text: "text-red-700",
     border: "border-red-200",
@@ -125,42 +181,45 @@ export const ROOM_STATUS_CONFIG: Record<
   },
   BLOCKED: {
     label: "Blocked",
-    color: "#4B5563",
-    bg: "bg-gray-100",
-    text: "text-gray-700",
-    border: "border-gray-200",
-    dot: "bg-gray-500",
+    friendly: "Not available",
+    color: "#6B7A7E",
+    bg: "bg-slate-50",
+    text: "text-slate-700",
+    border: "border-slate-200",
+    dot: "bg-slate-500",
   },
 };
 
 export const CALENDAR_STATUS_COLORS: Record<string, string> = {
-  AVAILABLE: "#16A34A",
-  RESERVED: "#F59E0B",
-  OCCUPIED: "#1F6F50",
-  CLEANING: "#0EA5E9",
-  MAINTENANCE: "#DC2626",
-  BLOCKED: "#4B5563",
+  AVAILABLE: "#2E8B6F",
+  RESERVED: "#D9943C",
+  OCCUPIED: "#0E5A6F",
+  CLEANING: "#4DBFD4",
+  MAINTENANCE: "#C0392B",
+  BLOCKED: "#6B7A7E",
 };
 
+// Plain-language admin nav for non-technical staff.
 export const ADMIN_NAV = [
-  { view: "admin-dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-  { view: "admin-bookings", label: "Bookings", icon: "CalendarCheck" },
+  { view: "admin-dashboard", label: "Today", icon: "LayoutDashboard" },
+  { view: "admin-bookings", label: "Reservations", icon: "CalendarCheck" },
   { view: "admin-calendar", label: "Calendar", icon: "CalendarDays" },
-  { view: "admin-rooms", label: "Rooms", icon: "BedDouble" },
+  { view: "admin-rooms", label: "The Villa", icon: "Home" },
   { view: "admin-guests", label: "Guests", icon: "Users" },
   { view: "admin-amenities", label: "Amenities", icon: "Sparkles" },
-  { view: "admin-gallery", label: "Gallery", icon: "Images" },
+  { view: "admin-gallery", label: "Photos", icon: "Images" },
   { view: "admin-reports", label: "Reports", icon: "BarChart3" },
   { view: "admin-settings", label: "Settings", icon: "Settings" },
 ] as const;
 
+// Public nav — fewer, clearer items.
 export const PUBLIC_NAV = [
   { view: "home", label: "Home" },
-  { view: "rooms", label: "Rooms" },
+  { view: "rooms", label: "The Villa" },
   { view: "amenities", label: "Amenities" },
   { view: "gallery", label: "Gallery" },
   { view: "about", label: "About" },
-  { view: "faqs", label: "FAQs" },
+  { view: "faqs", label: "Good to Know" },
   { view: "contact", label: "Contact" },
 ] as const;
 
@@ -174,14 +233,14 @@ export const GALLERY_CATEGORIES = [
 ] as const;
 
 export const AMENITY_CATEGORIES = [
-  { value: "RESORT", label: "Resort" },
-  { value: "ROOM", label: "Room" },
-  { value: "DINING", label: "Dining" },
+  { value: "RESORT", label: "Villa & Grounds" },
+  { value: "ROOM", label: "Bedrooms" },
+  { value: "DINING", label: "Kitchen & Dining" },
   { value: "WELLNESS", label: "Wellness" },
   { value: "GENERAL", label: "General" },
 ] as const;
 
 export const ADMIN_CREDENTIALS = {
-  email: "admin@verdararesort.com",
-  password: "verdara2025",
+  email: "stay@the25thinzambales.com",
+  password: "the25thzambales",
 };

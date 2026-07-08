@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
 import {
   Search,
   Loader2,
   ArrowLeft,
+  ArrowRight,
   Mail,
   Hash,
   Calendar as CalendarIcon,
@@ -14,6 +14,7 @@ import {
   BedDouble,
   CheckCircle2,
   XCircle,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,10 +28,10 @@ import {
   formatCurrency,
   formatDate,
 } from "@/lib/utils";
-import { BOOKING_STATUS_CONFIG } from "@/lib/constants";
+import { BOOKING_STATUS_CONFIG, RESORT_INFO } from "@/lib/constants";
 import { useViewStore } from "@/store/useViewStore";
 import type { Reservation } from "@/types";
-import { FadeUpSection } from "../shared";
+import { FadeUpSection, SectionHeading } from "../shared";
 
 interface LookupResponse {
   reservation: Reservation;
@@ -69,21 +70,16 @@ export function FindReservation() {
     : null;
 
   return (
-    <div className="pt-16 md:pt-20">
-      {/* Hero */}
-      <section className="border-b border-border/60 bg-section py-12 sm:py-16">
+    <div className="pt-12 sm:pt-16">
+      {/* Header */}
+      <section className="border-b border-border bg-section py-14 sm:py-20">
         <div className="container-luxury">
-          <FadeUpSection className="max-w-3xl">
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-primary">
-              Manage your booking
-            </p>
-            <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-              Find your reservation
-            </h1>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Enter your reservation reference number and the email used at booking to view your
-              reservation details and status.
-            </p>
+          <FadeUpSection>
+            <SectionHeading
+              eyebrow="Find My Booking"
+              title="Find my booking"
+              subtitle="Enter your reference number and the email you used to book — we'll pull up your reservation and its current status."
+            />
           </FadeUpSection>
         </div>
       </section>
@@ -92,11 +88,14 @@ export function FindReservation() {
         <div className="container-luxury">
           <div className="mx-auto max-w-2xl">
             <FadeUpSection>
-              <Card className="rounded-2xl border-border/60 p-6 shadow-luxury sm:p-8">
+              <Card className="rounded-xl border border-border bg-card p-6 shadow-card sm:p-8">
                 <form onSubmit={onSearch} className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="find-ref" className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Reservation reference
+                    <Label
+                      htmlFor="find-ref"
+                      className="text-xs uppercase tracking-wider text-muted-foreground"
+                    >
+                      Reference number
                     </Label>
                     <div className="relative">
                       <Hash className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -104,15 +103,18 @@ export function FindReservation() {
                         id="find-ref"
                         value={referenceNo}
                         onChange={(e) => setReferenceNo(e.target.value)}
-                        placeholder="RRMS-2025-000123"
-                        className="rounded-xl pl-9 font-mono"
+                        placeholder="TTF-2026-123456"
+                        className="rounded-lg pl-9 font-mono"
                         autoCapitalize="none"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="find-email" className="text-xs uppercase tracking-wider text-muted-foreground">
+                    <Label
+                      htmlFor="find-email"
+                      className="text-xs uppercase tracking-wider text-muted-foreground"
+                    >
                       Email used at booking
                     </Label>
                     <div className="relative">
@@ -123,7 +125,7 @@ export function FindReservation() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@email.com"
-                        className="rounded-xl pl-9"
+                        className="rounded-lg pl-9"
                         autoCapitalize="none"
                       />
                     </div>
@@ -143,44 +145,46 @@ export function FindReservation() {
                     ) : (
                       <>
                         <Search className="h-4 w-4" />
-                        Find my reservation
+                        Find my booking
                       </>
                     )}
                   </Button>
                 </form>
 
                 {lookupQuery.isError && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-4 flex items-start gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-700"
-                  >
+                  <div className="mt-4 flex items-start gap-3 rounded-lg bg-red-50 p-4 text-sm text-red-700">
                     <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
                     <div>
-                      <p className="font-medium">Reservation not found</p>
-                      <p className="mt-0.5 text-red-600/90">
-                        {lookupQuery.error instanceof ApiError
-                          ? lookupQuery.error.message
-                          : "Please check your reference number and email and try again."}
+                      <p className="font-medium">
+                        We couldn&rsquo;t find that booking.
                       </p>
+                      <p className="mt-0.5 text-red-600/90">
+                        Check your reference number and try again, or message
+                        us on Messenger and we&rsquo;ll help.
+                      </p>
+                      <a
+                        href={RESORT_INFO.social.messenger}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-red-700 underline-offset-2 hover:underline"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        Message us on Messenger
+                      </a>
                     </div>
-                  </motion.div>
+                  </div>
                 )}
               </Card>
             </FadeUpSection>
 
             {/* Reservation result */}
             {reservation && statusConfig && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="mt-8"
-              >
-                <Card className="overflow-hidden rounded-2xl border-border/60 shadow-luxury-lg">
-                  <div className="flex flex-wrap items-center justify-between gap-3 bg-[#0F2E22] p-6 text-white sm:p-7">
+              <FadeUpSection delay={0.05} className="mt-8">
+                <Card className="overflow-hidden rounded-xl border border-border shadow-card">
+                  {/* Header */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 bg-[#0A3D4A] p-6 text-white sm:p-7">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">
+                      <p className="text-xs uppercase tracking-[0.2em] text-coral">
                         Reservation
                       </p>
                       <p className="mt-1 font-mono text-2xl font-bold tracking-tight">
@@ -194,33 +198,40 @@ export function FindReservation() {
                         statusConfig.text
                       )}
                     >
-                      {statusConfig.label}
+                      {statusConfig.friendly}
                     </Badge>
                   </div>
 
+                  {/* Body */}
                   <div className="p-6 sm:p-7">
                     <div className="grid gap-5 sm:grid-cols-2">
                       <DetailItem
                         icon={<CalendarIcon className="h-4 w-4" />}
                         label="Check-in"
-                        value={`${formatDate(reservation.checkIn)} · 3:00 PM`}
+                        value={`${formatDate(reservation.checkIn)} · 2:00 PM`}
                       />
                       <DetailItem
                         icon={<CalendarIcon className="h-4 w-4" />}
                         label="Check-out"
-                        value={`${formatDate(reservation.checkOut)} · 11:00 AM`}
+                        value={`${formatDate(reservation.checkOut)} · 12:00 PM`}
                       />
                       <DetailItem
                         icon={<BedDouble className="h-4 w-4" />}
                         label="Length of stay"
-                        value={`${reservation.nights} night${reservation.nights > 1 ? "s" : ""}`}
+                        value={`${reservation.nights} night${
+                          reservation.nights > 1 ? "s" : ""
+                        }`}
                       />
                       <DetailItem
                         icon={<Users className="h-4 w-4" />}
                         label="Guests"
-                        value={`${reservation.adults} adult${reservation.adults > 1 ? "s" : ""}${
+                        value={`${reservation.adults} adult${
+                          reservation.adults > 1 ? "s" : ""
+                        }${
                           reservation.children > 0
-                            ? `, ${reservation.children} child${reservation.children > 1 ? "ren" : ""}`
+                            ? `, ${reservation.children} child${
+                                reservation.children > 1 ? "ren" : ""
+                              }`
                             : ""
                         }`}
                       />
@@ -228,9 +239,9 @@ export function FindReservation() {
 
                     {/* Room info */}
                     {reservation.rooms?.[0]?.room && (
-                      <div className="mt-5 rounded-xl bg-section p-4">
+                      <div className="mt-5 rounded-lg bg-section p-4">
                         <div className="text-xs text-muted-foreground">
-                          {reservation.rooms[0].room.type?.name} · Room {reservation.rooms[0].room.number}
+                          {reservation.rooms[0].room.type?.name}
                         </div>
                         <div className="mt-1 font-display text-lg font-semibold">
                           {reservation.rooms[0].room.name}
@@ -240,7 +251,7 @@ export function FindReservation() {
 
                     {/* Guest */}
                     {reservation.guest && (
-                      <div className="mt-5 border-t border-border/60 pt-4">
+                      <div className="mt-5 border-t border-border pt-4">
                         <p className="text-xs uppercase tracking-wider text-muted-foreground">
                           Primary guest
                         </p>
@@ -255,17 +266,21 @@ export function FindReservation() {
 
                     {/* Special requests */}
                     {reservation.specialRequests && (
-                      <div className="mt-5 border-t border-border/60 pt-4">
+                      <div className="mt-5 border-t border-border pt-4">
                         <p className="text-xs uppercase tracking-wider text-muted-foreground">
                           Special requests
                         </p>
-                        <p className="mt-1 text-sm">{reservation.specialRequests}</p>
+                        <p className="mt-1 text-sm">
+                          {reservation.specialRequests}
+                        </p>
                       </div>
                     )}
 
                     {/* Total */}
-                    <div className="mt-5 flex items-center justify-between border-t border-border/60 pt-4">
-                      <span className="text-sm text-muted-foreground">Total amount</span>
+                    <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
+                      <span className="text-sm text-muted-foreground">
+                        Total amount
+                      </span>
                       <span className="font-display text-xl font-semibold text-primary">
                         {formatCurrency(reservation.totalAmount)}
                       </span>
@@ -273,39 +288,72 @@ export function FindReservation() {
                   </div>
                 </Card>
 
-                {/* What does the status mean */}
-                <Card className="mt-6 rounded-2xl border-border/60 p-5 shadow-luxury">
+                {/* What happens next */}
+                <Card className="mt-6 rounded-xl border border-border bg-card p-5 shadow-card">
                   <div className="flex items-start gap-3">
                     <CheckCircle2
                       className={cn("mt-0.5 h-5 w-5 shrink-0", statusConfig.text)}
                     />
                     <div className="text-sm">
-                      <p className="font-medium">{statusConfig.label}</p>
+                      <p className="font-medium">{statusConfig.friendly}</p>
                       <p className="mt-1 text-muted-foreground">
-                        {STATUS_EXPLANATIONS[reservation.status] ??
-                          "Your reservation is being processed. Our concierge will be in touch shortly."}
+                        {STATUS_TIMELINE[reservation.status] ??
+                          "We're reviewing your request. We'll be in touch shortly."}
                       </p>
                     </div>
                   </div>
                 </Card>
 
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                  <Button
-                    onClick={() => navigate("contact")}
-                    className="rounded-full"
+                  <a
+                    href={RESORT_INFO.social.messenger}
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    Contact concierge
-                  </Button>
+                    <Button className="w-full rounded-full sm:w-auto">
+                      <MessageSquare className="h-4 w-4" />
+                      Message us
+                    </Button>
+                  </a>
                   <Button
                     onClick={() => navigate("home")}
                     variant="outline"
-                    className="rounded-full"
+                    className="w-full rounded-full sm:w-auto"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Back to home
                   </Button>
                 </div>
-              </motion.div>
+              </FadeUpSection>
+            )}
+
+            {/* Help footer (when no search yet) */}
+            {!reservation && !lookupQuery.isError && (
+              <FadeUpSection delay={0.1} className="mt-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Lost your reference number?{" "}
+                  <a
+                    href={RESORT_INFO.social.messenger}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-medium text-primary hover:text-coral"
+                  >
+                    Message us on Messenger
+                    <ArrowRight className="h-3 w-3" />
+                  </a>{" "}
+                  and we&rsquo;ll look it up.
+                </p>
+                <div className="mt-6">
+                  <Button
+                    onClick={() => navigate("home")}
+                    variant="ghost"
+                    className="rounded-full text-muted-foreground"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to home
+                  </Button>
+                </div>
+              </FadeUpSection>
             )}
           </div>
         </div>
@@ -325,27 +373,32 @@ function DetailItem({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sand text-primary">
         {icon}
       </span>
       <div>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          {label}
+        </p>
         <p className="mt-0.5 font-medium">{value}</p>
       </div>
     </div>
   );
 }
 
-const STATUS_EXPLANATIONS: Record<string, string> = {
+const STATUS_TIMELINE: Record<string, string> = {
   PENDING:
-    "We've received your reservation request. Our concierge will reach out within 24 hours to confirm details and arrange your deposit.",
+    "We've received your booking request. We'll review it and reach out by phone or Messenger within 24 hours to confirm your dates.",
   CONFIRMED:
-    "Your reservation is confirmed and the room is reserved for you. We can't wait to welcome you.",
-  CHECKED_IN: "You're currently checked in. Enjoy your stay at Verdara!",
-  COMPLETED: "Your stay has concluded. We hope to welcome you back soon.",
-  CANCELLED: "This reservation was cancelled. If this is unexpected, please contact our concierge.",
+    "Your dates are locked in. We can't wait to welcome you to The Twenty-Fifth!",
+  CHECKED_IN:
+    "You're currently at the villa. Enjoy your stay — message us if you need anything.",
+  COMPLETED:
+    "Your stay has wrapped up. We hope to welcome you back to the beach soon.",
+  CANCELLED:
+    "This reservation was cancelled. If this is unexpected, please message us and we'll help.",
   REJECTED:
-    "Unfortunately, we were unable to accommodate this reservation. Please contact our concierge for assistance.",
+    "Unfortunately, we couldn't accommodate this request. Please reach out and we'll try to find alternative dates.",
   NO_SHOW:
-    "This reservation was marked as a no-show. Please contact our concierge if you'd like to discuss.",
+    "The reserved dates passed without check-in. Please message us if you'd like to discuss.",
 };
