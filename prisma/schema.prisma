@@ -1,0 +1,237 @@
+// ============================================================
+// Resort Reservation Management System (RRMS) — Prisma Schema
+// Normalized schema for a single-resort booking platform.
+// Portable to PostgreSQL (sqlite used locally for dev).
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enum-like status constants ----------
+// BookingStatus: PENDING | CONFIRMED | CHECKED_IN | COMPLETED | CANCELLED | REJECTED | NO_SHOW
+// RoomStatus: AVAILABLE | RESERVED | OCCUPIED | CLEANING | MAINTENANCE | BLOCKED
+// (Stored as String for SQLite portability — validated via Zod on API layer)
+
+// ---------- Auth & Users ----------
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("ADMIN") // ADMIN | STAFF | SUPER_ADMIN
+  avatar       String?
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs    AuditLog[]
+  notifications Notification[]
+
+  @@index([email])
+}
+
+// ---------- Room Catalog ----------
+model RoomType {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g. Deluxe Villa, Beachfront Suite
+  slug        String   @unique
+  description String
+  basePrice   Float    // per night
+  capacity    Int      // max guests
+  size        Float?   // sqm
+  bedConfig   String?  // e.g. "1 King + 1 Twin"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rooms       Room[]
+
+  @@index([slug])
+}
+
+model Room {
+  id          String   @id @default(cuid())
+  number      String   @unique // e.g. "101", "V-12"
+  name        String   // e.g. "Ocean Breeze Villa"
+  description String
+  floor       Int?
+  view        String?  // e.g. "Ocean", "Garden", "Pool"
+  pricePerNight Float
+  capacity    Int
+  status      String   @default("AVAILABLE") // RoomStatus
+  typeId      String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  type        RoomType @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  images      RoomImage[]
+  amenities   RoomAmenity[]
+  reservations ReservationRoom[]
+
+  @@index([typeId])
+  @@index([status])
+}
+
+model RoomImage {
+  id        String   @id @default(cuid())
+  roomId    String
+  url       String
+  altText   String?
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+}
+
+// ---------- Amenities ----------
+model Amenity {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  icon      String?  // lucide icon name
+  category  String   @default("GENERAL") // GENERAL | ROOM | RESORT | DINING | WELLNESS
+  description String?
+  createdAt DateTime @default(now())
+
+  rooms     RoomAmenity[]
+}
+
+model RoomAmenity {
+  roomId   String
+  amenityId String
+  room     Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  amenity  Amenity @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, amenityId])
+}
+
+// ---------- Guests ----------
+model Guest {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String
+  phone     String
+  address   String?
+  city      String?
+  country   String?
+  notes     String?  // staff notes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservations Reservation[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+// ---------- Reservations ----------
+model Reservation {
+  id            String   @id @default(cuid())
+  referenceNo   String   @unique // e.g. "RRMS-2025-000123"
+  guestId       String
+  checkIn       DateTime
+  checkOut      DateTime
+  adults        Int      @default(1)
+  children      Int      @default(0)
+  nights        Int
+  totalAmount   Float
+  status        String   @default("PENDING") // BookingStatus
+  specialRequests String?
+  source        String   @default("WEBSITE") // WEBSITE | WALK_IN | PHONE
+  confirmedAt   DateTime?
+  cancelledAt   DateTime?
+  checkedInAt   DateTime?
+  checkedOutAt  DateTime?
+  rejectedReason String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  guest         Guest     @relation(fields: [guestId], references: [id])
+  rooms         ReservationRoom[]
+
+  @@index([status])
+  @@index([checkIn])
+  @@index([guestId])
+  @@index([referenceNo])
+}
+
+model ReservationRoom {
+  id            String   @id @default(cuid())
+  reservationId String
+  roomId        String
+  pricePerNight Float
+  subtotal      Float
+
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  room          Room        @relation(fields: [roomId], references: [id])
+
+  @@index([reservationId])
+  @@index([roomId])
+}
+
+// ---------- Gallery ----------
+model Gallery {
+  id        String   @id @default(cuid())
+  title     String
+  category  String   @default("RESORT") // RESORT | ROOMS | DINING | NATURE | EVENTS
+  url       String
+  description String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([category])
+}
+
+// ---------- Settings ----------
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  category String @default("GENERAL")
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- Notifications ----------
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO | BOOKING | SYSTEM | ALERT
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead])
+}
+
+// ---------- Audit Log ----------
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // e.g. "RESERVATION_CONFIRMED"
+  entity    String   // e.g. "Reservation"
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
