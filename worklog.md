@@ -761,3 +761,324 @@ Stage Summary:
 - Mobile nav now uses a clean 2-column grid layout for both primary links and secondary actions
 - More compact vertical footprint, cleaner visual rhythm
 - Lint: 0 errors. Dev server: HTTP 200.
+
+---
+Task ID: 10-a
+Agent: Explore (Research) — Audit admin components for lists, pagination, tabs, button styling
+
+Task: Examine GuestsAdmin, RoomsAdmin, BookingsAdmin, AdminLayout and the ui/ folder. Report structure around lists, pagination, tabs, button styling. No edits — research only.
+
+Findings:
+
+## 1. /home/z/my-project/src/components/admin/GuestsAdmin.tsx (415 lines)
+**List rendering:**
+- Desktop (md+): shadcn `<Table>` inside a `<Card>`, columns: Guest | Contact | Location | Stays | Last stay (lines 99–192).
+- Mobile: stacked `<Card>` list (lines 194–251).
+- Rows render every guest returned by the API — no slicing, no pagination.
+- Loading state shows 5 skeleton rows (desktop) / 3 skeleton cards (mobile).
+
+**Search:**
+- Yes — debounced (300ms) text search box at top (`placeholder="Search name, email, or phone"`, lines 84–92).
+- Sends `?search=` query param to `/api/guests`.
+
+**Pagination:**
+- None. All guests from response are rendered. Only a count badge (`{guests.length} guests`) is shown.
+
+**Modals:**
+- `GuestDetailsDialog` (line 265): shows profile, contact InfoRows, notes, and a "Reservation history" `<ul>` listing the guest's reservations (no pagination on this inner list either).
+- Dialog footer buttons: `variant="outline"` "New booking for this guest", `variant="ghost"` "Close" — no `bg-primary` button.
+
+**Button styling issues:**
+- No `bg-primary text-white` violations.
+- No `bg-coral text-white` violations.
+- No highlighted/active/selected button patterns in this file.
+
+---
+
+## 2. /home/z/my-project/src/components/admin/RoomsAdmin.tsx (695 lines)
+**List rendering:**
+- Responsive grid of `<RoomCard>` components: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` (line 160).
+- Each RoomCard: image (4/3 aspect), status badge, price overlay, name/type/number, capacity/view, line-clamped description, action row (Edit / Status dropdown / Trash).
+- Renders every active room (`r.isActive`) — no pagination, no search, no count limit.
+
+**Pagination:**
+- None.
+
+**Edit/Add Room modal (`RoomFormDialog`, line 370):**
+- Image URL list (lines 582–617): each image row is a flex `<li>` with:
+  - 12×12 thumbnail
+  - `min-w-0 flex-1` container with `truncate text-xs` for URL and `truncate text-xs` for alt text
+  - Small ghost icon button to remove
+- **Overflow assessment:** No horizontal overflow — the parent has `min-w-0 flex-1` and the URL/alt use `truncate` (text-overflow ellipsis). However, **truncated URLs have no `title` attribute**, so users cannot see the full URL on hover. Vertical: list uses `space-y-2` so each row stacks cleanly. Image add row (lines 618–642) is a responsive flex row (URL input + alt input + Add button) — wraps on mobile.
+- Form fields: name, number, description, price, capacity, view, room type (Select), status (Select), images list.
+
+**Buttons using `bg-primary` (all CORRECT — use `text-primary-foreground`):**
+- Line 131: header "Add Room" — `bg-primary text-primary-foreground hover:bg-primary/90`
+- Line 152: empty-state "Add Room" — `bg-primary text-primary-foreground hover:bg-primary/90`
+- Line 661: modal submit "Save changes"/"Add room" — `bg-primary text-primary-foreground hover:bg-primary/90`
+
+**Other notable button styling:**
+- Line 215: delete AlertDialogAction uses `bg-destructive text-white hover:bg-destructive/90` — **MINOR ISSUE**: should be `text-destructive-foreground` for dark-mode consistency (token is `#FFFFFF` light / `#0F1F24` dark). Currently `text-white` is invisible-adjacent in dark mode if destructive lightens (but destructive stays dark red in both modes per globals.css, so it works — just not token-semantic).
+- Line 343–351: trash icon button — `hover:bg-red-50 hover:text-red-700` (ghost variant).
+- Line 604–613: remove-image X button — `hover:bg-red-50 hover:text-red-700` (ghost variant).
+- No `bg-coral text-white` violations.
+- No highlighted/active/selected button patterns in this file (dropdown menu items use shadcn defaults).
+
+---
+
+## 3. /home/z/my-project/src/components/admin/BookingsAdmin.tsx (1020 lines)
+**Tabs:**
+- Yes — `STATUS_TABS` array (lines 69–76) rendered as pill buttons (lines 159–185):
+  - All | Pending | Confirmed | Checked in | Completed | Cancelled
+- **No dedicated "History" / "Past bookings" tab.** Past bookings are reachable only by selecting "Completed" or "Cancelled" individually — there is no unified history view.
+- Each tab pill shows a count badge (number of matching reservations) when count > 0.
+
+**Active vs past distinction:**
+- Distinguished only by `BookingStatusBadge` (status badge in row) and by the `RowActions` available per status (lines 410–501):
+  - PENDING: Approve (emerald) / Decline (red outline)
+  - CONFIRMED: Check in (primary)
+  - CHECKED_IN: Check out (primary)
+  - COMPLETED / CANCELLED / REJECTED / NO_SHOW: View (ghost)
+  - All rows also have a "Details" ghost button (always visible)
+- No visual row-styling difference (no opacity, no muted text, no divider) between active and past reservations — they look identical except for the status badge and action buttons.
+
+**List rendering:**
+- Desktop (md+): shadcn `<Table>` inside `<Card>` (lines 209–319). Columns: Reference | Guest | Dates | Room | Nights | Total | Status | Actions.
+- Mobile: stacked `<Card>` list (lines 322–380).
+- Renders every reservation returned — no pagination, no limit, no "load more".
+
+**Search:**
+- Yes — debounced (300ms) text search (lines 187–196) by name or reference.
+
+**Pagination:**
+- None.
+
+**Active tab pill styling (lines 167–184):**
+- Active: `border-primary bg-primary text-primary-foreground` ✅ (correct)
+- Inactive: `border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground`
+- Count badge color (line 179): `active ? "text-white/80" : "text-muted-foreground"` — **MINOR ISSUE**: should be `text-primary-foreground/80` for dark-mode consistency (primary-foreground is `#0A1F25` in dark mode = dark ink on light-cyan primary bg; white/80 on light cyan in dark mode = poor contrast).
+
+**Buttons using `bg-primary` (all CORRECT — use `text-primary-foreground`):**
+- Line 199: "New Reservation" header button
+- Line 457: "Check in" (RowActions, CONFIRMED state)
+- Line 468: "Check out" (RowActions, CHECKED_IN state)
+- Line 672: "Check in" (Dialog footer, CONFIRMED)
+- Line 682: "Check out" (Dialog footer, CHECKED_IN)
+- Line 990: "Create reservation" (modal submit)
+
+**Other button styling:**
+- Lines 435, 661: Approve buttons use `bg-emerald-600 text-white hover:bg-emerald-700` — semantic success color (emerald is a fixed Tailwind color, not theme-driven, so this is fine in both modes).
+- Lines 445, 653: Decline buttons use `border-red-300 text-red-700 hover:bg-red-50` (outline variant).
+- No `bg-coral text-white` violations.
+- No `bg-destructive` usage in this file.
+
+---
+
+## 4. /home/z/my-project/src/components/admin/AdminLayout.tsx (491 lines)
+**Admin nav tabs (from `ADMIN_NAV` in `src/lib/constants.ts`, lines 203–213):**
+1. Today → `admin-dashboard` (LayoutDashboard)
+2. Reservations → `admin-bookings` (CalendarCheck)
+3. Calendar → `admin-calendar` (CalendarDays)
+4. The Villa → `admin-rooms` (Home)
+5. Guests → `admin-guests` (Users)
+6. Amenities → `admin-amenities` (Sparkles)
+7. Photos → `admin-gallery` (Images)
+8. Reports → `admin-reports` (BarChart3)
+9. Settings → `admin-settings` (Settings)
+
+**Layout structure:**
+- Desktop: fixed 256px sidebar (`<aside>`) on lg+.
+- Mobile: Sheet (slide-in left) with hamburger in TopBar.
+- TopBar: title/subtitle, mobile-menu button, theme toggle, NotificationsBell, "View Site" outline button, avatar.
+- Auth gate: shows `<AdminLogin>` if not authenticated, skeleton while verifying.
+
+**Active nav state (lines 232–243):**
+- Active: `bg-sidebar-accent text-white` with coral left indicator bar (`bg-coral`, 1×6px) and coral icon.
+- Inactive: `text-sidebar-foreground/70 hover:bg-white/5 hover:text-white`.
+- `bg-sidebar-accent text-white` is acceptable — sidebar-accent is `#0F4C5C` (light mode) / `#122E38` (dark mode), both dark colors where white text works. (Could be more semantic as `text-sidebar-accent-foreground` but functionally correct.)
+
+**NotificationsBell (lines 364–469):**
+- Unread count badge (line 397): `bg-coral text-[9px] font-bold text-white` — **REAL VIOLATION**: should be `text-coral-foreground`. In dark mode, `--coral: #E8987E` (light peachy) + `text-white` = ~2:1 contrast (nearly invisible). The `--coral-foreground` token correctly resolves to `#FFFFFF` (light) / `#1B2A2E` (dark).
+- Unread notification indicator dot (line 446): `bg-coral` only (no text) — fine.
+- Notification row highlight (line 441): `bg-coral/5` for unread — fine.
+
+**Other text-white usages in AdminLayout (all on dark sidebar background — acceptable):**
+- Line 210: brand name `text-white` on `bg-sidebar` — fine.
+- Line 261: avatar fallback `bg-white/10 text-white` — fine.
+- Line 266: user name `text-white` — fine.
+
+**No `bg-primary text-white` violations in AdminLayout.**
+
+---
+
+## 5. /home/z/my-project/src/components/ui/ — UI component inventory
+A standard shadcn/ui installation. **47 components** including:
+- **`pagination.tsx` (128 lines)** — EXISTS but **NOT imported or used anywhere in the codebase** (grep across `src/**/*.tsx` for `Pagination`/`PaginationContent`/`PaginationLink` returned zero matches outside the component file itself). Exports: `Pagination`, `PaginationContent`, `PaginationLink`, `PaginationItem`, `PaginationPrevious`, `PaginationNext`, `PaginationEllipsis`. Built on `buttonVariants` — uses `variant="outline"` for active page and `variant="ghost"` for inactive.
+- Other relevant components: `button.tsx`, `card.tsx`, `table.tsx`, `tabs.tsx` (shadcn Tabs — also not used by admin; admin uses custom pill buttons), `dialog.tsx`, `alert-dialog.tsx`, `select.tsx`, `dropdown-menu.tsx`, `input.tsx`, `skeleton.tsx`, `badge.tsx`, `avatar.tsx`, `sheet.tsx`, `scroll-area.tsx`.
+
+---
+
+## Summary of issues for the main agent to fix
+
+### Pagination
+- **GuestsAdmin, RoomsAdmin, BookingsAdmin all render full result sets with no pagination.** The shadcn `Pagination` component exists but is unused. If pagination is desired, the API routes (`/api/guests`, `/api/rooms`, `/api/reservations`) would need to accept `page` / `limit` params and return total counts; the UI would need page state and the `<Pagination>` component wired in.
+- The guest details dialog also has an unbounded "Reservation history" list.
+
+### Tabs / History view (BookingsAdmin)
+- Tabs exist (status filter pills) but there is **no unified "History" / "Past" tab**. Past bookings are split across "Completed" and "Cancelled". Consider adding a `HISTORY` pseudo-tab that aggregates `COMPLETED | CANCELLED | REJECTED | NO_SHOW`.
+- Active vs past rows are visually identical except for status badge and action buttons. Consider muting past rows (e.g. `opacity-70` or `text-muted-foreground` on row text).
+
+### Button styling violations (text-white on token backgrounds)
+1. **AdminLayout.tsx line 397** — `bg-coral text-[9px] font-bold text-white` → should be `text-coral-foreground`. **REAL dark-mode bug.**
+2. **BookingsAdmin.tsx line 179** — count badge `active ? "text-white/80" : ...` → should be `text-primary-foreground/80`. **REAL dark-mode bug.**
+3. **RoomsAdmin.tsx line 215** — `bg-destructive text-white hover:bg-destructive/90` → should be `text-destructive-foreground`. **Token-consistency issue** (functionally OK because destructive stays dark in both modes, but not semantic).
+
+### Image URL display (RoomsAdmin edit modal)
+- No overflow (URLs are truncated with `truncate` and parent has `min-w-0 flex-1`), but **truncated URLs lack a `title` attribute** — users cannot hover to see the full URL. Consider adding `title={img.url}` to the URL `<div>` or making URLs clickable/open-in-new-tab.
+
+### Verified clean
+- All `bg-primary` buttons in admin files correctly use `text-primary-foreground` (no `bg-primary text-white` violations).
+- No `bg-coral text-white` direct-adjacent violations (the one in AdminLayout has classes in between: `bg-coral text-[9px] font-bold text-white`).
+- Emerald buttons (`bg-emerald-600 text-white`) are fine — emerald is a fixed Tailwind color, not a theme token.
+
+Stage Summary:
+- Research-only task, no files changed.
+- Audited 4 admin components (2,621 total lines) + ui/ folder inventory (47 components).
+- Found: 0 pagination implementations, 1 unused `<Pagination>` component, 6 status tabs (no History tab), 3 button-styling violations (2 real dark-mode bugs + 1 token-consistency issue), 1 minor URL-truncation usability gap.
+- Next actions for main agent: (a) decide whether to add pagination to guests/rooms/bookings lists (requires API + UI work), (b) consider a unified History tab in BookingsAdmin, (c) fix the 3 button-styling violations, (d) optionally add `title` attribute to truncated image URLs in RoomsAdmin modal.
+
+---
+Task ID: 10-c
+Agent: full-stack-developer (GuestsAdmin pagination)
+Task: Add client-side pagination (10 guests/page) to GuestsAdmin.tsx for both the desktop table and mobile card views, using the existing shadcn `<Pagination>` component, without changing any API calls or existing functionality (search, guest details dialog, reservation history).
+
+Work Log:
+- Read worklog.md, GuestsAdmin.tsx, and components/ui/pagination.tsx to understand the current implementation and the Pagination API (Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationPrevious, PaginationNext, PaginationEllipsis — all built on buttonVariants).
+- Verified `ChevronsLeft`/`ChevronsRight` icons exist in lucide-react for First/Last controls.
+- Added `PAGE_SIZE = 10` constant and a `page` state (`useState(1)`) to GuestsAdmin.
+- Added a `useEffect` that resets `page` to 1 whenever `debouncedSearch` changes (required by the task). Annotated the `setPage(1)` line with an `eslint-disable-next-line react-hooks/set-state-in-effect` comment because the project's React-hooks lint rule otherwise blocks setState-in-effect; this is the intended reset behavior.
+- Derived client-side pagination values from the full `guests` array (API call untouched): `totalGuests`, `totalPages`, `currentPage` (clamped), `startIdx`, `endIdx`, `pagedGuests` (slice), and `pageRange` (via a new `getPageRange` helper that emits first/last + current±1 + ellipses for >7 pages, otherwise all pages).
+- Replaced `guests.map(...)` with `pagedGuests.map(...)` in BOTH the desktop `<Table>` rows and the mobile `<Card>` list; updated the empty-state guards from `guests.length === 0` to `pagedGuests.length === 0`.
+- Kept `selected` guest lookup on the full `guests` array so the details dialog still opens correctly regardless of the active page.
+- Added a shared pagination footer below both views (visible on all breakpoints) containing:
+  - "Showing {startIdx+1}–{endIdx} of {totalGuests} guests" text.
+  - A `<Pagination>` bar (only rendered when `totalPages > 1`) with First (ChevronsLeft), Prev (PaginationPrevious), numbered page links (with PaginationEllipsis for gaps and active page highlighted via `isActive`), Next (PaginationNext), and Last (ChevronsRight) controls.
+  - Used a small `PageNavButton` wrapper around `PaginationLink` to provide keyboard-accessible (`role="button"`, `tabIndex`, Enter/Space `onKeyDown`) and disabled-state handling for the First/Last/number buttons; Prev/Next use the same accessibility attributes inline.
+  - Responsive layout: stacks centered on mobile, row with text-left / pagination-right on `sm+`.
+- Ran `bun run lint`: 0 errors, 0 warnings in GuestsAdmin.tsx (the only remaining 2 warnings are pre-existing `react-hooks/incompatible-library` warnings in BookingsAdmin.tsx and RoomsAdmin.tsx, unrelated to this task).
+- Confirmed the dev server recompiled successfully (dev.log shows clean compiles, no errors).
+
+Stage Summary:
+- GuestsAdmin now paginates client-side at 10 guests per page across both desktop table and mobile card views.
+- Search still fetches filtered data from the API (no API change); changing the search query resets to page 1.
+- Guest details dialog and reservation history remain fully functional (lookup uses the un-paginated guest list).
+- Pagination controls (First/Prev/numbers/Next/Last) are keyboard-accessible, show ellipses for large page counts, disable themselves at the boundaries, and the active page is visually highlighted via `buttonVariants` `outline` variant.
+- "Showing X–Y of Z guests" text appears below the list whenever guests are present.
+- Lint passes cleanly for the modified file.
+
+---
+Task ID: 10-b
+Agent: full-stack-developer (BookingsAdmin pagination + history tab)
+Task: Add a "History" tab (aggregating COMPLETED / CANCELLED / REJECTED / NO_SHOW bookings) and client-side pagination (8 bookings/page) to BookingsAdmin.tsx for both the desktop table and mobile card views, using the existing shadcn `<Pagination>` component, without changing any API endpoints or existing functionality (search, status badges, action buttons, modals).
+
+Work Log:
+- Read worklog.md, BookingsAdmin.tsx (1,021 lines), components/ui/pagination.tsx, and the `/api/reservations` route to understand the current server-side status/search filtering and the Pagination component API (Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationPrevious, PaginationNext, PaginationEllipsis — all built on buttonVariants).
+- Verified `BookingStatus` type includes all 4 history statuses (COMPLETED, CANCELLED, REJECTED, NO_SHOW) and that `ChevronsLeft`/`ChevronsRight` are available in lucide-react for First/Last controls.
+- Feature 1 — History tab:
+  - Added module-level `HISTORY_STATUSES: BookingStatus[]` constant and appended `{ value: "HISTORY", label: "History" }` to `STATUS_TABS` after "Cancelled".
+  - Added a `countForTab(tab, reservations)` helper that returns `reservations.length` for ALL, the count of the 4 history statuses for HISTORY, and a single-status count otherwise — used for the tab count badges.
+  - To make every tab count accurate and the History tab viable (the API only accepts a single `status`), switched the client to fetch ALL reservations (dropped the `status` query param and removed `status` from the query key). Server-side search is preserved unchanged; status filtering is now done client-side via a `useMemo` (`filteredReservations`) so HISTORY can aggregate multiple statuses. The `/api/reservations` route handler was NOT modified.
+- Feature 2 — client-side pagination:
+  - Added `PAGE_SIZE = 8` constant and a `page` state (`useState(1)`).
+  - Derived `totalPages`, `safePage` (clamped to `[1, totalPages]`), `startIdx`, `endIdx`, `paginatedReservations` (slice), and a `goToPage` helper that clamps input.
+  - Added a `getPageRange(current, total)` helper that emits all pages for ≤7 pages, otherwise first/last + current±1 with `PaginationEllipsis` gaps.
+  - Reset `page` to 1 inside the tab `onClick` and search `onChange` event handlers (NOT via useEffect) — this avoids the project's `react-hooks/set-state-in-effect` lint error without needing a disable comment, and gives instant page reset on tab/search change.
+  - Replaced `reservations.map(...)` with `paginatedReservations.map(...)` in BOTH the desktop `<Table>` rows and the mobile `<Card>` list; updated the empty-state guards from `reservations.length === 0` to `filteredReservations.length === 0` so the empty state still shows when a tab/search yields no rows.
+  - Kept `selected` reservation lookup on the full `allReservations` array so the details dialog opens correctly regardless of the active page/tab.
+  - Added a shared pagination footer below both views (visible on all breakpoints, only when not loading and `filteredReservations.length > 0`) containing:
+    - "Showing {startIdx+1}–{endIdx} of {filteredReservations.length} bookings" text.
+    - A `<Pagination>` bar (only rendered when `totalPages > 1`) with First (ChevronsLeft), Prev (PaginationPrevious), numbered page links (with `PaginationEllipsis` for gaps and active page highlighted via `isActive` → `buttonVariants` `outline` variant), Next (PaginationNext), and Last (ChevronsRight) controls.
+    - All controls use `href="#"` + `onClick` with `preventDefault` (standard shadcn pattern; anchors are Tab-focusable and Enter triggers the click). First/Prev disable at page 1; Next/Last disable at the last page via `pointer-events-none opacity-50`. `PaginationContent` uses `flex-wrap` so the bar wraps gracefully on narrow screens.
+- Ran `bun run lint`: 0 errors, 2 warnings — both pre-existing `react-hooks/incompatible-library` warnings for React Hook Form `watch()` in BookingsAdmin's CreateReservationDialog and RoomsAdmin (unrelated to this task). No new errors or warnings introduced.
+- Confirmed the dev server recompiled cleanly (dev.log shows `GET /api/reservations? 200` — note the bare `?` confirming no `status` param is sent — and no compile errors).
+
+Stage Summary:
+- BookingsAdmin now has a 7th "History" tab (after "Cancelled") that aggregates COMPLETED, CANCELLED, REJECTED, and NO_SHOW bookings, with an accurate total count badge.
+- All 6 existing tabs continue to work exactly as before (server-side search unchanged; status filtering moved client-side so counts are now accurate across tabs rather than only for the active tab).
+- Client-side pagination at 8 bookings/page is applied to both the desktop table and mobile card views, with a shared footer showing "Showing X–Y of Z bookings" and First/Prev/numbers/Next/Last controls (with ellipses for large page counts, disabled at boundaries, active page highlighted).
+- Page resets to 1 on tab switch or search input (handled in event handlers, not effects).
+- No API endpoints were changed; the `/api/reservations` route handler is untouched (only the client query params were trimmed — `status` dropped, `search` kept).
+- Search, status badges, action buttons (Approve/Decline/Check in/Check out/View/Details), the details dialog, and the create-reservation dialog all remain fully functional.
+- Lint passes with 0 errors (2 pre-existing unrelated warnings).
+
+---
+Task ID: 10
+Agent: Main (Z.ai Code) + 2 subagents — Pagination, History tab, button color fixes, image overflow fix
+
+Task: User requested: (1) Add pagination so lists don't overflow when they get large, (2) Fix all issues shown in 3 uploaded screenshots, (3) Fix button text color on highlighted buttons, (4) Add a History tab for past booking records (not just active ones).
+
+Work Log:
+- Analyzed 3 uploaded screenshots via VLM:
+  - Screenshot 1: Edit room modal — image URL overflow, no scrollable image list
+  - Screenshot 2: Add room modal — room list could grow long
+  - Screenshot 3: Guests page — 10 guests, no pagination
+- Dispatched Explore subagent (Task 10-a) to audit all admin components. Found:
+  - GuestsAdmin: no pagination, no tabs
+  - RoomsAdmin: no pagination, image URLs lack title attr, no max-height on image list
+  - BookingsAdmin: 6 status tabs but no History tab, no pagination
+  - AdminLayout: notification badge uses `bg-coral text-white` (dark mode bug)
+  - BookingsAdmin: active tab count uses `text-white/80` (dark mode bug)
+  - RoomsAdmin: delete button uses `bg-destructive text-white` (token inconsistency)
+  - Unused `<Pagination>` component exists in ui/pagination.tsx
+
+- **Button text color fixes** (done by main agent):
+  - AdminLayout.tsx:397 — `bg-coral text-white` → `bg-coral text-coral-foreground`
+  - BookingsAdmin.tsx:179 — `text-white/80` → `text-primary-foreground/80`
+  - RoomsAdmin.tsx:215 — `bg-destructive text-white` → `bg-destructive text-destructive-foreground`
+
+- **Image URL overflow fix** (done by main agent in RoomsAdmin.tsx):
+  - Added `max-h-48 overflow-y-auto` to image list `<ul>` so it scrolls internally
+  - Added `title={img.url}` and `title={img.altText}` attributes for hover-to-see-full-URL
+  - Added `shrink-0` to remove button to prevent it from being squeezed
+
+- **BookingsAdmin: History tab + pagination** (done by subagent Task 10-b):
+  - Added "History" tab (value: HISTORY) after "Cancelled" — aggregates COMPLETED, CANCELLED, REJECTED, NO_SHOW
+  - Added HISTORY_STATUSES constant + countForTab() helper for accurate badge count
+  - Changed to fetch all reservations (dropped status param) and filter client-side via useMemo
+  - Added client-side pagination (PAGE_SIZE=8): page state, totalPages, currentPage, startIdx, endIdx, paginatedReservations
+  - Page resets on tab switch and search (handled in event handlers, not useEffect)
+  - Replaced reservations.map with paginatedReservations.map in both desktop table and mobile cards
+  - Added footer with "Showing X–Y of Z bookings" + <Pagination> component (First/Prev/numbers/Next/Last with ellipses)
+  - Details dialog still uses full allReservations array
+
+- **GuestsAdmin: pagination** (done by subagent Task 10-c):
+  - Added PAGE_SIZE=10, page state, useEffect to reset page on search change
+  - Derived totalGuests, totalPages, currentPage, startIdx, endIdx, pagedGuests
+  - Replaced guests.map with pagedGuests.map in both desktop table and mobile cards
+  - Added footer with "Showing X–Y of Z guests" + <Pagination> component
+  - Guest details dialog still uses full guests array
+
+- **RoomsAdmin: pagination** (done by main agent):
+  - Added ROOMS_PAGE_SIZE=6, page state, pagination derivation
+  - Replaced rooms.map with pagedRooms.map
+  - Added pagination footer with "Showing X–Y of Z rooms" + <Pagination> component (only visible when totalPages > 1)
+  - Includes ellipsis logic for large page counts
+
+Verification (agent-browser + VLM):
+- Admin login: successful ✅
+- BookingsAdmin: History tab visible with count 4 ✅, pagination visible ✅, History tab shows past bookings (Cancelled, Declined, Completed) ✅
+- GuestsAdmin: "Showing 1–10 of 10 guests" text visible ✅ (pagination hidden since only 1 page — correct)
+- RoomsAdmin: 5 room cards visible ✅ (pagination hidden since < 6 rooms — correct)
+- Room edit modal: image URLs truncated properly ✅, no horizontal overflow ✅, modal scrollable ✅
+- Dark mode: all tab text readable ✅, count numbers readable ✅, no contrast issues ✅
+- Lint: 0 errors (2 pre-existing RHF warnings) ✅
+- Dev server: HTTP 200, clean compiles ✅
+
+Stage Summary:
+- Files changed (4): AdminLayout.tsx, BookingsAdmin.tsx, GuestsAdmin.tsx, RoomsAdmin.tsx
+- Pagination added to 3 admin lists (Bookings 8/page, Guests 10/page, Rooms 6/page)
+- History tab added to BookingsAdmin (aggregates COMPLETED + CANCELLED + REJECTED + NO_SHOW)
+- 3 button text color bugs fixed (dark mode contrast)
+- Image URL overflow fixed in room edit modal (max-height + scroll + title attributes)
+- All existing functionality preserved (search, filters, modals, dialogs, actions)
+- Lint: 0 errors. Dev server: HTTP 200, no runtime errors.

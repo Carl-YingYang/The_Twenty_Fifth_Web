@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CalendarPlus,
   Check,
+  ChevronsLeft,
+  ChevronsRight,
   Eye,
   LogIn,
   LogOut,
@@ -50,6 +52,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 import { apiFetch, ApiError } from "@/lib/api-client";
 import {
@@ -66,6 +77,15 @@ import {
 } from "@/lib/validators";
 import type { Reservation, Room, BookingStatus } from "@/types";
 
+const HISTORY_STATUSES: BookingStatus[] = [
+  "COMPLETED",
+  "CANCELLED",
+  "REJECTED",
+  "NO_SHOW",
+];
+
+const PAGE_SIZE = 8;
+
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: "ALL", label: "All" },
   { value: "PENDING", label: "Pending" },
@@ -73,13 +93,43 @@ const STATUS_TABS: { value: string; label: string }[] = [
   { value: "CHECKED_IN", label: "Checked in" },
   { value: "COMPLETED", label: "Completed" },
   { value: "CANCELLED", label: "Cancelled" },
+  { value: "HISTORY", label: "History" },
 ];
+
+/** Count reservations visible under a given tab (History aggregates 4 statuses). */
+function countForTab(tab: string, reservations: Reservation[]): number {
+  if (tab === "ALL") return reservations.length;
+  if (tab === "HISTORY") {
+    return reservations.filter((r) =>
+      HISTORY_STATUSES.includes(r.status as BookingStatus)
+    ).length;
+  }
+  return reservations.filter((r) => r.status === tab).length;
+}
+
+/** Build a compact page range with ellipses for large page counts. */
+function getPageRange(
+  current: number,
+  total: number
+): (number | "ellipsis")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, "ellipsis", total];
+  }
+  if (current >= total - 3) {
+    return [1, "ellipsis", total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, "ellipsis", current - 1, current, current + 1, "ellipsis", total];
+}
 
 export function BookingsAdmin() {
   const qc = useQueryClient();
   const [status, setStatus] = useState<string>("ALL");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -88,19 +138,44 @@ export function BookingsAdmin() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Fetch all reservations (server-side search only); status filtering and
+  // pagination are handled client-side so the History tab can aggregate
+  // multiple statuses and every tab count stays accurate.
   const queryParams = new URLSearchParams();
-  if (status !== "ALL") queryParams.set("status", status);
   if (debouncedSearch) queryParams.set("search", debouncedSearch);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-reservations", status, debouncedSearch],
+    queryKey: ["admin-reservations", debouncedSearch],
     queryFn: () =>
       apiFetch<{ reservations: Reservation[] }>(
         `/api/reservations?${queryParams.toString()}`
       ),
   });
 
-  const reservations = data?.reservations ?? [];
+  const allReservations = data?.reservations ?? [];
+
+  // Client-side status filtering (supports the aggregated History tab).
+  const filteredReservations = useMemo(() => {
+    if (status === "ALL") return allReservations;
+    if (status === "HISTORY") {
+      return allReservations.filter((r) =>
+        HISTORY_STATUSES.includes(r.status as BookingStatus)
+      );
+    }
+    return allReservations.filter((r) => r.status === status);
+  }, [allReservations, status]);
+
+  // Client-side pagination.
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredReservations.length / PAGE_SIZE)
+  );
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const endIdx = Math.min(startIdx + PAGE_SIZE, filteredReservations.length);
+  const paginatedReservations = filteredReservations.slice(startIdx, endIdx);
+  const goToPage = (p: number) =>
+    setPage(Math.min(Math.max(1, p), totalPages));
 
   const statusMutation = useMutation({
     mutationFn: ({
@@ -147,7 +222,7 @@ export function BookingsAdmin() {
     },
   });
 
-  const selected = reservations.find((r) => r.id === detailsId) ?? null;
+  const selected = allReservations.find((r) => r.id === detailsId) ?? null;
 
   return (
     <AdminLayout
@@ -159,14 +234,14 @@ export function BookingsAdmin() {
         <div className="flex flex-wrap items-center gap-1.5">
           {STATUS_TABS.map((tab) => {
             const active = status === tab.value;
-            const count =
-              tab.value === "ALL"
-                ? reservations.length
-                : reservations.filter((r) => r.status === tab.value).length;
+            const count = countForTab(tab.value, allReservations);
             return (
               <button
                 key={tab.value}
-                onClick={() => setStatus(tab.value)}
+                onClick={() => {
+                  setStatus(tab.value);
+                  setPage(1);
+                }}
                 className={cn(
                   "min-h-[36px] rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                   active
@@ -176,7 +251,7 @@ export function BookingsAdmin() {
               >
                 {tab.label}
                 {tab.value !== "ALL" && count > 0 && (
-                  <span className={cn("ml-1.5 text-xs", active ? "text-white/80" : "text-muted-foreground")}>
+                  <span className={cn("ml-1.5 text-xs", active ? "text-primary-foreground/80" : "text-muted-foreground")}>
                     {count}
                   </span>
                 )}
@@ -189,7 +264,10 @@ export function BookingsAdmin() {
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search by name or ref"
               className="h-9 pl-9"
             />
@@ -246,7 +324,7 @@ export function BookingsAdmin() {
                   </TableCell>
                 </TableRow>
               ))
-            ) : reservations.length === 0 ? (
+            ) : filteredReservations.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={8} className="py-12">
                   <EmptyState
@@ -257,7 +335,7 @@ export function BookingsAdmin() {
                 </TableCell>
               </TableRow>
             ) : (
-              reservations.map((r) => (
+              paginatedReservations.map((r) => (
                 <TableRow key={r.id} className="group">
                   <TableCell className="font-mono text-xs text-muted-foreground">
                     {r.referenceNo}
@@ -324,14 +402,14 @@ export function BookingsAdmin() {
           Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-32 w-full rounded-xl" />
           ))
-        ) : reservations.length === 0 ? (
+        ) : filteredReservations.length === 0 ? (
           <EmptyState
             icon={CalendarPlus}
             title="No reservations found"
             description="Try adjusting your filters, or create a new reservation."
           />
         ) : (
-          reservations.map((r) => (
+          paginatedReservations.map((r) => (
             <Card
               key={r.id}
               className="rounded-xl border border-border p-4 shadow-card"
@@ -378,6 +456,103 @@ export function BookingsAdmin() {
           ))
         )}
       </div>
+
+      {/* Pagination + summary (shared across desktop table and mobile cards) */}
+      {!isLoading && filteredReservations.length > 0 && (
+        <div className="mt-4 flex flex-col items-center gap-3 pb-2">
+          <p className="text-xs text-muted-foreground">
+            Showing {startIdx + 1}–{endIdx} of {filteredReservations.length}{" "}
+            bookings
+          </p>
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent className="flex-wrap">
+                <PaginationItem>
+                  <PaginationLink
+                    href="#"
+                    aria-label="Go to first page"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goToPage(1);
+                    }}
+                    className={cn(
+                      "cursor-pointer",
+                      safePage === 1 && "pointer-events-none opacity-50"
+                    )}
+                  >
+                    <ChevronsLeft className="size-4" />
+                  </PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goToPage(safePage - 1);
+                    }}
+                    className={cn(
+                      "cursor-pointer",
+                      safePage === 1 && "pointer-events-none opacity-50"
+                    )}
+                  />
+                </PaginationItem>
+                {getPageRange(safePage, totalPages).map((p, i) =>
+                  p === "ellipsis" ? (
+                    <PaginationItem key={`ellipsis-${i}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={p}>
+                      <PaginationLink
+                        href="#"
+                        isActive={p === safePage}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          goToPage(p);
+                        }}
+                        className="cursor-pointer"
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goToPage(safePage + 1);
+                    }}
+                    className={cn(
+                      "cursor-pointer",
+                      safePage === totalPages &&
+                        "pointer-events-none opacity-50"
+                    )}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink
+                    href="#"
+                    aria-label="Go to last page"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goToPage(totalPages);
+                    }}
+                    className={cn(
+                      "cursor-pointer",
+                      safePage === totalPages &&
+                        "pointer-events-none opacity-50"
+                    )}
+                  >
+                    <ChevronsRight className="size-4" />
+                  </PaginationLink>
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
+      )}
 
       {/* Details dialog */}
       {selected && (

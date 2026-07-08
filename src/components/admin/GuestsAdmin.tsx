@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
+  ChevronsLeft,
+  ChevronsRight,
   Mail,
   MapPin,
   Phone,
@@ -30,6 +32,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Table,
   TableBody,
   TableCell,
@@ -42,7 +53,7 @@ import { apiFetch } from "@/lib/api-client";
 import { cn, formatDate, formatDateShort, getInitials } from "@/lib/utils";
 import { useBookingStore } from "@/store/useBookingStore";
 import { useViewStore } from "@/store/useViewStore";
-import type { Guest, Reservation } from "@/types";
+import type { Guest } from "@/types";
 
 interface GuestWithReservations extends Guest {
   reservations?: Array<{
@@ -54,15 +65,101 @@ interface GuestWithReservations extends Guest {
   }>;
 }
 
+/** Number of guests rendered per page (client-side pagination). */
+const PAGE_SIZE = 10;
+
+type PageItem =
+  | { type: "page"; page: number }
+  | { type: "ellipsis"; key: string };
+
+/**
+ * Build the list of page items to render in the pagination bar.
+ * Always shows the first and last page, the current page ± 1, and
+ * ellipses where ranges are skipped. When there are 7 or fewer pages
+ * we just render every page number.
+ */
+function getPageRange(current: number, total: number): PageItem[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => ({
+      type: "page" as const,
+      page: i + 1,
+    }));
+  }
+
+  const items: PageItem[] = [{ type: "page", page: 1 }];
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+
+  if (left > 2) items.push({ type: "ellipsis", key: "start" });
+  for (let i = left; i <= right; i++) {
+    items.push({ type: "page", page: i });
+  }
+  if (right < total - 1) items.push({ type: "ellipsis", key: "end" });
+  items.push({ type: "page", page: total });
+
+  return items;
+}
+
+/** A keyboard-accessible pagination link backed by `PaginationLink`. */
+function PageNavButton({
+  onClick,
+  disabled,
+  isActive,
+  ariaLabel,
+  children,
+  className,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  isActive?: boolean;
+  ariaLabel: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (disabled) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
+  return (
+    <PaginationLink
+      isActive={isActive}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-label={ariaLabel}
+      aria-disabled={disabled || isActive || undefined}
+      onClick={disabled ? undefined : onClick}
+      onKeyDown={handleKeyDown}
+      className={cn(
+        "cursor-pointer select-none",
+        disabled && "pointer-events-none opacity-50",
+        className
+      )}
+    >
+      {children}
+    </PaginationLink>
+  );
+}
+
 export function GuestsAdmin() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
+
+  // Reset to the first page whenever the (debounced) search query changes.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- paginating client-side; a new search must start from page 1
+    setPage(1);
+  }, [debouncedSearch]);
 
   const queryParams = new URLSearchParams();
   if (debouncedSearch) queryParams.set("search", debouncedSearch);
@@ -78,6 +175,19 @@ export function GuestsAdmin() {
   const guests = data?.guests ?? [];
   const selected = guests.find((g) => g.id === selectedGuestId) ?? null;
 
+  // --- Client-side pagination ----------------------------------------------
+  const totalGuests = guests.length;
+  const totalPages = Math.max(1, Math.ceil(totalGuests / PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const endIdx = Math.min(startIdx + PAGE_SIZE, totalGuests);
+  const pagedGuests = guests.slice(startIdx, endIdx);
+  const pageRange = getPageRange(currentPage, totalPages);
+
+  const goToPage = (p: number) => setPage(Math.min(Math.max(1, p), totalPages));
+
+  const showPaginationFooter = !isLoading && totalGuests > 0;
+
   return (
     <AdminLayout title="Guests" subtitle="Search guests and view their stay history">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -91,7 +201,7 @@ export function GuestsAdmin() {
           />
         </div>
         <div className="text-xs text-muted-foreground">
-          {guests.length} {guests.length === 1 ? "guest" : "guests"}
+          {totalGuests} {totalGuests === 1 ? "guest" : "guests"}
         </div>
       </div>
 
@@ -127,7 +237,7 @@ export function GuestsAdmin() {
                   </TableCell>
                 </TableRow>
               ))
-            ) : guests.length === 0 ? (
+            ) : pagedGuests.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="py-12">
                   <EmptyState
@@ -138,7 +248,7 @@ export function GuestsAdmin() {
                 </TableCell>
               </TableRow>
             ) : (
-              guests.map((g) => {
+              pagedGuests.map((g) => {
                 const lastStay = g.reservations?.[0];
                 return (
                   <TableRow
@@ -192,19 +302,19 @@ export function GuestsAdmin() {
       </Card>
 
       {/* Mobile cards */}
-      <div className="space-y-3 md:hidden pb-6">
+      <div className="space-y-3 md:hidden pb-2">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-xl" />
           ))
-        ) : guests.length === 0 ? (
+        ) : pagedGuests.length === 0 ? (
           <EmptyState
             icon={Users}
             title="No guests found"
             description="Try a different search."
           />
         ) : (
-          guests.map((g) => (
+          pagedGuests.map((g) => (
             <Card
               key={g.id}
               className="cursor-pointer rounded-xl border border-border p-4 shadow-card"
@@ -249,6 +359,94 @@ export function GuestsAdmin() {
           ))
         )}
       </div>
+
+      {/* Pagination footer (shared by desktop table + mobile cards) */}
+      {showPaginationFooter && (
+        <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            Showing {startIdx + 1}–{endIdx} of {totalGuests} guests
+          </p>
+          {totalPages > 1 && (
+            <Pagination className="mx-0 w-full justify-center sm:w-auto sm:justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PageNavButton
+                    onClick={() => goToPage(1)}
+                    disabled={currentPage === 1}
+                    ariaLabel="Go to first page"
+                  >
+                    <ChevronsLeft className="size-4" />
+                    <span className="hidden sm:block">First</span>
+                  </PageNavButton>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationPrevious
+                    role="button"
+                    tabIndex={currentPage === 1 ? -1 : 0}
+                    aria-disabled={currentPage === 1 || undefined}
+                    aria-label="Go to previous page"
+                    onClick={
+                      currentPage === 1
+                        ? undefined
+                        : () => goToPage(currentPage - 1)
+                    }
+                    className={cn(
+                      "cursor-pointer select-none",
+                      currentPage === 1 && "pointer-events-none opacity-50"
+                    )}
+                  />
+                </PaginationItem>
+                {pageRange.map((item) =>
+                  item.type === "ellipsis" ? (
+                    <PaginationItem key={`ellipsis-${item.key}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={item.page}>
+                      <PageNavButton
+                        onClick={() => goToPage(item.page)}
+                        isActive={item.page === currentPage}
+                        disabled={item.page === currentPage}
+                        ariaLabel={`Go to page ${item.page}`}
+                      >
+                        {item.page}
+                      </PageNavButton>
+                    </PaginationItem>
+                  )
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    role="button"
+                    tabIndex={currentPage === totalPages ? -1 : 0}
+                    aria-disabled={currentPage === totalPages || undefined}
+                    aria-label="Go to next page"
+                    onClick={
+                      currentPage === totalPages
+                        ? undefined
+                        : () => goToPage(currentPage + 1)
+                    }
+                    className={cn(
+                      "cursor-pointer select-none",
+                      currentPage === totalPages &&
+                        "pointer-events-none opacity-50"
+                    )}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PageNavButton
+                    onClick={() => goToPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    ariaLabel="Go to last page"
+                  >
+                    <span className="hidden sm:block">Last</span>
+                    <ChevronsRight className="size-4" />
+                  </PageNavButton>
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
+      )}
 
       {/* Details dialog */}
       {selected && (

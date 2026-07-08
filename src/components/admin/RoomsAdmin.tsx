@@ -56,6 +56,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -71,6 +85,8 @@ const ROOM_STATUS_VALUES: RoomStatus[] = [
   "BLOCKED",
 ];
 
+const ROOMS_PAGE_SIZE = 6;
+
 export function RoomsAdmin() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
@@ -82,6 +98,18 @@ export function RoomsAdmin() {
   const [editing, setEditing] = useState<Room | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Room | null>(null);
+  const [page, setPage] = useState(1);
+
+  // Client-side pagination
+  const totalPages = Math.max(1, Math.ceil(rooms.length / ROOMS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const startIdx = (currentPage - 1) * ROOMS_PAGE_SIZE;
+  const endIdx = Math.min(startIdx + ROOMS_PAGE_SIZE, rooms.length);
+  const pagedRooms = rooms.slice(startIdx, endIdx);
+
+  const goToPage = (p: number) => {
+    setPage(Math.max(1, Math.min(p, totalPages)));
+  };
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: RoomStatus }) =>
@@ -157,20 +185,99 @@ export function RoomsAdmin() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 pb-6">
-          {rooms.map((room) => (
-            <RoomCard
-              key={room.id}
-              room={room}
-              onEdit={() => setEditing(room)}
-              onDelete={() => setDeleting(room)}
-              onStatusChange={(s) =>
-                statusMutation.mutate({ id: room.id, status: s })
-              }
-              pending={statusMutation.isPending}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 pb-6">
+            {pagedRooms.map((room) => (
+              <RoomCard
+                key={room.id}
+                room={room}
+                onEdit={() => setEditing(room)}
+                onDelete={() => setDeleting(room)}
+                onStatusChange={(s) =>
+                  statusMutation.mutate({ id: room.id, status: s })
+                }
+                pending={statusMutation.isPending}
+              />
+            ))}
+          </div>
+
+          {/* Pagination footer */}
+          {totalPages > 1 && (
+            <div className="flex flex-col items-center gap-3 border-t border-border pt-4 sm:flex-row sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                Showing {startIdx + 1}–{endIdx} of {rooms.length} rooms
+              </p>
+              <Pagination className="sm:justify-end">
+                <PaginationContent>
+                  <PaginationItem>
+                    <button
+                      type="button"
+                      onClick={() => goToPage(1)}
+                      disabled={currentPage === 1}
+                      className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                      aria-label="First page"
+                    >
+                      <ChevronsLeft className="size-4" />
+                    </button>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => goToPage(currentPage - 1)}
+                      aria-disabled={currentPage === 1}
+                      className={currentPage === 1 ? "pointer-events-none opacity-40" : ""}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const p = i + 1;
+                    // Show first, last, current, and neighbors; ellipsis for gaps
+                    if (
+                      p === 1 ||
+                      p === totalPages ||
+                      Math.abs(p - currentPage) <= 1
+                    ) {
+                      return (
+                        <PaginationItem key={p}>
+                          <PaginationLink
+                            isActive={p === currentPage}
+                            onClick={() => goToPage(p)}
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+                    if (p === currentPage - 2 || p === currentPage + 2) {
+                      return (
+                        <PaginationItem key={p} className="text-muted-foreground">
+                          <span className="px-1">…</span>
+                        </PaginationItem>
+                      );
+                    }
+                    return null;
+                  })}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => goToPage(currentPage + 1)}
+                      aria-disabled={currentPage === totalPages}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-40" : ""}
+                    />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <button
+                      type="button"
+                      onClick={() => goToPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                      aria-label="Last page"
+                    >
+                      <ChevronsRight className="size-4" />
+                    </button>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+        </>
       )}
 
       {/* Edit dialog */}
@@ -212,7 +319,7 @@ export function RoomsAdmin() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleting && deleteMutation.mutate(deleting.id)}
               disabled={deleteMutation.isPending}
             >
@@ -580,7 +687,7 @@ function RoomFormDialog({
               </Label>
               <div className="mt-2 space-y-2">
                 {imageUrls.length > 0 && (
-                  <ul className="space-y-2">
+                  <ul className="max-h-48 space-y-2 overflow-y-auto pr-1">
                     {imageUrls.map((img, idx) => (
                       <li
                         key={idx}
@@ -594,10 +701,10 @@ function RoomFormDialog({
                           />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-xs text-foreground">
+                          <div className="truncate text-xs text-foreground" title={img.url}>
                             {img.url}
                           </div>
-                          <div className="truncate text-xs text-muted-foreground">
+                          <div className="truncate text-xs text-muted-foreground" title={img.altText}>
                             {img.altText || "No alt text"}
                           </div>
                         </div>
@@ -605,7 +712,7 @@ function RoomFormDialog({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="size-7 hover:bg-red-50 hover:text-red-700"
+                          className="size-7 shrink-0 hover:bg-red-50 hover:text-red-700"
                           onClick={() => removeImage(idx)}
                           aria-label="Remove image"
                         >

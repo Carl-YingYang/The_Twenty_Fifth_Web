@@ -394,7 +394,7 @@ function NotificationsBell() {
         >
           <Bell className="size-4" />
           {unread.length > 0 && (
-            <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-coral text-[9px] font-bold text-white">
+            <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-coral text-[9px] font-bold text-coral-foreground">
               {unread.length > 9 ? "9+" : unread.length}
             </span>
           )}
