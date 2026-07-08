@@ -134,7 +134,7 @@ export function DashboardAdmin() {
         <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => navigate("admin-bookings")}
-            className="bg-primary text-white hover:bg-primary/90"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="size-4" />
             New reservation

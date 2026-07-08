@@ -181,7 +181,7 @@ export function SectionDivider({ className }: { className?: string }) {
   return (
     <div className={cn("flex items-center justify-center py-1", className)}>
       <div className="h-px w-10 bg-border" />
-      <span className="mx-3 text-xs text-coral/40 select-none">✦</span>
+      <span className="mx-3 text-xs text-coral select-none" aria-hidden="true">✦</span>
       <div className="h-px w-10 bg-border" />
     </div>
   );

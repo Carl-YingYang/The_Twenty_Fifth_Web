@@ -170,7 +170,7 @@ export function BookingsAdmin() {
                 className={cn(
                   "min-h-[36px] rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                   active
-                    ? "border-primary bg-primary text-white"
+                    ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground"
                 )}
               >
@@ -196,7 +196,7 @@ export function BookingsAdmin() {
           </div>
           <Button
             onClick={() => setCreating(true)}
-            className="h-9 shrink-0 bg-primary text-white hover:bg-primary/90"
+            className="h-9 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="size-4" />
             <span className="hidden sm:inline">New Reservation</span>
@@ -454,7 +454,7 @@ function RowActions({
       {s === "CONFIRMED" && (
         <Button
           size="sm"
-          className="h-8 bg-primary text-white hover:bg-primary/90"
+          className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
           disabled={pending}
           onClick={() => onMutate("CHECKED_IN")}
         >
@@ -465,7 +465,7 @@ function RowActions({
       {s === "CHECKED_IN" && (
         <Button
           size="sm"
-          className="h-8 bg-primary text-white hover:bg-primary/90"
+          className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
           disabled={pending}
           onClick={() => onMutate("COMPLETED")}
         >
@@ -669,7 +669,7 @@ function ReservationDetailsDialog({
           )}
           {s === "CONFIRMED" && (
             <Button
-              className="ml-auto w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
+              className="ml-auto w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
               disabled={pending}
               onClick={() => onMutate("CHECKED_IN")}
             >
@@ -679,7 +679,7 @@ function ReservationDetailsDialog({
           )}
           {s === "CHECKED_IN" && (
             <Button
-              className="ml-auto w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
+              className="ml-auto w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
               disabled={pending}
               onClick={() => onMutate("COMPLETED")}
             >
@@ -987,7 +987,7 @@ function CreateReservationDialog({
             </Button>
             <Button
               type="submit"
-              className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
               disabled={mutation.isPending}
             >
               {mutation.isPending ? "Creating…" : "Create reservation"}

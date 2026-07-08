@@ -173,7 +173,7 @@ export function BookingFlow() {
                       className={cn(
                         "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors",
                         active
-                          ? "bg-primary text-white"
+                          ? "bg-primary text-primary-foreground"
                           : done
                             ? "bg-primary/15 text-primary"
                             : "bg-muted text-muted-foreground"

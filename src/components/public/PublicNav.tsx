@@ -108,7 +108,7 @@ export function PublicNav() {
             <Button
               onClick={() => go("book")}
               size="sm"
-              className="hidden rounded-full bg-primary px-5 text-white hover:bg-primary/90 md:inline-flex"
+              className="hidden rounded-full bg-primary px-5 text-primary-foreground hover:bg-primary/90 md:inline-flex"
             >
               Book Your Stay
             </Button>
@@ -178,7 +178,7 @@ export function PublicNav() {
             <Button
               onClick={() => go("book")}
               size="lg"
-              className="mt-3 min-h-[48px] rounded-full bg-primary text-white hover:bg-primary/90"
+              className="mt-3 min-h-[48px] rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Book Your Stay
             </Button>

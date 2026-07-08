@@ -226,7 +226,7 @@ export function AdminLogin() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="mt-2 h-11 w-full bg-primary text-white hover:bg-primary/90"
+                className="mt-2 h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {submitting ? "Signing in…" : "Sign in"}
               </Button>

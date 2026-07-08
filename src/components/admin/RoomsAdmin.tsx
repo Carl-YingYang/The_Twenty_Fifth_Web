@@ -128,7 +128,7 @@ export function RoomsAdmin() {
         </div>
         <Button
           onClick={() => setCreating(true)}
-          className="shrink-0 bg-primary text-white hover:bg-primary/90"
+          className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="size-4" />
           <span className="hidden sm:inline">Add Room</span>
@@ -149,7 +149,7 @@ export function RoomsAdmin() {
           action={
             <Button
               onClick={() => setCreating(true)}
-              className="bg-primary text-white hover:bg-primary/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="size-4" />
               Add Room
@@ -658,7 +658,7 @@ function RoomFormDialog({
             </Button>
             <Button
               type="submit"
-              className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
               disabled={mutation.isPending}
             >
               {mutation.isPending

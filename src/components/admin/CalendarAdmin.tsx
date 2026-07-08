@@ -257,7 +257,7 @@ export function CalendarAdmin() {
                 className={cn(
                   "min-h-[32px] rounded-full px-3 text-xs font-medium transition-colors",
                   active
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >

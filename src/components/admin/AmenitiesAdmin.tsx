@@ -342,7 +342,7 @@ function AddAmenityDialog({
             </Button>
             <Button
               type="submit"
-              className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
               disabled={mutation.isPending || !name}
             >
               {mutation.isPending ? "Adding…" : "Add amenity"}

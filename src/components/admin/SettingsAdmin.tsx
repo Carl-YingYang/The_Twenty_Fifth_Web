@@ -258,7 +258,7 @@ function GeneralTab({
 
       <div className="mt-6 flex justify-end">
         <Button
-          className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
+          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
           disabled={saving}
           onClick={() => onSave(form)}
         >
@@ -327,7 +327,7 @@ function OperationsTab({
 
       <div className="mt-6 flex justify-end">
         <Button
-          className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
+          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
           disabled={saving}
           onClick={() => onSave(form)}
         >
@@ -399,7 +399,7 @@ function FinanceTab({
 
       <div className="mt-6 flex justify-end">
         <Button
-          className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
+          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
           disabled={saving}
           onClick={() => onSave(form)}
         >

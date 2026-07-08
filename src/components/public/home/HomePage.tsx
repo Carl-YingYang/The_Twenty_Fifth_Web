@@ -142,7 +142,7 @@ export function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/40" />
 
-        <div className="container-luxury relative z-10 flex flex-col items-start pt-20 pb-40 text-white sm:pb-40 lg:pb-32">
+        <div className="container-luxury relative z-10 flex flex-col items-start pt-20 pb-16 text-white sm:pb-20 lg:pb-28">
           <FadeUpSection>
             <p className="text-[0.65rem] font-medium uppercase tracking-[0.28em] text-white/80 sm:text-xs sm:tracking-[0.32em]">
               Botolan · Zambales
@@ -155,86 +155,85 @@ export function HomePage() {
             </p>
           </FadeUpSection>
         </div>
-
-        {/* Floating Check Availability card */}
-        <div className="absolute inset-x-0 bottom-0 z-20 translate-y-1/2 px-4">
-          <div className="container-luxury">
-            <FadeUpSection delay={0.15}>
-              <div className="rounded-xl border border-border bg-card p-4 shadow-card-hover sm:p-6">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="hero-checkin"
-                      className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-                    >
-                      Check-in
-                    </Label>
-                    <div className="relative">
-                      <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
-                      <Input
-                        id="hero-checkin"
-                        type="date"
-                        value={checkIn}
-                        min={defaultDate(0)}
-                        onChange={(e) => setCheckIn(e.target.value)}
-                        className="rounded-lg border-border bg-muted/30 pl-9"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="hero-checkout"
-                      className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-                    >
-                      Check-out
-                    </Label>
-                    <div className="relative">
-                      <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
-                      <Input
-                        id="hero-checkout"
-                        type="date"
-                        value={checkOut}
-                        min={checkIn || defaultDate(1)}
-                        onChange={(e) => setCheckOut(e.target.value)}
-                        className="rounded-lg border-border bg-muted/30 pl-9"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                      Guests
-                    </Label>
-                    <Select value={guests} onValueChange={setGuests}>
-                      <SelectTrigger className="w-full rounded-lg md:w-[140px]">
-                        <Users className="h-4 w-4 text-primary/60" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 25 }).map((_, i) => (
-                          <SelectItem key={i} value={String(i + 1)}>
-                            {i + 1} {i === 0 ? "Guest" : "Guests"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button
-                    onClick={onCheckAvailability}
-                    size="lg"
-                    className="col-span-1 w-full rounded-full bg-primary text-white hover:bg-primary/90 sm:col-span-2 md:col-span-1 md:w-auto"
-                  >
-                    Check Availability
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </FadeUpSection>
-          </div>
-        </div>
       </section>
 
-      {/* Spacer to accommodate floating search */}
-      <div className="h-20 sm:h-32 lg:h-40" />
+      {/* Floating Check Availability card — sits in its own section so it can
+          overlap the hero via negative margin without being clipped by the
+          hero's overflow-hidden, and without pushing into "Our Story". */}
+      <section className="relative z-20 -mt-16 px-4 sm:-mt-20 lg:-mt-24">
+        <div className="container-luxury">
+          <FadeUpSection delay={0.15}>
+            <div className="rounded-xl border border-border bg-card p-4 shadow-card-hover sm:p-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="hero-checkin"
+                    className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    Check-in
+                  </Label>
+                  <div className="relative">
+                    <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+                    <Input
+                      id="hero-checkin"
+                      type="date"
+                      value={checkIn}
+                      min={defaultDate(0)}
+                      onChange={(e) => setCheckIn(e.target.value)}
+                      className="rounded-lg border-border bg-muted/30 pl-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="hero-checkout"
+                    className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    Check-out
+                  </Label>
+                  <div className="relative">
+                    <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+                    <Input
+                      id="hero-checkout"
+                      type="date"
+                      value={checkOut}
+                      min={checkIn || defaultDate(1)}
+                      onChange={(e) => setCheckOut(e.target.value)}
+                      className="rounded-lg border-border bg-muted/30 pl-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Guests
+                  </Label>
+                  <Select value={guests} onValueChange={setGuests}>
+                    <SelectTrigger className="w-full rounded-lg md:w-[140px]">
+                      <Users className="h-4 w-4 text-primary" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 25 }).map((_, i) => (
+                        <SelectItem key={i} value={String(i + 1)}>
+                          {i + 1} {i === 0 ? "Guest" : "Guests"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={onCheckAvailability}
+                  size="lg"
+                  className="col-span-1 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 sm:col-span-2 md:col-span-1 md:w-auto"
+                >
+                  Check Availability
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </FadeUpSection>
+        </div>
+      </section>
 
       {/* ============================================================
           STORY / INTRO
@@ -468,13 +467,13 @@ export function HomePage() {
       {/* ============================================================
           CTA BAND
       ============================================================ */}
-      <section className="bg-coral py-16 text-white sm:py-20">
+      <section className="bg-coral py-16 text-coral-foreground sm:py-20">
         <div className="container-luxury flex flex-col items-center gap-6 text-center lg:flex-row lg:justify-between lg:text-left">
           <FadeUpSection>
             <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
               Ready for your beach escape?
             </h2>
-            <p className="mt-3 max-w-xl text-white/85">
+            <p className="mt-3 max-w-xl text-coral-foreground/85">
               Pick your dates, choose your stay, and we&rsquo;ll handle the
               rest. No payment needed now — we&rsquo;ll confirm by phone or
               Messenger.
@@ -493,7 +492,7 @@ export function HomePage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full rounded-full border-white/40 bg-transparent text-white hover:bg-white/10 sm:w-auto"
+                className="w-full rounded-full border-coral-foreground/30 bg-transparent text-coral-foreground hover:bg-coral-foreground/10 sm:w-auto"
               >
                 <Phone className="h-4 w-4" />
                 {RESORT_INFO.phone}

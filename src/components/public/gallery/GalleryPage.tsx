@@ -107,7 +107,7 @@ export function GalleryPage() {
                 className={cn(
                   "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                   activeCategory === cat
-                    ? "border-primary bg-primary text-white"
+                    ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card text-foreground/70 hover:border-primary/40 hover:text-foreground"
                 )}
               >

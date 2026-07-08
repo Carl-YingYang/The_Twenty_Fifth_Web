@@ -552,3 +552,55 @@ Stage Summary:
   3. Admin rooms cards: 3-line descriptions (was 2), 40px buttons (was 36px), responsive text sizes
   4. Dark mode: fixed border/input contrast, added missing chart colors, brand panel uses fixed deep ocean (#0A3D4A) instead of theme primary
 - Lint: 0 errors. Dev server: HTTP 200.
+
+---
+Task ID: 5-a
+Agent: full-stack-developer (admin color fix)
+Task: Fix transparent button text in admin components (bg-primary text-white → text-primary-foreground)
+
+Work Log:
+- src/components/admin/AmenitiesAdmin.tsx (1 occurrence)
+- src/components/admin/RoomsAdmin.tsx (3 occurrences)
+- src/components/admin/DashboardAdmin.tsx (1 occurrence)
+- src/components/admin/CalendarAdmin.tsx (1 occurrence)
+- src/components/admin/ReportsAdmin.tsx (1 occurrence)
+- src/components/admin/BookingsAdmin.tsx (7 occurrences)
+- src/components/admin/SettingsAdmin.tsx (3 occurrences)
+- src/components/admin/AdminLogin.tsx (1 occurrence)
+- src/components/admin/GalleryAdmin.tsx (4 occurrences)
+- Total: 22 replacements across 9 admin files.
+- No `bg-coral text-white` patterns found in admin files (no coral changes needed).
+- Lint verified: `bun run lint` → 0 errors, 2 pre-existing RHF warnings (acceptable).
+
+Stage Summary:
+- Resolved the dark-mode "transparent button text" bug in all admin components. Buttons using `bg-primary` now use `text-primary-foreground` (white in light mode, dark ink #0A1F25 in dark mode) for correct contrast in both themes. `hover:bg-primary/90` and tint classes (`bg-primary/10`, `/15`, `/30`, `/40`) were intentionally left untouched. Work record saved to /agent-ctx/5-a-admin-color-fix.md. Public components were NOT touched per task scope and may need a separate pass if the same pattern exists there.
+
+---
+Task ID: 5
+Agent: lead (Z.ai Code) — Fix check-in/out overlap, loading spinner, transparent text color
+
+Task: User reported 3 bugs: (1) Check-in/out booking card being covered by "Our Story" section, (2) loading UI components not running, (3) text color theme becoming transparent in light and dark mode.
+
+Work Log:
+- Analyzed user-uploaded screenshot + live site via agent-browser + VLM to diagnose root causes.
+- **Bug 1 (Booking card overlap)**: Root cause was the hero section's `overflow-hidden` clipping the absolutely-positioned booking card that extended below the hero via `translate-y-1/2`. The card's z-20 was scoped within the hero's stacking context, so the next sibling "Our Story" section painted on top of the card's overflowing portion. Fix: Restructured HomePage hero — moved the booking card OUT of the hero section into its own `<section>` sibling with `-mt-16 sm:-mt-20 lg:-mt-24` negative margin to overlap the hero from below. Removed the old `absolute bottom-0 translate-y-1/2` positioning and the `h-20 spacer` div. The card now sits in normal document flow with a negative margin pulling it up over the hero, and the "Our Story" section follows naturally with no overlap. Also reduced hero bottom padding from `pb-40` to `pb-16 sm:pb-20 lg:pb-28` since the card no longer needs huge bottom space inside the hero.
+- **Bug 2 (Loading spinner not running)**: Root cause was `animate-pulse` (opacity pulse) instead of `animate-spin` (rotation) on the loading spinner in `src/app/page.tsx` line 67. The spinner was a `border-2 border-primary/20 border-t-primary` ring that needs to ROTATE, not pulse. Fix: Changed `animate-pulse` → `animate-spin`. Verified all other Loader2 components already correctly use `animate-spin`.
+- **Bug 3 (Transparent text color)**: Root cause was `bg-primary text-white` on buttons. In dark mode, `--primary: #4DBFD4` (light cyan) with `text-white` (#FFFFFF) = ~1.7:1 contrast ratio (nearly invisible). Same issue with `bg-coral text-white` (coral #E8987E + white = ~2:1). Fix: Changed `text-white` → `text-primary-foreground` on all `bg-primary` buttons/elements, and `text-white` → `text-coral-foreground` on `bg-coral` elements. The `--primary-foreground` variable is `#FFFFFF` in light mode and `#0A1F25` (dark ink) in dark mode — automatically providing correct contrast in both themes. Same for `--coral-foreground` (`#FFFFFF` light / `#1B2A2E` dark). Also fixed: SectionDivider `text-coral/40` (40% opacity) → `text-coral` (solid) for better visibility.
+- Dispatched subagent (Task 5-a) to fix all admin components (22 replacements across 9 files). Fixed public components directly (BookingFlow, HomePage, PublicNav, RoomsPage, GalleryPage, shared.tsx).
+- CTA section in HomePage: `bg-coral text-white` → `bg-coral text-coral-foreground`, `text-white/85` → `text-coral-foreground/85`, outline button `border-white/40 text-white` → `border-coral-foreground/30 text-coral-foreground`.
+- Verified computed styles via agent-browser: "Check Availability" button in dark mode now has bg `rgb(77, 191, 212)` (#4DBFD4 light cyan) + text `rgb(10, 31, 37)` (#0A1F25 dark ink) = high contrast. Previously was white-on-light-cyan (invisible).
+- Ran `bun run lint`: 0 errors, 2 pre-existing RHF warnings (acceptable).
+
+Verification (agent-browser + VLM on 4 viewports):
+- Mobile 375px DARK mode: booking card fully visible, no overlap with Our Story, all button text readable, CTA section text readable. No transparent text anywhere.
+- Mobile 375px LIGHT mode: same — all texts readable, proper spacing, no overlap.
+- Desktop 1440px LIGHT mode: hero booking card overlaps hero properly (all 4 fields on one row), Our Story section below with proper spacing, no overlap.
+- Booking flow page: step indicator, date inputs, guest selectors, Continue button all readable and properly sized for mobile.
+
+Stage Summary:
+- Files changed (public, by lead): src/app/page.tsx, src/components/public/home/HomePage.tsx, src/components/public/booking/BookingFlow.tsx, src/components/public/PublicNav.tsx, src/components/public/rooms/RoomsPage.tsx, src/components/public/gallery/GalleryPage.tsx, src/components/public/shared.tsx
+- Files changed (admin, by subagent Task 5-a): AmenitiesAdmin, RoomsAdmin, DashboardAdmin, CalendarAdmin, ReportsAdmin, BookingsAdmin, SettingsAdmin, AdminLogin, GalleryAdmin (22 replacements)
+- All 3 user-reported bugs FIXED and browser-verified on mobile + desktop, light + dark mode.
+- Lint: 0 errors. Dev server: HTTP 200. No runtime errors.
+- Key architectural change: Booking card moved from absolute positioning inside hero (clipped by overflow-hidden) to a sibling section with negative margin-top (robust, no clipping, no overlap with following sections).
+- Key theme fix: All `bg-primary`/`bg-coral` buttons now use `text-primary-foreground`/`text-coral-foreground` instead of hardcoded `text-white`, ensuring automatic correct contrast in both light and dark mode.

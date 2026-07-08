@@ -93,7 +93,7 @@ export function GalleryAdmin() {
               className={cn(
                 "min-h-[36px] rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                 active
-                  ? "border-primary bg-primary text-white"
+                  ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground"
               )}
             >
@@ -105,7 +105,7 @@ export function GalleryAdmin() {
       <div className="mb-5 flex justify-end">
         <Button
           onClick={() => setAdding(true)}
-          className="bg-primary text-white hover:bg-primary/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="size-4" />
           <span className="hidden sm:inline">Add Image</span>
@@ -126,7 +126,7 @@ export function GalleryAdmin() {
           action={
             <Button
               onClick={() => setAdding(true)}
-              className="bg-primary text-white hover:bg-primary/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="size-4" />
               Add Image
@@ -368,7 +368,7 @@ function AddImageDialog({
             </Button>
             <Button
               type="submit"
-              className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
               disabled={mutation.isPending || !title || !url}
             >
               {mutation.isPending ? "Adding…" : "Add photo"}

@@ -189,7 +189,7 @@ export function ReportsAdmin() {
                 className={cn(
                   "min-h-[36px] rounded-full px-3.5 text-xs font-medium transition-colors",
                   active
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >

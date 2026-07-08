@@ -64,7 +64,7 @@ export default function Home() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-6">
-          <div className="h-12 w-12 animate-pulse rounded-full border-2 border-primary/20 border-t-primary" />
+          <div className="h-12 w-12 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
           <span className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
             The Twenty-Fifth
           </span>
