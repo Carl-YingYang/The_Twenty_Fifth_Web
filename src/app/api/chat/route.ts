@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { buildConciergeSystemPrompt } from "@/lib/chatbot-knowledge";
+import { completeWithZai } from "@/lib/zai-completion";
 
 // ============================================================
 // /api/chat — Concierge chatbot endpoint
@@ -277,43 +278,5 @@ function streamGroq(upstream: Response): Response {
   });
 }
 
-// Fallback completion via z-ai-web-dev-sdk.
-// The skill docs specify passing the system prompt as an 'assistant'
-// message, so we map the leading system message accordingly.
-async function completeWithZai(messages: ChatMessage[]): Promise<string> {
-  // Lazy import so the SDK is only loaded when actually needed.
-  const ZAIModule = await import("z-ai-web-dev-sdk");
-  const ZAI = (ZAIModule as { default?: unknown }).default ?? ZAIModule;
-  const create = (ZAI as { create: () => Promise<ZaiClient> }).create;
-  const zai = await create();
-
-  const mapped = messages.map((m, i) =>
-    i === 0 && m.role === "system"
-      ? { role: "assistant" as const, content: m.content }
-      : { role: m.role, content: m.content }
-  );
-
-  const completion = await (
-    zai as ZaiClient
-  ).chat.completions.create({
-    messages: mapped,
-    thinking: { type: "disabled" },
-  });
-
-  return completion?.choices?.[0]?.message?.content ?? "";
-}
-
-// Minimal structural type for the z-ai client (avoids pulling types
-// that may not ship with the package).
-interface ZaiClient {
-  chat: {
-    completions: {
-      create: (args: {
-        messages: { role: string; content: string }[];
-        thinking?: { type: string };
-      }) => Promise<{
-        choices?: { message?: { content?: string } }[];
-      }>;
-    };
-  };
-}
+// Fallback completion is now in @/lib/zai-completion (shared with admin chat),
+// with retry logic for transient "sandbox is inactive" errors.

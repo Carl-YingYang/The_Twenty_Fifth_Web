@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { buildAdminCopilotSystemPrompt } from "@/lib/admin-copilot-knowledge";
+import { completeWithZai } from "@/lib/zai-completion";
 
 // ============================================================
 // /api/admin/chat — Admin Copilot ("Aria") chat endpoint
@@ -244,35 +245,5 @@ function streamGroq(upstream: Response): Response {
   });
 }
 
-interface ZaiClient {
-  chat: {
-    completions: {
-      create: (args: {
-        messages: { role: string; content: string }[];
-        thinking?: { type: string };
-      }) => Promise<{
-        choices?: { message?: { content?: string } }[];
-      }>;
-    };
-  };
-}
-
-async function completeWithZai(messages: ChatMessage[]): Promise<string> {
-  const ZAIModule = await import("z-ai-web-dev-sdk");
-  const ZAI = (ZAIModule as { default?: unknown }).default ?? ZAIModule;
-  const create = (ZAI as { create: () => Promise<ZaiClient> }).create;
-  const zai = await create();
-
-  const mapped = messages.map((m, i) =>
-    i === 0 && m.role === "system"
-      ? { role: "assistant" as const, content: m.content }
-      : { role: m.role, content: m.content }
-  );
-
-  const completion = await (zai as ZaiClient).chat.completions.create({
-    messages: mapped,
-    thinking: { type: "disabled" },
-  });
-
-  return completion?.choices?.[0]?.message?.content ?? "";
-}
+// Fallback completion is now in @/lib/zai-completion (shared with public chat),
+// with retry logic for transient "sandbox is inactive" errors.
