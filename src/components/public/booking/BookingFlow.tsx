@@ -122,7 +122,14 @@ export function BookingFlow() {
         err instanceof ApiError
           ? err.message
           : "Something went wrong. Please try again.";
-      toast.error(msg);
+      // If the room was booked by someone else between step 1 and submit,
+      // send the user back to step 1 so they can pick fresh dates/room.
+      if (msg.toLowerCase().includes("not available")) {
+        toast.error("This stay was just booked by another guest. Please pick different dates.");
+        setStep(1);
+      } else {
+        toast.error(msg);
+      }
     },
   });
 
@@ -298,6 +305,49 @@ function Step1Dates({
   const checkIn = booking.checkIn || defaultDate(1);
   const checkOut = booking.checkOut || defaultDate(3);
   const nights = nightsBetween(checkIn, checkOut);
+
+  // ============ Availability check ============
+  // Query the availability endpoint whenever the user has valid dates so
+  // we can grey out rooms that are already booked for those dates — instead
+  // of letting them pick an unavailable room and fail at the final step.
+  const datesValid =
+    !!checkIn && !!checkOut && new Date(checkOut) > new Date(checkIn) && new Date(checkIn) >= new Date(defaultDate(0));
+
+  interface AvailabilityResponse {
+    available: Room[];
+    unavailable: Room[];
+  }
+  const { data: availData, isLoading: availLoading } = useQuery({
+    queryKey: ["availability", checkIn, checkOut, booking.adults, booking.children],
+    queryFn: () =>
+      apiFetch<AvailabilityResponse>(
+        `/api/rooms/availability?checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(
+          checkOut
+        )}&adults=${booking.adults}&children=${booking.children}`
+      ),
+    enabled: datesValid,
+    staleTime: 30 * 1000,
+  });
+
+  // Build a set of available room IDs for quick lookup.
+  const availableIds = React.useMemo(
+    () => new Set((availData?.available ?? []).map((r) => r.id)),
+    [availData]
+  );
+  const hasAvailability = availData !== undefined;
+
+  // If the user already selected a room but it became unavailable (dates
+  // changed, or availability just loaded), clear the selection with a toast
+  // so they can't proceed with an unbookable room.
+  React.useEffect(() => {
+    if (hasAvailability && booking.selectedRoomId && !availableIds.has(booking.selectedRoomId)) {
+      const room = rooms.find((r) => r.id === booking.selectedRoomId);
+      if (room) {
+        toast.error(`${room.name} isn't available for those dates. Please pick another stay.`);
+        selectRoom("");
+      }
+    }
+  }, [hasAvailability, availableIds, booking.selectedRoomId, rooms, selectRoom]);
 
   const onContinueClick = () => {
     // Validate dates — prevent accidental invalid submissions
@@ -488,27 +538,60 @@ function Step1Dates({
         </FadeUpSection>
       ) : (
         <FadeUpSection delay={0.1} className="mt-8">
-          <h2 className="font-display text-2xl font-semibold tracking-tight">
-            Choose your stay
-          </h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-display text-2xl font-semibold tracking-tight">
+              Choose your stay
+            </h2>
+            {/* Availability summary — shown once the availability query resolves */}
+            {hasAvailability && (
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                {availLoading
+                  ? "Checking availability…"
+                  : availableIds.size === rooms.length
+                    ? "All stays available"
+                    : `${availableIds.size} of ${rooms.length} available`}
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Pick the whole villa for a group celebration, or a single bedroom
-            for a quieter escape.
+            for a quieter escape. Stays already booked for your dates are marked{" "}
+            <span className="font-medium text-coral">Booked</span>.
           </p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {roomsLoading
+            {roomsLoading || (availLoading && !hasAvailability)
               ? Array.from({ length: 5 }).map((_, i) => (
                   <RoomCardSkeleton key={i} />
                 ))
-              : rooms.map((room) => (
-                  <RoomCard
-                    key={room.id}
-                    room={room}
-                    selected={room.id === booking.selectedRoomId}
-                    onSelect={(r) => selectRoom(r.id)}
-                  />
-                ))}
+              : rooms.map((room) => {
+                  const isAvailable = !hasAvailability || availableIds.has(room.id);
+                  return (
+                    <RoomCard
+                      key={room.id}
+                      room={room}
+                      selected={room.id === booking.selectedRoomId}
+                      booked={!isAvailable}
+                      bookedReason={
+                        !isAvailable
+                          ? "Already reserved for these dates"
+                          : undefined
+                      }
+                      onSelect={(r) => selectRoom(r.id)}
+                    />
+                  );
+                })}
           </div>
+          {hasAvailability && availableIds.size === 0 && (
+            <div className="mt-6 rounded-lg border border-coral/30 bg-coral/5 p-5 text-center">
+              <p className="font-display text-lg font-semibold text-foreground">
+                Nothing available for those dates
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Try different check-in / check-out dates above — the villa and
+                rooms get booked up quickly in peak season.
+              </p>
+            </div>
+          )}
         </FadeUpSection>
       )}
 

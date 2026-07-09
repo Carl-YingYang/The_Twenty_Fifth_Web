@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Users, ArrowRight, BedDouble } from "lucide-react";
+import { Users, ArrowRight, BedDouble, Ban } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { SmartImage } from "./shared";
@@ -13,6 +13,11 @@ interface RoomCardProps {
   onDetails?: (room: Room) => void;
   onBook?: (room: Room) => void;
   selected?: boolean;
+  /** When true (and onSelect is provided) the card is shown as unavailable
+   *  for the currently-selected dates and clicks are blocked. */
+  booked?: boolean;
+  /** Optional reason line shown under the "Booked" badge (e.g. "3 nights unavailable"). */
+  bookedReason?: string;
   className?: string;
   compact?: boolean;
 }
@@ -23,14 +28,18 @@ export function RoomCard({
   onDetails,
   onBook,
   selected = false,
+  booked = false,
+  bookedReason,
   className,
   compact = false,
 }: RoomCardProps) {
   const primaryImage = room.images?.find((i) => i.isPrimary) ?? room.images?.[0];
   const imageUrl = primaryImage?.url;
   const typeLabel = room.type?.name ?? "The Villa";
+  const disabled = booked && !!onSelect; // only block selection, not details/book flows
 
   const handleClick = () => {
+    if (disabled) return;
     if (onSelect) {
       onSelect(room);
     } else if (onBook) {
@@ -42,9 +51,14 @@ export function RoomCard({
 
   return (
     <article
+      data-disabled={disabled || undefined}
+      aria-label={disabled ? `${room.name} — booked for selected dates` : undefined}
       className={cn(
-        "group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-card-hover",
-        selected && "border-primary ring-2 ring-primary/20",
+        "group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card transition-all duration-300",
+        // Interactive affordance only when selectable
+        !disabled && "cursor-pointer hover:-translate-y-1 hover:border-primary hover:shadow-card-hover",
+        selected && !disabled && "border-primary ring-2 ring-primary/20",
+        disabled && "cursor-not-allowed opacity-70 grayscale",
         className
       )}
       onClick={handleClick}
@@ -71,7 +85,15 @@ export function RoomCard({
           Sleeps {room.capacity}
         </div>
 
-        {selected && (
+        {/* Booked badge (only in selection context) */}
+        {disabled && (
+          <div className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-coral px-2.5 py-1 text-xs font-semibold text-coral-foreground shadow-card">
+            <Ban className="h-3 w-3" />
+            Booked
+          </div>
+        )}
+
+        {selected && !disabled && (
           <div className="absolute inset-0 flex items-center justify-center bg-primary/30 backdrop-blur-[1px]">
             <span className="rounded-md bg-white px-4 py-1.5 text-sm font-medium text-primary shadow-card">
               Selected
@@ -91,6 +113,9 @@ export function RoomCard({
             {room.description}
           </p>
         )}
+        {disabled && bookedReason && (
+          <p className="mt-2 text-xs font-medium text-coral">{bookedReason}</p>
+        )}
 
         {/* Footer */}
         <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-4">
@@ -105,7 +130,11 @@ export function RoomCard({
               </span>
             </div>
           </div>
-          {onDetails ? (
+          {disabled ? (
+            <span className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-muted-foreground">
+              Unavailable
+            </span>
+          ) : onDetails ? (
             <button
               type="button"
               onClick={(e) => {
