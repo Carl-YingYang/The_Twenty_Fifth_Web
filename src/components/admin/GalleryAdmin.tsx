@@ -91,7 +91,7 @@ export function GalleryAdmin() {
               key={cat}
               onClick={() => setActiveCategory(cat)}
               className={cn(
-                "min-h-[36px] rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                "min-h-[36px] rounded-md border px-3.5 py-1.5 text-sm font-medium transition-colors",
                 active
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground"
@@ -115,7 +115,7 @@ export function GalleryAdmin() {
       {isLoading ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-square w-full rounded-xl" />
+            <Skeleton key={i} className="aspect-square w-full rounded-lg" />
           ))}
         </div>
       ) : gallery.length === 0 ? (
@@ -138,7 +138,7 @@ export function GalleryAdmin() {
           {gallery.map((item) => (
             <Card
               key={item.id}
-              className="group relative aspect-square overflow-hidden rounded-xl border border-border shadow-card"
+              className="group relative aspect-square overflow-hidden rounded-lg border border-border shadow-card"
             >
               <img
                 src={item.url}

@@ -203,7 +203,7 @@ function SidebarBody({
     <div className="flex h-full w-full flex-col bg-sidebar text-sidebar-foreground">
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-6">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-white/10">
+        <div className="flex size-10 items-center justify-center rounded-lg bg-white/10">
           <Waves className="size-5 text-coral" />
         </div>
         <div className="leading-tight">
@@ -232,7 +232,7 @@ function SidebarBody({
               className={cn(
                 "group relative flex w-full min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 active
-                  ? "bg-sidebar-accent text-white"
+                  ? "bg-white/10 font-semibold text-white shadow-sm ring-1 ring-white/10"
                   : "text-sidebar-foreground/70 hover:bg-white/5 hover:text-white"
               )}
             >

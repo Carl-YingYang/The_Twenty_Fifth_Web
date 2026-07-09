@@ -88,7 +88,7 @@ export function FindReservation() {
         <div className="container-luxury">
           <div className="mx-auto max-w-2xl">
             <FadeUpSection>
-              <Card className="rounded-xl border border-border bg-card p-6 shadow-card sm:p-8">
+              <Card className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
                 <form onSubmit={onSearch} className="space-y-4">
                   <div className="space-y-1.5">
                     <Label
@@ -135,7 +135,7 @@ export function FindReservation() {
                     type="submit"
                     size="lg"
                     disabled={lookupQuery.isFetching}
-                    className="w-full rounded-full"
+                    className="w-full rounded-md"
                   >
                     {lookupQuery.isFetching ? (
                       <>
@@ -180,7 +180,7 @@ export function FindReservation() {
             {/* Reservation result */}
             {reservation && statusConfig && (
               <FadeUpSection delay={0.05} className="mt-8">
-                <Card className="overflow-hidden rounded-xl border border-border shadow-card">
+                <Card className="overflow-hidden rounded-lg border border-border shadow-card">
                   {/* Header */}
                   <div className="flex flex-col-reverse gap-3 bg-[#0A3D4A] p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-7">
                     <div>
@@ -193,7 +193,7 @@ export function FindReservation() {
                     </div>
                     <Badge
                       className={cn(
-                        "w-fit rounded-full border-0 px-4 py-1.5 text-sm",
+                        "w-fit rounded-md border-0 px-4 py-1.5 text-sm",
                         statusConfig.bg,
                         statusConfig.text
                       )}
@@ -289,7 +289,7 @@ export function FindReservation() {
                 </Card>
 
                 {/* What happens next */}
-                <Card className="mt-6 rounded-xl border border-border bg-card p-5 shadow-card">
+                <Card className="mt-6 rounded-lg border border-border bg-card p-5 shadow-card">
                   <div className="flex items-start gap-3">
                     <CheckCircle2
                       className={cn("mt-0.5 h-5 w-5 shrink-0", statusConfig.text)}
@@ -310,7 +310,7 @@ export function FindReservation() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Button className="w-full rounded-full sm:w-auto">
+                    <Button className="w-full rounded-md sm:w-auto">
                       <MessageSquare className="h-4 w-4" />
                       Message us
                     </Button>
@@ -318,7 +318,7 @@ export function FindReservation() {
                   <Button
                     onClick={() => navigate("home")}
                     variant="outline"
-                    className="w-full rounded-full sm:w-auto"
+                    className="w-full rounded-md sm:w-auto"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Back to home
@@ -347,7 +347,7 @@ export function FindReservation() {
                   <Button
                     onClick={() => navigate("home")}
                     variant="ghost"
-                    className="rounded-full text-muted-foreground"
+                    className="rounded-md text-muted-foreground"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Back to home

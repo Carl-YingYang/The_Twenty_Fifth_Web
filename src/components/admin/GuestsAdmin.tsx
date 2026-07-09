@@ -206,7 +206,7 @@ export function GuestsAdmin() {
       </div>
 
       {/* Desktop / tablet table */}
-      <Card className="hidden overflow-hidden rounded-xl border border-border shadow-card md:block">
+      <Card className="hidden overflow-hidden rounded-lg border border-border shadow-card md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -305,7 +305,7 @@ export function GuestsAdmin() {
       <div className="space-y-3 md:hidden pb-2">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            <Skeleton key={i} className="h-24 w-full rounded-lg" />
           ))
         ) : pagedGuests.length === 0 ? (
           <EmptyState
@@ -317,7 +317,7 @@ export function GuestsAdmin() {
           pagedGuests.map((g) => (
             <Card
               key={g.id}
-              className="cursor-pointer rounded-xl border border-border p-4 shadow-card"
+              className="cursor-pointer rounded-lg border border-border p-4 shadow-card"
               onClick={() => setSelectedGuestId(g.id)}
             >
               <div className="flex items-center gap-3">

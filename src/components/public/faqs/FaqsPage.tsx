@@ -190,7 +190,7 @@ export function FaqsPage() {
                   <h2 className="mb-4 font-display text-2xl font-semibold tracking-tight">
                     {cat}
                   </h2>
-                  <Card className="overflow-hidden rounded-xl border border-border bg-card p-2 shadow-card">
+                  <Card className="overflow-hidden rounded-lg border border-border bg-card p-2 shadow-card">
                     <Accordion type="single" collapsible className="w-full">
                       {items.map((faq) => (
                         <AccordionItem
@@ -219,7 +219,7 @@ export function FaqsPage() {
 
             {/* Bottom CTA */}
             <FadeUpSection>
-              <Card className="rounded-xl border-dashed border-border bg-section p-6 text-center">
+              <Card className="rounded-lg border-dashed border-border bg-section p-6 text-center">
                 <p className="text-sm text-muted-foreground">
                   Still have questions? Message us on Messenger and
                   we&rsquo;ll get back to you quickly.
@@ -230,7 +230,7 @@ export function FaqsPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Button className="w-full rounded-full sm:w-auto">
+                    <Button className="w-full rounded-md sm:w-auto">
                       <MessageSquare className="h-4 w-4" />
                       Message us on Messenger
                     </Button>
@@ -238,7 +238,7 @@ export function FaqsPage() {
                   <Button
                     onClick={() => navigate("contact")}
                     variant="outline"
-                    className="w-full rounded-full sm:w-auto"
+                    className="w-full rounded-md sm:w-auto"
                   >
                     Contact Page
                   </Button>

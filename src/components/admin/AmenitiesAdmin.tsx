@@ -120,7 +120,7 @@ export function AmenitiesAdmin() {
               {isLoading ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                    <Skeleton key={i} className="h-24 w-full rounded-lg" />
                   ))}
                 </div>
               ) : items.length === 0 ? (
@@ -135,7 +135,7 @@ export function AmenitiesAdmin() {
                   {items.map((a) => (
                     <Card
                       key={a.id}
-                      className="group flex items-start gap-3 rounded-xl border border-border p-4 shadow-card"
+                      className="group flex items-start gap-3 rounded-lg border border-border p-4 shadow-card"
                     >
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sand text-primary">
                         <Sparkles className="size-4" />

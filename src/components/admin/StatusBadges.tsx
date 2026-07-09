@@ -24,7 +24,7 @@ export function BookingStatusBadge({
     <Badge
       variant="outline"
       className={cn(
-        "gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "gap-1.5 rounded-md border px-2.5 py-0.5 text-xs font-medium",
         cfg.bg,
         cfg.text,
         cfg.border,
@@ -57,7 +57,7 @@ export function RoomStatusBadge({
     <Badge
       variant="outline"
       className={cn(
-        "gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "gap-1.5 rounded-md border px-2.5 py-0.5 text-xs font-medium",
         cfg.bg,
         cfg.text,
         cfg.border,

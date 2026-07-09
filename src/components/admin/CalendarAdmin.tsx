@@ -247,7 +247,7 @@ export function CalendarAdmin() {
             {rangeLabel}
           </span>
         </div>
-        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+        <div className="flex items-center gap-1 rounded-md border border-border bg-card p-1">
           {RANGE_OPTIONS.map((opt) => {
             const active = range === opt.value;
             return (
@@ -255,7 +255,7 @@ export function CalendarAdmin() {
                 key={opt.value}
                 onClick={() => setRange(opt.value)}
                 className={cn(
-                  "min-h-[32px] rounded-full px-3 text-xs font-medium transition-colors",
+                  "min-h-[32px] rounded-md px-3 text-xs font-medium transition-colors",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -282,7 +282,7 @@ export function CalendarAdmin() {
       </div>
 
       {/* Grid */}
-      <Card className="overflow-hidden rounded-xl border border-border shadow-card">
+      <Card className="overflow-hidden rounded-lg border border-border shadow-card">
         {calendarLoading ? (
           <div className="space-y-2 p-4">
             {Array.from({ length: 6 }).map((_, i) => (

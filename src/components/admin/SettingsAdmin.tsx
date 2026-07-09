@@ -59,7 +59,7 @@ export function SettingsAdmin() {
       ) : (
         <div className="pb-6">
           <Tabs defaultValue="general">
-            <TabsList className="mb-5 h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1 sm:w-auto">
+            <TabsList className="mb-5 h-auto w-full justify-start gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1 sm:w-auto">
               <TabsTrigger
                 value="general"
                 className="min-h-[36px] shrink-0 rounded-lg px-4 text-sm"
@@ -118,7 +118,7 @@ function SettingsCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="rounded-xl border border-border p-4 shadow-card sm:p-6">
+    <Card className="rounded-lg border border-border p-4 shadow-card sm:p-6">
       <div className="mb-5">
         <h3 className="font-display text-lg font-medium tracking-tight">
           {title}

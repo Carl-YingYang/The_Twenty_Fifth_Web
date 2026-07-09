@@ -98,7 +98,7 @@ export function DashboardAdmin() {
         <NeedsAttention />
 
         {/* Occupancy donut */}
-        <Card className="rounded-xl border border-border p-5 shadow-card lg:col-span-1">
+        <Card className="rounded-lg border border-border p-5 shadow-card lg:col-span-1">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="eyebrow">Right now</div>
@@ -201,7 +201,7 @@ function NeedsAttention() {
   const pending = data?.reservations ?? [];
 
   return (
-    <Card className="rounded-xl border border-border p-5 shadow-card lg:col-span-2">
+    <Card className="rounded-lg border border-border p-5 shadow-card lg:col-span-2">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="eyebrow">Needs your attention</div>
@@ -315,7 +315,7 @@ function TodayTimeline({
 }) {
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-      <Card className="rounded-xl border border-border p-5 shadow-card">
+      <Card className="rounded-lg border border-border p-5 shadow-card">
         <div className="mb-4 flex items-center gap-2">
           <LogIn className="size-4 text-primary" />
           <h3 className="font-display text-lg font-medium tracking-tight">
@@ -341,7 +341,7 @@ function TodayTimeline({
           <ul className="divide-y divide-border">
             {arrivals.map((r) => (
               <li key={r.id} className="flex items-center gap-3 py-3">
-                <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
                   {formatTime(r.checkIn).replace(":00", "").replace(" ", "")}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -360,7 +360,7 @@ function TodayTimeline({
         )}
       </Card>
 
-      <Card className="rounded-xl border border-border p-5 shadow-card">
+      <Card className="rounded-lg border border-border p-5 shadow-card">
         <div className="mb-4 flex items-center gap-2">
           <LogOut className="size-4 text-coral" />
           <h3 className="font-display text-lg font-medium tracking-tight">
@@ -386,7 +386,7 @@ function TodayTimeline({
           <ul className="divide-y divide-border">
             {departures.map((r) => (
               <li key={r.id} className="flex items-center gap-3 py-3">
-                <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-full bg-coral/10 text-xs font-semibold text-coral">
+                <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-md bg-coral/10 text-xs font-semibold text-coral">
                   {formatTime(r.checkOut).replace(":00", "").replace(" ", "")}
                 </div>
                 <div className="min-w-0 flex-1">

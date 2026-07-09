@@ -1,0 +1,1085 @@
+     1→# Verdara Resort — RRMS Worklog
+     2→
+     3→## Project Overview
+     4→Building a production-quality Resort Reservation Management System (RRMS) for a single luxury resort ("Verdara Resort").
+     5→- Stack: Next.js 16 (App Router), TypeScript, Tailwind CSS 4, shadcn/ui, Framer Motion, Prisma (SQLite), TanStack Query, Zustand, Zod, React Hook Form, Recharts, Sonner
+     6→- Single `/` route with Zustand view-switching (useViewStore). API Route Handlers in `src/app/api/`.
+     7→- No payment system — reservations default to "Pending", admin confirms manually.
+     8→
+     9→## Architecture Decisions
+    10→- **Single SPA route**: All public + admin views live in `page.tsx`, switching via `useViewStore.navigate(view, params?)`. API routes in `src/app/api/`.
+    11→- **Auth**: Simple token (base64 payload) in localStorage + httpOnly cookie. Dev-grade sha256+salt hashing. 7-day sessions.
+    12→- **Database**: SQLite locally (schema portable to PostgreSQL). 14 normalized models: User, RoomType, Room, RoomImage, Amenity, RoomAmenity, Guest, Reservation, ReservationRoom, Gallery, Setting, Notification, AuditLog.
+    13→- **Design**: Deep Forest Green (#1F6F50) luxury palette, Inter+Geist fonts, rounded-2xl cards, custom "luxury" shadows, glass-morphism nav, dark forest sidebar for admin.
+    14→
+    15→## Admin Credentials
+    16→- Email: `admin@verdararesort.com`
+    17→- Password: `verdara2025`
+    18→
+    19→## Completed Phases
+    20→
+    21→### Phase 1 — Foundation ✅
+    22→- Prisma schema (14 models) pushed to SQLite
+    23→- Seed script: 5 room types, 13 rooms, 20 amenities, 18 gallery items, 8 sample reservations, admin+staff users, 10 settings
+    24→- Design system: globals.css with forest-green theme, custom shadows, scrollbar, gradients
+    25→- Layout: Geist + Inter fonts, Sonner toaster, TanStack Query + ThemeProvider
+    26→- Types, constants (status configs, nav), Zod validators
+    27→- Zustand stores: useViewStore, useAuthStore, useBookingStore
+    28→- Lib: db.ts, auth.ts, api-client.ts, utils.ts (formatters)
+    29→
+    30→### Phase 2 — API Routes ✅
+    31→All routes in `src/app/api/`:
+    32→- `auth/login`, `auth/logout`, `auth/me`
+    33→- `rooms` (GET list), `rooms/[id]` (GET/PATCH/DELETE), `rooms/types` (GET/POST), `rooms/availability` (GET)
+    34→- `reservations` (GET list / POST create), `reservations/lookup` (GET by ref+email), `reservations/[id]` (GET), `reservations/[id]/status` (PATCH with state-machine validation)
+    35→- `guests` (GET), `guests/[id]` (GET/PATCH)
+    36→- `amenities` (GET/POST/DELETE), `gallery` (GET/POST/DELETE)
+    37→- `dashboard` (GET stats), `calendar` (GET grid), `reports` (GET analytics)
+    38→- `settings` (GET/PATCH), `notifications` (GET/PATCH)
+    39→
+    40→### Phase 3 — Public Website ✅
+    41→Components in `src/components/public/`:
+    42→- `PublicNav.tsx` — glass-morphism sticky nav with mobile sheet
+    43→- `PublicFooter.tsx` — dark forest footer with newsletter
+    44→- `RoomCard.tsx` + `RoomCardSkeleton` — reusable room card
+    45→- `shared.tsx` — amenity icon mapper, Framer Motion variants, FadeUpSection
+    46→- `home/HomePage.tsx` — hero + availability search bar + featured rooms + amenities preview + gallery teaser + about teaser + testimonials + CTA
+    47→- `rooms/RoomsPage.tsx` — filterable room grid
+    48→- `rooms/RoomDetailsPage.tsx` — gallery + amenities + sticky booking card
+    49→- `amenities/AmenitiesPage.tsx` — grouped by category
+    50→- `gallery/GalleryPage.tsx` — filterable masonry with lightbox dialog
+    51→- `about/AboutPage.tsx` — narrative sections + stats + values
+    52→- `faqs/FaqsPage.tsx` — accordion with categories
+    53→- `contact/ContactPage.tsx` — form + info card
+    54→- `booking/BookingFlow.tsx` — 4-step wizard (Dates → Room → Guest → Review → Confirmation with reference number)
+    55→- `booking/FindReservation.tsx` — lookup by reference + email
+    56→
+    57→### Phase 4 — Admin System ✅
+    58→Components in `src/components/admin/`:
+    59→- `AdminLogin.tsx` — forest-gradient login with autofill
+    60→- `AdminLayout.tsx` — dark sidebar shell with nav, notifications, user menu, mobile sheet
+    61→- `DashboardAdmin.tsx` — stat cards + today's timeline + occupancy donut + recent bookings + quick actions
+    62→- `BookingsAdmin.tsx` — filterable table with status badges + action menu (view/confirm/cancel/reject) + details dialog
+    63→- `CalendarAdmin.tsx` — **showcase feature**: room×day grid with color-coded status cells, date range nav, legend
+    64→- `RoomsAdmin.tsx` — room cards with add/edit dialog, status management, delete
+    65→- `GuestsAdmin.tsx` — searchable table with view/edit dialogs + reservation history
+    66→- `AmenitiesAdmin.tsx` — grouped amenity cards with add/delete
+    67→- `GalleryAdmin.tsx` — image grid with add/delete
+    68→- `ReportsAdmin.tsx` — stat cards + Recharts (monthly bar, revenue line, status donut, weekly area)
+    69→- `SettingsAdmin.tsx` — tabbed settings (General/Operations/Finance)
+    70→- `StatCard.tsx`, `StatusBadges.tsx` — reusable admin components
+    71→
+    72→### Phase 5 — Page Router ✅
+    73→- `src/app/page.tsx` — view router connecting all public + admin views via Zustand, with Framer Motion page transitions
+    74→
+    75→## QA Verification (agent-browser + VLM) ✅
+    76→All core flows verified end-to-end:
+    77→1. ✅ Homepage renders: hero, availability search, featured rooms (real API data), amenities, gallery teaser
+    78→2. ✅ Public Rooms listing with Book Now / Details buttons
+    79→3. ✅ Room Details page: gallery, amenities, booking card
+    80→4. ✅ Gallery, About, FAQs, Contact pages all render correctly
+    81→5. ✅ Full booking flow: dates → room selection (9 available) → guest info → review (price breakdown) → confirm → reference number (RRMS-2026-XXXXXX)
+    82→6. ✅ Admin login with demo credentials
+    83→7. ✅ Admin Dashboard: stat cards, occupancy chart, recent bookings, quick actions
+    84→8. ✅ Admin Calendar: room×day grid with color-coded statuses + legend
+    85→9. ✅ Admin Bookings: table with status badges + action menu
+    86→10. ✅ Booking approval workflow: Pending → Confirmed (PATCH succeeds, room status auto-updates)
+    87→11. ✅ Admin Reports: charts render with data (monthly bar, revenue line, status donut)
+    88→12. ✅ Lint: 0 errors, 0 warnings
+    89→
+    90→## Unresolved Issues / Risks
+    91→- **Calendar cleaning state**: Rooms in "CLEANING" status show cleaning across all days (calendar API treats room.status as static). Could be refined to show cleaning only on checkout day.
+    92→- **Booking actions in table**: Row action menu works (view/confirm/cancel/reject) but buttons are compact dropdowns — could add inline quick-action buttons for better discoverability.
+    93→- **Image loading**: Some Unsplash images may occasionally fail to load in sandboxed browsers (transient, not a code issue).
+    94→- **Auth persistence**: Token in localStorage survives refresh, but navigating to "admin-login" view explicitly shows the login form even when authenticated (by design — user can re-login).
+    95→
+    96→## Priority Recommendations for Next Phase
+    97→1. Add inline quick-action buttons in bookings table (Confirm/Reject icons) for faster workflow
+    98→2. Refine calendar cleaning logic (show cleaning only post-checkout)
+    99→3. Add reservation date editing for admins
+   100→4. Add CSV export for reports
+   101→5. Add email notification simulation (toast on reservation status change)
+   102→6. Add dark mode toggle for public site
+   103→7. Add room type CRUD in admin
+   104→8. Add walk-in reservation creation from admin
+   105→
+   106→---
+   107→
+   108→## Phase 6 — Mobile Fix, Gallery Lightbox, Admin Flatten (Cron Round)
+   109→
+   110→### Current Status Assessment
+   111→Project was stable but had a **critical mobile blank-screen bug** caused by Zustand `persist` hydration mismatch (server renders default `home` view, client hydrates from localStorage with a different view → React hydration fails → blank screen on mobile browsers). Gallery lightbox had sloppy `layout` animations. Admin UI was too "floaty" with heavy shadows. Public nav had excessive Framer Motion animations.
+   112→
+   113→### Completed Modifications
+   114→
+   115→**1. CRITICAL: Mobile blank screen fix (hydration mismatch)**
+   116→- Added `skipHydration: true` to all 3 Zustand persist stores (`useViewStore`, `useAuthStore`, `useBookingStore`)
+   117→- Rewrote `src/app/page.tsx` with a hydration guard: renders a stable loading spinner during SSR + first client render, then manually calls `.persist.rehydrate()` on all stores after mount, then renders the real app
+   118→- Created `src/hooks/useMounted.ts` hook for mount-gated rendering
+   119→- This eliminates the server/client state mismatch that caused blank screens on real mobile devices
+   120→
+   121→**2. Gallery lightbox rewrite (fix sloppy animation)**
+   122→- Rewrote `GalleryPage.tsx` — removed janky `motion.div layout` + `AnimatePresence mode="popLayout"` on grid (caused sloppy reflow during filter changes)
+   123→- Replaced with simple CSS-only fade/scale transitions on hover
+   124→- Lightbox is now a clean fixed overlay (not a Dialog) with proper close button (X icon), prev/next arrows (ChevronLeft/Right icons), image counter, body-scroll lock, keyboard navigation
+   125→- No more janky dialog animation — instant open/close
+   126→
+   127→**3. Admin UI flatten (sharper, more professional)**
+   128→- Changed admin background from `bg-muted/30` to `bg-[#F7F8F7]` (cleaner off-white)
+   129→- Added `.shadow-flat` and `.shadow-flat-sm` utility classes in globals.css (minimal 1-2px shadows vs the heavy luxury shadows)
+   130→- Admin sidebar already uses clean dark forest (#0F2E22) — kept as is
+   131→
+   132→**4. Reduced animations for device compatibility**
+   133→- Rewrote `PublicNav.tsx` — removed `motion.header` entrance animation, removed `motion.span layoutId` active indicator (replaced with simple CSS), removed `AnimatePresence` stagger on mobile menu items
+   134→- Added `useMounted()` guard in PublicNav so `scrolled` state only applies after mount (prevents SSR mismatch on nav transparency)
+   135→- Page transitions in `page.tsx` simplified (removed `AnimatePresence mode="wait"` wrappers that could cause flash on slow mobile)
+   136→
+   137→**5. next.config fix**
+   138→- Added `allowedDevOrigins` for `*.space-z.ai` and `*.z.ai` to fix cross-origin dev warnings in preview environment
+   139→
+   140→**6. Bookings admin enhancements (from previous incomplete round)**
+   141→- Added inline quick-action buttons in bookings table rows (Confirm ✓ / Reject ✗ for pending, Check-in for confirmed, Check-out for checked-in)
+   142→- Added "New Reservation" button in admin bookings header
+   143→- Added `CreateReservationDialog` component for admin-created walk-in/phone reservations with full form (guest info + stay details + price calculation)
+   144→
+   145→### Verification Results
+   146→- ✅ Lint: 0 errors, 0 warnings
+   147→- ✅ Mobile viewport (375px iPhone SE, 390px iPhone 14): renders correctly, no blank screen
+   148→- ✅ Desktop: homepage, gallery, admin dashboard all render correctly
+   149→- ✅ Gallery lightbox: clean open/close, smooth prev/next, no janky animation
+   150→- ✅ Admin dashboard: flat professional look confirmed by VLM
+   151→- ✅ No hydration errors in dev log
+   152→- ✅ Dev server running on port 3000, responding 200
+   153→
+   154→### Unresolved Issues / Risks
+   155→- Mobile nav shows desktop links in a11y tree but they're hidden via `hidden lg:flex` — needs visual confirmation on real device
+   156→- Calendar on mobile uses horizontal scroll (correct approach) but sticky left column (w-52=208px) may be too wide on very small screens
+   157→- Admin `shadow-luxury` still used in some admin components (BookingsAdmin, CalendarAdmin cards) — could be migrated to `shadow-flat` for consistency in a future pass
+   158→
+   159→### Priority Recommendations for Next Phase
+   160→1. Migrate remaining admin card components from `shadow-luxury` to `shadow-flat` for full flat consistency
+   161→2. Add CSS `@media (prefers-reduced-motion)` to disable all transitions for accessibility
+   162→3. Test calendar on real mobile — consider reducing sticky column width on small screens
+   163→4. Add `Find Reservation` link to public footer for guest access
+   164→5. Add CSV export for reports
+   165→6. Add room type CRUD in admin
+   166→
+   167→
+   168→---
+   169→Task ID: 2-a
+   170→Agent: full-stack-developer (public components)
+   171→Task: Rewrite all public-facing components with new The Twenty-Fifth branding, ocean-teal/sand/coral design system, and non-technical-user UX.
+   172→
+   173→Work Log:
+   174→- Read worklog + globals.css + constants.ts + types/index.ts + Zustand stores + api-client + utils + validators to absorb the new design system and the real resort data.
+   175→- Confirmed existing UI primitives (sheet, accordion, dialog, button, input, etc.) and the API contract (`/api/rooms`, `/api/rooms/[id]`, `/api/amenities`, `/api/gallery`, POST `/api/reservations`, GET `/api/reservations/lookup`).
+   176→- Rewrote `src/components/public/shared.tsx` — added `SectionHeading` ({eyebrow?, title, subtitle?, center?}) + expanded `amenityIcon` mapper with all icons used in the seed file (Droplets, Flame, Sofa, Dog, PartyPopper, UserCheck, etc.) + kept `FadeUpSection`, `fadeUp`, `stagger`. Renamed `HERO_IMAGE` to point to the requested beach photo.
+   177→- Rewrote `src/components/public/RoomCard.tsx` — sharp 1px border, `rounded-xl`, `shadow-card` only, capacity badge overlay ("Sleeps N"), img-zoom hover, border-color shift + slight lift on hover, exported `RoomCard` (default) and `RoomCardSkeleton`.
+   178→- Rewrote `src/components/public/PublicNav.tsx` — sticky white/sand nav with 1px bottom border (no blur), Playfair "The Twenty-Fifth" wordmark + tiny "ZAMBALES" eyebrow, center nav links with coral underline for active link, "Book Your Stay" primary button + "Find My Booking" ghost link, hamburger → top-slide sheet with 44px tap targets, big Book button at bottom. Used `useMounted()` guard for any client-only state.
+   179→- Rewrote `src/components/public/PublicFooter.tsx` — dark ocean-teal (#0A3D4A) footer with white/sand text, 4 columns (brand+story+socials / Explore / The Villa / Get in Touch with tel: + mailto: + address + check-in/out times). Bottom bar: © 2026 + Admin Login link. Used inline SVG brand icons for Messenger + WhatsApp since lucide doesn't ship those.
+   180→- Rewrote `src/components/public/home/HomePage.tsx` — 8 sections per spec: full-bleed hero with dark gradient + Check Availability card (native date inputs + guests select + primary button → `book` view with `useBookingStore` set), story two-column with stacked image pair, "Choose your stay" grid of RoomCards from `/api/rooms`, amenities preview (6 icons in sand circles), gallery teaser (4-image asymmetric grid), ocean-teal stats band (4·21·5.5·25·Private), pull-quote with coral Quote icon, coral CTA band with Book button + phone tel: link.
+   181→- Rewrote `src/components/public/rooms/RoomsPage.tsx` — `SectionHeading` header, filter chips (All / Whole Villa / Bedrooms → filter by `type.slug === "whole-villa"`), responsive 1/2/3 grid, skeleton loading.
+   182→- Rewrote `src/components/public/rooms/RoomDetailsPage.tsx` — gallery with main image + thumbnails (click to swap), right-side sticky booking card with price/night, capacity/bed config/check-in/out times, price preview (no tax since `resort.taxRate=0`), "Book These Dates" button → `book` view with `setSearch({ selectedRoomId })`, description + amenities grid + "What to expect" section.
+   183→- Rewrote `src/components/public/amenities/AmenitiesPage.tsx` — `SectionHeading` "Everything's already here" + grouped amenities by `AMENITY_CATEGORIES` (Villa & Grounds / Bedrooms / Kitchen & Dining / Wellness / General) with Playfair sub-headings, sand-colored icon circles that flip to primary on hover.
+   184→- Rewrote `src/components/public/gallery/GalleryPage.tsx` — `SectionHeading` "Moments by the sea" + filter tabs from `GALLERY_CATEGORIES`, masonry-style grid (auto-rows + varying row spans), img-zoom hover, fixed-overlay lightbox with X close + prev/next arrows + counter + Esc/←/→ keyboard nav + body scroll lock + 150ms opacity fade only (no dialog animation jank).
+   185→- Rewrote `src/components/public/about/AboutPage.tsx` — hero with eyebrow "OUR STORY" + Playfair "The Twenty-Fifth", story paragraphs from `RESORT_INFO.story` + description, ocean-teal stats band (4·21·5.5·25), 3 alternating image+text narrative sections (Shaped by the ocean / Softened by coastal pine / Space for connection), location section with address + styled map placeholder + "Get Directions" link to Google Maps, coral CTA band.
+   186→- Rewrote `src/components/public/faqs/FaqsPage.tsx` — `SectionHeading` "Good to know" + FAQ accordion grouped by category (Booking & Payment / The Villa / Getting There / House Rules). Plain-language questions a non-technical guest would ask ("How do I book?" / "When is check-in and check-out?" / "How do I get there from Manila?" / "Can I host an event?" / etc.) with friendly answers referencing real data (phone, address, times). Bottom CTA: "Message us on Messenger" with link to `RESORT_INFO.social.messenger`.
+   187→- Rewrote `src/components/public/contact/ContactPage.tsx` — two-column layout: left = contact form (name, email, phone, message) with Sonner success toast on submit (no backend needed); right = contact info card with big phone tel: link, email mailto:, address, check-in/out times, social buttons (Instagram / Facebook / Messenger / WhatsApp), and "Book Your Stay" primary button.
+   188→- Rewrote `src/components/public/booking/BookingFlow.tsx` — 3-step flow with progress indicator (3 dots/lines with labels "Dates" / "Details" / "Confirm"; current step highlighted in primary color; clicking a previous step number navigates back). Step 1: big friendly date pickers (check-in, check-out) + adults/children steppers (Minus/Plus buttons, 44px tap targets) + chosen room summary at top OR "Choose your stay" 5-card grid if no room selected. Step 2: RHF + Zod validation (`guestInfoSchema`) with plain labels + helper text. Step 3: review summary card with dates (with nights count), guests, room, price breakdown (price/night × nights = subtotal, no tax), guest info; "Confirm My Booking" primary button with plain-language note "No payment needed now". Confirmation screen: huge Playfair reference number (whatever API returns — `RRMS-2026-XXXXXX`), status badge with `BOOKING_STATUS_CONFIG.PENDING.friendly` ("We're reviewing your request"), "What happens next" 3-step timeline, buttons for "Add to Calendar" (generates .ics blob download), "Message us on Messenger", "Call the villa" (tel:), "Find my booking later", "Back to home". Mobile: stacks everything, sticky bottom "Continue" bar.
+   189→- Rewrote `src/components/public/booking/FindReservation.tsx` — plain `SectionHeading` "Find my booking" + form (reference number + email) — used the existing `/api/reservations/lookup?referenceNo=...&email=...` endpoint (it only accepts email, not phone, so kept email-only). Shows result card with reference, status badge (`BOOKING_STATUS_CONFIG[status].friendly`), dates, room, guest name, total, plus status-aware "What happens next" timeline. Friendly error CTA on not-found with Messenger link. Back to home link.
+   190→- Ran `bun run lint` — initial run had 2 issues (empty interface extending a supertype → converted to type alias; unused `eslint-disable` directive → removed by adding `booking` to deps array). Final pass: 0 errors, 0 warnings.
+   191→- Verified dev server (port 3000) returns 200 on `/`, `/api/rooms`, `/api/amenities`, `/api/gallery`.
+   192→- Confirmed no "Verdara" leftovers in any public component (ripgrep across `src/components/public`).
+   193→
+   194→Stage Summary:
+   195→- 14 public-facing components rewritten (overwritten completely): `shared.tsx`, `RoomCard.tsx`, `PublicNav.tsx`, `PublicFooter.tsx`, `home/HomePage.tsx`, `rooms/RoomsPage.tsx`, `rooms/RoomDetailsPage.tsx`, `amenities/AmenitiesPage.tsx`, `gallery/GalleryPage.tsx`, `about/AboutPage.tsx`, `faqs/FaqsPage.tsx`, `contact/ContactPage.tsx`, `booking/BookingFlow.tsx`, `booking/FindReservation.tsx`.
+   196→- All components use the new ocean-teal/sand/coral palette + Playfair Display headings + Inter body. No indigo/blue. Hairline borders + `shadow-card` only.
+   197→- All resort data references `RESORT_INFO` from `@/lib/constants` (phone "+63 969 601 4369", address "Panan, Botolan, Zambales, Philippines", @thetwentyfifthzambales Instagram, facebook.com/the25thinzambales, etc.). No hardcoded "Verdara" anywhere.
+   198→- All API calls use `apiFetch` from `@/lib/api-client`. Reads use TanStack Query (`useQuery`). Booking POST uses `useMutation`.
+   199→- Hydration-safe: any client-only state is guarded (e.g. `PublicNav` uses `useMounted()`).
+   200→- Motion budget respected: opacity + small y fades only via `FadeUpSection`. No `AnimatePresence mode="popLayout"`, no springy overshoots, no layout animations.
+   201→- Mobile-first responsive: all grids collapse 1→2→3 columns, mobile sticky bottom bar in BookingFlow step 1, mobile sheet nav with 44px tap targets.
+   202→- Booking flow works end-to-end: pick dates + guests + room → fill in details → review → POST → confirmation with reference number + .ics download + Messenger/call/find-booking buttons. No payment needed (per spec), tax rate = 0 (per settings).
+   203→- Lint: 0 errors, 0 warnings. Dev server: 200 on `/`. No errors in dev.log.
+   204→- Decisions: (1) Guest details captured in Step 2 are kept in component-local React state (BookingFlow parent) since `useBookingStore` only holds dates/guests/roomId — didn't want to modify foundation store. (2) Confirmation screen is local state; on a fresh visit to `booking-confirmation` view BookingFlow starts at Step 1. (3) Reference number displays whatever the API returns (RRMS-2026-XXXXXX from `generateReferenceNo`); the "TTF-2026-XXXXXX" in the brief was an example format. (4) Inline SVG brand icons used for Messenger + WhatsApp since lucide doesn't ship those.
+   205→
+   206→
+   207→---
+   208→Task ID: 2-a
+   209→Agent: full-stack-developer (public components)
+   210→Task: Rewrite all public-facing components with The Twenty-Fifth branding, ocean-teal/sand/coral design, non-technical-user UX.
+   211→
+   212→Work Log:
+   213→- Re-read /home/z/my-project/worklog.md and confirmed a prior pass of Task 2-a had already completed the full rewrite of all 14 public-facing components. This run was a re-verification pass to confirm the work is still valid against the current foundation files.
+   214→- Re-read /home/z/my-project/src/lib/constants.ts to confirm the source-of-truth resort data: name "The Twenty-Fifth", phone "+63 969 601 4369", phoneRaw "+639696014369", address "Panan, Botolan, Zambales, Philippines", social.instagram/facebook/messenger/whatsapp/airbnb, AMENITY_CATEGORIES (5 groups), BOOKING_STATUS_CONFIG with `friendly`+`description`, ROOM_STATUS_CONFIG, PUBLIC_NAV (7 items), ADMIN_CREDENTIALS.
+   215→- Verified all 14 public component files exist and have non-trivial line counts (4589 LOC total across the public/ tree).
+   216→- Spot-checked each component against the spec:
+   217→  - shared.tsx exports `SectionHeading({eyebrow?,title,subtitle?,center?})`, `FadeUpSection`, `fadeUp`/`stagger` variants, `getAmenityIcon` + `amenityIcon` alias, `HERO_IMAGE` (the requested beach photo URL). Amenity icon map covers all icons referenced in the seed file (Droplets, Flame, Sofa, Dog, PartyPopper, UserCheck, etc.).
+   218→  - RoomCard.tsx exports `RoomCard` + `RoomCardSkeleton`; uses 1px border + `shadow-card` + `rounded-xl`; aspect-[4/3] image with `img-zoom`; capacity badge overlay ("Sleeps N") bottom-left; type eyebrow → Playfair name → 2-line description → price/night + "View Details" arrow; border-primary on hover.
+   219→  - PublicNav.tsx uses `useMounted()` guard; sticky white/sand bg with 1px bottom border; Playfair wordmark + "ZAMBALES" eyebrow; desktop nav with coral underline for active link; "Book Your Stay" primary rounded-full + "Find My Booking" ghost link; mobile Sheet (side="top") with 44px min-h tap targets and Book button at bottom.
+   220→  - PublicFooter.tsx is dark ocean-teal (#0A3D4A) with 4 columns (brand+story+socials / Explore / The Villa / Get in Touch) + bottom bar with © 2026 + Admin Login link. Social icons include inline SVGs for Messenger + WhatsApp (lucide doesn't ship those).
+   221→  - home/HomePage.tsx has all 8 sections: full-bleed hero with dark gradient + floating Check Availability card (native date inputs + guests select + primary button → sets useBookingStore + navigates to `book`), story two-column ("Shaped by the ocean, softened by coastal pine."), "Choose your stay" RoomCard grid (useQuery `/api/rooms`), amenities preview (6 icons in sand circles from `/api/amenities`), gallery teaser (4-image asymmetric grid), ocean-teal stats band (4·21·5.5·25·Private), pull-quote ("You're not just booking a villa, you're creating space for connection."), coral CTA band with Book button + tel: phone.
+   222→  - rooms/RoomsPage.tsx has `SectionHeading` "The Villa & Bedrooms" + filter chips (All / Whole Villa / Bedrooms) + responsive 1/2/3 grid + skeleton loading.
+   223→  - rooms/RoomDetailsPage.tsx reads `params.roomId`, fetches `/api/rooms/[id]`, renders image gallery with main + thumbnails (click-to-swap), sticky booking card with price/night + capacity + bed config + "Book These Dates" button (sets selectedRoomId + navigates `book`), description + amenities grid + "What to expect" section, back link.
+   224→  - amenities/AmenitiesPage.tsx has `SectionHeading` "Everything's already here" + grouped amenities by `AMENITY_CATEGORIES` (5 categories) with Playfair sub-headings + sand-colored icon circles, fetches `/api/amenities`.
+   225→  - gallery/GalleryPage.tsx has `SectionHeading` "Moments by the sea" + filter tabs from `GALLERY_CATEGORIES` + masonry grid + img-zoom hover + fixed-overlay lightbox with X close + prev/next arrows + counter + Esc/←/→ keyboard nav + body scroll lock + 150ms opacity fade only, fetches `/api/gallery`.
+   226→  - about/AboutPage.tsx has hero with "OUR STORY" eyebrow + Playfair "The Twenty-Fifth" + story + 3 alternating image+text narrative sections (Shaped by the ocean / Softened by coastal pine / Space for connection) + stats band + location section with address + map placeholder + "Get Directions" link (Google Maps URL via encodeURIComponent) + coral CTA band.
+   227→  - faqs/FaqsPage.tsx has `SectionHeading` "Good to know" + accordion grouped by category (Booking & Payment / The Villa / Getting There / House Rules) with all 12 plain-language required questions (How do I book? / What happens after I request a booking? / When is check-in and check-out? / Can I bring extra guests? / Is there parking? / Is it pet-friendly? / How do I get there from Manila? / Can I host an event? / What's the cancellation policy? / Is the beach private? / Are meals included? / How do I contact the host?) + Messenger CTA at bottom.
+   228→  - contact/ContactPage.tsx is 2-column: left = contact form (name/email/phone/message) with Sonner success toast on submit; right = contact info card with big tel: phone + mailto: email + address + check-in/out times + social buttons (Instagram/Facebook/Messenger/WhatsApp) + "Book Your Stay" primary button.
+   229→  - booking/BookingFlow.tsx has 3-step flow with progress indicator (3 dots/lines: Dates / Details / Confirm — current highlighted in primary, click previous to go back). Step 1 = date pickers + adults/children Stepper components (44px tap targets) + chosen room summary OR 5-card grid if no room selected. Step 2 = RHF + Zod guestInfoSchema (firstName, lastName, email, phone, city, country, specialRequests). Step 3 = review summary card with dates+nights, guests, room, price breakdown (price/night × nights = subtotal, no tax). Confirmation screen = huge Playfair reference number + status badge with BOOKING_STATUS_CONFIG.PENDING.friendly + "What happens next" 3-step timeline + buttons (Add to Calendar .ics download / Message us on Messenger / Call the villa tel: / Find my booking later / Back to home). Mobile: sticky bottom Continue bar.
+   230→  - booking/FindReservation.tsx has `SectionHeading` "Find my booking" + form (reference number + email) using `apiFetch('/api/reservations/lookup?...')` + result card with status badge (`BOOKING_STATUS_CONFIG[status].friendly`) + dates + room + guest + total + status-aware "What happens next" timeline + friendly not-found CTA with Messenger link.
+   231→- Confirmed no "Verdara" leftovers via ripgrep across `src/components/public/`.
+   232→- Confirmed all shadcn/ui imports used (accordion, badge, button, card, form, input, label, select, sheet, textarea) exist in `src/components/ui/`.
+   233→- Confirmed all resort data references `RESORT_INFO` from `@/lib/constants` (phone, phoneRaw, email, address, addressShort, story, description, checkInTime, checkOutTime, social.{instagram,facebook,messenger,whatsapp,airbnb}). No hardcoded "Verdara" or fake phone numbers anywhere.
+   234→- Confirmed all API calls use `apiFetch` from `@/lib/api-client`; reads use TanStack Query (`useQuery`); booking POST uses `useMutation`.
+   235→- Confirmed `useMounted()` is used in PublicNav for client-only state (Sheet open + body scroll lock).
+   236→- Confirmed motion budget respected: only opacity + small y fades via `FadeUpSection`; no `AnimatePresence mode="popLayout"`; no layout animations.
+   237→- Ran `bun run lint` → 0 errors, 0 warnings (exit 0).
+   238→- Verified dev server (port 3000) returns 200 on `/`, `/api/rooms`, `/api/amenities`, `/api/gallery`.
+   239→- Reviewed /home/z/my-project/dev.log — only stale runtime error was a transient `void XCircle; void formatDate;` parse error in RoomDetailsPage that has already been resolved (file ends cleanly at line 430 with `formatTimeLabel`); subsequent compiles are clean and GETs return 200.
+   240→
+   241→Stage Summary:
+   242→- Files changed: none this pass — all 14 public-facing components from the prior 2-a pass are confirmed complete and spec-compliant. No code changes required.
+   243→- Files verified (unchanged): src/components/public/shared.tsx, RoomCard.tsx, PublicNav.tsx, PublicFooter.tsx, home/HomePage.tsx, rooms/RoomsPage.tsx, rooms/RoomDetailsPage.tsx, amenities/AmenitiesPage.tsx, gallery/GalleryPage.tsx, about/AboutPage.tsx, faqs/FaqsPage.tsx, contact/ContactPage.tsx, booking/BookingFlow.tsx, booking/FindReservation.tsx.
+   244→- Lint: 0 errors, 0 warnings.
+   245→- Runtime: dev server returns 200 on `/` and all read APIs. No errors in dev.log.
+   246→- Decisions reaffirmed: (1) Guest details captured in Step 2 of BookingFlow are kept in component-local React state (useBookingStore only stores dates/guests/roomId — don't modify foundation store). (2) Confirmation screen is local state — fresh visit to `booking-confirmation` view starts at Step 1. (3) Reference number displays whatever the API returns (RRMS-2026-XXXXXX from `generateReferenceNo`); the "TTF-2026-XXXXXX" in the brief was an example format and the FAQ answer text uses it as an illustrative example only. (4) Inline SVG brand icons used for Messenger + WhatsApp since lucide doesn't ship those. (5) PublicNav is sticky (not fixed) so pages don't need top padding adjustments.
+   247→- Hand-off notes for next agent: the public-facing surface is locked-in and verified. Any future changes should respect the editorial design system (Playfair headings + Inter body, ocean-teal/sand/coral palette, 1px hairline borders + `shadow-card` only, opacity+y fades only via `FadeUpSection`).
+   248→
+   249→---
+   250→Task ID: 2-b
+   251→Agent: full-stack-developer (admin components)
+   252→Task: Rewrite all admin components with The Twenty-Fifth branding, ocean-teal/sand/coral design, plain-language labels for non-technical staff.
+   253→
+   254→Work Log:
+   255→- Read worklog, foundation files (globals.css, constants.ts, types, stores, api-client, utils, validators), all relevant API routes, existing admin components, PublicNav for design language.
+   256→- Rewrote StatusBadges.tsx — pills with colored dots; `friendly` prop switches guest-facing vs short admin label; supports both BOOKING_STATUS_CONFIG and ROOM_STATUS_CONFIG.
+   257→- Rewrote StatCard.tsx — clean stat card with Playfair number, sand-circle icon, hint OR delta; EmptyState helper exported alongside.
+   258→- Rewrote AdminLogin.tsx — split layout (left: deep teal brand panel with wave SVG pattern + Waves icon + RESORT_INFO wordmark + "Admin Suite" eyebrow + "Back to website" link; right: white form card with email/password, "Sign in" primary button, demo creds hint with autofill).
+   259→- Rewrote AdminLayout.tsx — deep ocean-teal sidebar (#0A3D4A via --sidebar), coral active indicator (left border + accent bg), "The Twenty-Fifth" wordmark + "ADMIN" eyebrow; top bar with page title, theme toggle (persists to localStorage `rrms-theme`), notifications bell with count badge, "View Site" outline button; mobile sheet; auth gating via /api/auth/me verification + redirect to login; sand main bg.
+   260→- Rewrote DashboardAdmin.tsx — greeting + date eyebrow; 4 stat cards (arrivals/departures/in-house/pending); "Needs your attention" card with inline Approve/Decline buttons; Occupancy donut (Recharts) showing occupied vs open with % center; Today's timeline (arrivals + departures lists); quick actions row (New reservation / View calendar / View reports).
+   261→- Rewrote BookingsAdmin.tsx — filter chips (All/Pending/Confirmed/Checked in/Completed/Cancelled) with counts; search by name/ref; "New Reservation" primary button; desktop table + mobile card list; inline quick-action buttons per row (Approve/Decline for PENDING, Check in for CONFIRMED, Check out for CHECKED_IN, View for terminal states); details dialog with full info + status timeline + action buttons; CreateReservationDialog with guest info + room select + dates + live price calc → POST /api/reservations with source WALK_IN. Optimistic mutations + sonner toasts.
+   262→- Rewrote CalendarAdmin.tsx — FIXED the cleaning-across-all-days bug. New approach: fetch /api/calendar for layout + /api/reservations for reservation details + /api/rooms for current room statuses. Recompute each cell client-side via `computeCellStatus()`: MAINTENANCE/BLOCKED propagate from room status; stay days (checkIn <= day < checkOut) → OCCUPIED/RESERVED; checkout day with COMPLETED status → CLEANING (single cell only); checkout day with CHECKED_IN → OCCUPIED (still there); otherwise AVAILABLE. Sticky left room column (number + name + type + capacity); 7d/14d/30d toggle (default 14d); prev/next week + Today button; legend with colored dots; click booked cell → reservation details dialog.
+   263→- Rewrote RoomsAdmin.tsx — "The Villa" page with grid of room cards (image, status badge, price/night, capacity, view, truncated description); Edit dialog (name, number, description, price, capacity, view, type, status, image URL manager); status dropdown on each card (Open/Reserved/Occupied/Cleaning/Maintenance/Blocked) using ROOM_STATUS_CONFIG.friendly for descriptions; delete with AlertDialog confirm; PATCH/POST/DELETE via /api/rooms endpoints.
+   264→- Rewrote GuestsAdmin.tsx — searchable table (name, contact, location, stays count, last stay); click row → details dialog with guest profile (avatar, contact info rows, notes, reservation history with status badges); "New booking for this guest" button navigates to book flow. Mobile card list fallback.
+   265→- Rewrote AmenitiesAdmin.tsx — grouped by AMENITY_CATEGORIES (Villa & Grounds, Bedrooms, Kitchen & Dining, Wellness, General); each amenity as card with sand-circle icon + name + description + delete button on hover; "Add amenity" dialog per category (name, icon picker, description); POST/DELETE via /api/amenities.
+   266→- Rewrote GalleryAdmin.tsx — filter tabs by GALLERY_CATEGORIES; grid of square image cards with title/category overlay + delete button on hover; "Add Image" dialog with title, category, URL (with live preview), description; POST/DELETE via /api/gallery.
+   267→- Rewrote ReportsAdmin.tsx — 7d/30d/90d range toggle; "Export CSV" button (client-side generation with reference, guest, email, dates, nights, room, adults, children, total, status, created at — Blob download with proper filename); 4 stat cards (total revenue, reservations, avg stay length, occupancy); Recharts: monthly revenue bar (teal), bookings trend line (coral), status distribution donut with legend, room popularity horizontal bar.
+   268→- Rewrote SettingsAdmin.tsx — tabbed (General / Operations / Finance). General: resort name, tagline, email, phone, address, social URLs. Operations: check-in/out times (time inputs), max guests. Finance: currency code, tax rate %, service charge %. Each tab has its own Save button → PATCH /api/settings. All inputs pre-filled with current settings OR RESORT_INFO defaults.
+   269→- Ran `bun run lint` — fixed all errors:
+   270→  - Added `eslint-disable-next-line react-hooks/set-state-in-effect` for legitimate hydration/sync patterns: theme init in AdminLayout, three form-sync effects in SettingsAdmin.
+   271→  - Removed unused `@next/next/no-img-element` disable directives (rule not enabled in this project's eslint config).
+   272→  - 2 remaining warnings about React Hook Form's `watch()` (react-hooks/incompatible-library) — informational, React Compiler skips memoization. Acceptable.
+   273→- Verified curl localhost:3000 → 200. Dev log shows clean compiles, GET /api/dashboard, /api/notifications, /api/rooms, /api/amenities, /api/gallery, /api/auth/me, /api/reservations?status=PENDING all 200.
+   274→
+   275→Stage Summary:
+   276→- Files changed (all completely overwritten):
+   277→  - src/components/admin/StatusBadges.tsx
+   278→  - src/components/admin/StatCard.tsx
+   279→  - src/components/admin/AdminLogin.tsx
+   280→  - src/components/admin/AdminLayout.tsx
+   281→  - src/components/admin/DashboardAdmin.tsx
+   282→  - src/components/admin/BookingsAdmin.tsx
+   283→  - src/components/admin/CalendarAdmin.tsx
+   284→  - src/components/admin/RoomsAdmin.tsx
+   285→  - src/components/admin/GuestsAdmin.tsx
+   286→  - src/components/admin/AmenitiesAdmin.tsx
+   287→  - src/components/admin/GalleryAdmin.tsx
+   288→  - src/components/admin/ReportsAdmin.tsx
+   289→  - src/components/admin/SettingsAdmin.tsx
+   290→- Decisions:
+   291→  - Calendar cleaning bug fix: recompute cell statuses client-side using reservations + room statuses (instead of trusting /api/calendar's CLEANING which is based on room.status). MAINTENANCE/BLOCKED still propagate from room status; CLEANING only shows on checkout day of a COMPLETED reservation.
+   292→  - Theme toggle: persisted to localStorage `rrms-theme`, toggles `.dark` class on documentElement. No next-themes dependency needed.
+   293→  - All status labels use BOOKING_STATUS_CONFIG/ROOM_STATUS_CONFIG `.label` (short) by default, `.friendly` (long guest-facing) where appropriate (timeline badges in details dialogs).
+   294→  - Inline quick-action buttons used everywhere (Approve/Decline/Check in/Check out) per task spec — no dropdown menus for primary actions. Dropdowns only for room status changes (which need 6 options).
+   295→  - CSV export generated client-side from fetched /api/reservations data (the /api/reports endpoint doesn't return raw reservation rows). Proper CSV escaping for commas/quotes/newlines.
+   296→  - Recharts used for all charts (already a project dependency). Charts use the new palette tokens (teal #0E5A6F, coral #E27D60, sand #E5DED0, status colors).
+   297→- Issues:
+   298→  - 2 informational lint warnings remain (React Hook Form `watch()` API not memoizable by React Compiler). No fix without abandoning RHF; acceptable per task spec which permits `react-hooks/set-state-in-effect` disables for legitimate patterns.
+   299→  - Did not modify any API routes (calendar API still returns the buggy CLEANING status, but my client-side recompute overrides it). Future improvement: also fix the API.
+   300→
+   301→---
+   302→Task ID: 2-c
+   303→Agent: full-stack-developer (supporting files)
+   304→Task: Update types/validators/utils/api-client/page-router/FAQs for The Twenty-Fifth rebrand.
+   305→
+   306→Work Log:
+   307→- Read all foundation files (globals.css, constants.ts, types/index.ts, utils.ts, validators.ts, api-client.ts, auth.ts, page.tsx, schema.prisma, seed.ts) to understand current state.
+   308→- Ripgrepped src/ for [Vv]erdara and RRMS — only matches were: auth.ts salt string (must stay), comment headers in types/index.ts + validators.ts, generateReferenceNo prefix in utils.ts, and a user-facing placeholder in FindReservation.tsx.
+   309→- src/lib/utils.ts: Changed `generateReferenceNo` prefix from `RRMS-${year}-${random}` → `TTF-${year}-${random}`. New reservations will now be `TTF-2026-XXXXXX`. Verified by running the function: produces `TTF-2026-713956`.
+   310→- Verified `formatCurrency` (en-PH + PHP) outputs `₱45,000` correctly via Node test — no change needed.
+   311→- src/lib/validators.ts: No Verdara refs in schemas. Updated stale `RRMS — Zod Validation Schemas` comment header → `The Twenty-Fifth — Zod Validation Schemas`. reservationCreateSchema unchanged (source handled by API route, defaults to WEBSITE — no breaking change).
+   312→- src/lib/api-client.ts: Reviewed — no Verdara/old URLs. localStorage key `rrms-auth` left intact (internal, renaming breaks sessions). No changes.
+   313→- src/lib/auth.ts: Salt `verdara_salt_2025` LEFT UNTOUCHED per task instructions — seed.ts hashes admin password with the same salt via `hashPassword`, so changing it would break admin login. No changes.
+   314→- src/app/page.tsx: Reviewed — already correct. Loading shell says "The Twenty-Fifth", `booking-confirmation` case renders `<BookingFlow />`, hydration guard + skipHydration pattern intact, no Verdara refs. No changes.
+   315→- Searched all of src/app/api/ for Verdara/RRMS — zero matches in user-facing responses. reservations/route.ts POST uses `generateReferenceNo` from utils, so the TTF prefix flows through automatically. No changes.
+   316→- src/components/public/booking/FindReservation.tsx: Updated user-facing placeholder `RRMS-2026-123456` → `TTF-2026-123456`.
+   317→- src/types/index.ts: Updated stale `RRMS — Shared TypeScript Types` comment header → `The Twenty-Fifth — Shared TypeScript Types`.
+   318→- src/components/public/faqs/FaqsPage.tsx: Verified — references RESORT_INFO.phone, RESORT_INFO.social.messenger correctly; times (2:00 PM / 12:00 noon) match RESORT_INFO.checkInTime/checkOutTime; address details correct. No changes needed.
+   319→- Ran `bun run lint`: 0 errors, 2 pre-existing warnings (React Hook Form `watch()` + React Compiler — unrelated to rebrand, present before my changes).
+   320→- Verified dev server: curl http://localhost:3000/ → 200.
+   321→- Final grep: only "verdara" remaining in src/ is the salt string in auth.ts (exempted by task spec).
+   322→
+   323→Stage Summary:
+   324→- Files changed (4): src/lib/utils.ts, src/lib/validators.ts, src/types/index.ts, src/components/public/booking/FindReservation.tsx
+   325→- Files reviewed and confirmed correct (no changes): src/lib/api-client.ts, src/lib/auth.ts, src/app/page.tsx, src/components/public/faqs/FaqsPage.tsx, all src/app/api/** routes.
+   326→- Reference number format now in use: `TTF-2026-XXXXXX` (e.g. TTF-2026-713956). Seed data already uses `TTF-2026-001000`–style refs; new reservations created via POST /api/reservations will match this format.
+   327→- Auth/seed consistency preserved: salt `verdara_salt_2025` left intact, admin login `stay@the25thinzambales.com` / `the25thzambales` continues to work.
+   328→- Cookie name `rrms-session` and localStorage keys `rrms-auth`/`rrms-view`/`rrms-booking` left intact (internal, renaming would invalidate existing sessions).
+   329→- No user-facing "Verdara" or "RRMS" strings remain in src/.
+   330→- Issues: none. Lint passes (0 errors).
+   331→
+   332→---
+   333→
+   334→## Phase 7 — Full Rebrand to "The Twenty-Fifth" + Cleaner/Sharper UI + Non-Technical UX
+   335→
+   336→### Current Status Assessment
+   337→User requested a complete rebrand from the placeholder "Verdara Resort" to the REAL **The Twenty-Fifth** beachfront villa in Botolan, Zambales — using actual contact info, property details, and social links sourced from the resort's official Facebook (facebook.com/the25thinzambales), Instagram (@thetwentyfifthzambales), and Airbnb listing. Mandate: cleaner/sharper UI, UX optimized for non-technical users, flawless mobile+desktop compatibility.
+   338→
+   339→### Real Resort Data Integrated (verified from web search + page reader)
+   340→- **Name**: The Twenty-Fifth (a.k.a. "The 25th in Zambales")
+   341→- **Location**: Panan, Botolan, Zambales, Philippines
+   342→- **Phone**: +63 969 601 4369 (real, from FB page)
+   343→- **Social**: IG @thetwentyfifthzambales · FB facebook.com/the25thinzambales · Website the25thinzambales.com · Messenger m.me/the25thinzambales · WhatsApp wa.me/639696014369
+   344→- **Property**: 4 bedrooms · 21 beds · 5.5 baths · sleeps 20–25 (exclusive whole-villa booking) — from Airbnb listing
+   345→- **Real amenities**: private beachfront, infinity pool + dipping pool, AC bedrooms, fully equipped kitchen, BBQ area
+   346→- **Tagline**: "A luxurious beachfront villa in Zambales awaits."
+   347→- **Story**: "Shaped by the ocean, softened by coastal pine — you're not just booking a villa, you're creating space for connection."
+   348→
+   349→### Completed Modifications
+   350→
+   351→**Phase 1 — Foundation (lead agent)**
+   352→1. `src/app/globals.css` — Complete rewrite. New "Editorial Beachfront" palette: warm sand background (#FBF8F3), deep ocean teal primary (#0E5A6F), sunset coral accent (#E27D60), charcoal ink text. Playfair Display headings + Inter body. ONE subtle shadow tier (`shadow-card` / `shadow-card-hover`). Hairline borders over shadows. `.eyebrow` / `.text-gradient-ocean` / `.img-zoom` / `.container-tight` utilities. Dark mode variables. Reduced-motion media query. Admin sidebar = deep ocean (#0A3D4A).
+   353→2. `src/app/layout.tsx` — Swapped Geist→Playfair Display font. New metadata: "The Twenty-Fifth — Beachfront Villa in Zambales". Updated keywords/description/social tags.
+   354→3. `src/lib/constants.ts` — Full rewrite with REAL `RESORT_INFO` (real phone, address, socials, capacity). `BOOKING_STATUS_CONFIG` now has `friendly` (guest-facing phrase like "We're reviewing your request") + `description` fields. `ROOM_STATUS_CONFIG` has `friendly` too. `ADMIN_NAV` plain labels (Today/Reservations/Calendar/The Villa/Guests/Amenities/Photos/Reports/Settings). `ADMIN_CREDENTIALS` = `stay@the25thinzambales.com` / `the25thzambales`.
+   355→4. `prisma/seed.ts` — Full rewrite. 5 room types (Whole Villa / Master Suite / Beachfront Suite / Garden Suite / Poolside Room) with real pricing (₱8,500–₱45,000/night). 16 real amenities (private beachfront, infinity pool, dipping pool, kitchen, BBQ, AC bedrooms, etc.). 5 rooms. 18 gallery items with beach/villa imagery. 13 settings with real contact data. 8 sample reservations with TTF- prefix. Added clean-slate deletion of stale rooms at seed start. Admin login: stay@the25thinzambales.com / the25thzambales.
+   356→5. Database wiped + reseeded clean (removed 13 old Verdara rooms that had different numbers).
+   357→
+   358→**Phase 2-a — Public Components (subagent, verified)**
+   359→All 14 public components confirmed rebranded with The Twenty-Fifth data + new design system + non-technical UX. PublicNav (Playfair wordmark + ZAMBALES eyebrow + Book Your Stay button + mobile sheet). PublicFooter (4-col dark teal + real socials + Admin Login link). RoomCard (editorial, img-zoom, capacity badge). HomePage (hero with Check Availability card, story, room grid, amenities preview, gallery teaser, stats band, pull-quote, coral CTA). RoomsPage (filter chips). RoomDetailsPage (gallery + sticky booking card). AmenitiesPage (grouped). GalleryPage (masonry + lightbox with keyboard nav). AboutPage (editorial story + location). FaqsPage (12 plain-language FAQs + Messenger CTA). ContactPage (form + real contact info). BookingFlow (3-step: Dates→Details→Confirm + confirmation with TTF- reference, "What happens next" timeline, Add to Calendar/Messenger/Call/Find booking buttons). FindReservation (lookup + status badge + timeline).
+   360→
+   361→**Phase 2-b — Admin Components (subagent)**
+   362→All 13 admin components rewritten. AdminLogin (split layout, real branding, demo creds hint). AdminLayout (deep ocean sidebar, coral active indicator, theme toggle, notifications, View Site link, mobile sheet, auth gating). DashboardAdmin (greeting, 4 stat cards, "Needs your attention" with inline Approve/Decline, occupancy donut, today's timeline, quick actions). BookingsAdmin (filter chips with counts, inline quick-actions per status, details dialog, CreateReservationDialog). CalendarAdmin (**BUG FIXED**: cleaning status now only shows on checkout day via client-side recompute from reservations data — no longer spans all days). RoomsAdmin (room cards + edit dialog + status dropdown). GuestsAdmin (searchable table + details). AmenitiesAdmin (grouped + add dialog). GalleryAdmin (filter tabs + add dialog). ReportsAdmin (stat cards + Recharts + **CSV export**). SettingsAdmin (tabbed, real values). StatCard + StatusBadges (plain-language pills with dots).
+   363→
+   364→**Phase 2-c — Supporting Files (subagent)**
+   365→`utils.ts` — `generateReferenceNo` prefix changed RRMS→TTF (new reservations now get `TTF-2026-XXXXXX`). `validators.ts` + `types/index.ts` — comment headers updated. `FindReservation.tsx` — placeholder updated to TTF-. Verified no user-facing "Verdara" remains (only the internal salt string `verdara_salt_2025` in auth.ts left intact to preserve admin login — seed hashed password with this salt).
+   366→
+   367→### Verification Results (agent-browser + VLM, end-to-end)
+   368→- ✅ **Public homepage**: renders cleanly, beach hero, "BOTOLAN · ZAMBALES" eyebrow, "A beachfront villa all your own." headline, Check Availability card with date pickers, editorial design confirmed by VLM ("clean, sharp, professional, editorial luxury travel magazine look")
+   369→- ✅ **Booking flow end-to-end**: Step 1 (Dates & Guests + 5 room cards with real pricing ₱8.5k–₱45k) → Step 2 (Details form: name/email/phone/city/country/special requests, step 2 active) → Step 3 (Review: ₱9,500 × 2 nights = ₱19,000, "No payment needed now" note) → Confirmation (**TTF-2026-831825** reference, "We're reviewing your request" badge, action buttons)
+   370→- ✅ **Reservation persisted**: API lookup confirms TTF-2026-831825, PENDING, ₱19,000, Juan Dela Cruz
+   371→- ✅ **Admin login**: clean split layout, real branding, demo creds hint, login succeeds with stay@the25thinzambales.com / the25thzambales
+   372→- ✅ **Admin dashboard**: 4 stat cards, pending reservations with inline Approve/Decline, today's timeline, plain-language labels
+   373→- ✅ **Booking approval workflow**: clicked Approve → toast "Reservation approved." → API confirms status changed PENDING→CONFIRMED
+   374→- ✅ **Calendar bug FIXED**: VLM confirms "Cleaning status appears only on the checkout day of a departed reservation... does not incorrectly span multiple days or all days"
+   375→- ✅ **Gallery**: masonry grid with real images (Golden Hour, Infinity Pool, Private Beach Access), filter tabs
+   376→- ✅ **About page**: hero with coastal image, "OUR STORY" eyebrow, "The Twenty-Fifth" title
+   377→- ✅ **Mobile (375px)**: responsive, hamburger nav, vertical stacking, no overflow
+   378→- ✅ **Lint**: 0 errors, 2 informational warnings (React Hook Form watch() + React Compiler — acceptable, no clean fix)
+   379→
+   380→### Unresolved Issues / Risks
+   381→- The calendar API route (`/api/calendar`) still returns the buggy CLEANING data server-side (couldn't modify per task split). The client-side recompute in CalendarAdmin cleanly overrides it. Future improvement: fix the API route itself.
+   382→- 2 informational lint warnings about RHF's `watch()` API not being safely memoizable by React Compiler — acceptable.
+   383→- The internal salt string in `auth.ts` still says `verdara_salt_2025` (cosmetic only; changing it would break admin login since the seed hashed the password with this salt). Left intact intentionally.
+   384→
+   385→### Priority Recommendations for Next Phase
+   386→1. Fix the `/api/calendar` route's server-side cleaning logic (currently overridden client-side)
+   387→2. Add real room type CRUD in admin (currently only room-level editing)
+   388→3. Add reservation date editing for admins
+   389→4. Add email notification simulation (toast on reservation status change with "Email sent to guest" messaging)
+   390→5. Add a public-facing "Check Availability" results page (currently goes straight to booking flow)
+   391→6. Consider adding a dark mode toggle to the public site (admin already has one)
+   392→7. Add Google Maps embed to the About/Contact pages (currently a styled placeholder)
+   393→
+   394→
+   395→---
+   396→Task ID: 3-a
+   397→Agent: full-stack-developer (public UI fixes + FAQ rename)
+   398→Task: Fix public-facing UI bugs (PublicNav spacing, hero booking card overflow, loading screen, mobile polish across all public pages) and rename "Good to Know" → "FAQs".
+   399→
+   400→Work Log:
+   401→- Read worklog.md to confirm Phase 2-a/2-b/2-c foundation: 14 public components + admin + supporting files all rebranded to The Twenty-Fifth with ocean-teal/sand/coral design system. Read all target files (PublicNav, HomePage, page.tsx, FaqsPage, constants, RoomsPage, RoomDetailsPage, AmenitiesPage, GalleryPage, AboutPage, ContactPage, BookingFlow, FindReservation, RoomCard, PublicFooter) in full before editing.
+   402→- Grepped src/ for "Good to Know" / "Good to know" — found 3 references (constants.ts:222, FaqsPage.tsx:140 eyebrow, FaqsPage.tsx:141 title). PublicFooter doesn't hardcode it (iterates PUBLIC_NAV), so updating constants auto-updates the footer's Explore column too.
+   403→- Fix 1 — PublicNav.tsx: changed desktop nav `gap-1` → `gap-2`, item padding `px-3` → `px-4` (and matching coral underline `inset-x-3` → `inset-x-4`); added `<span className="hidden h-6 w-px bg-border lg:block" />` divider before the dark-mode toggle; bumped right-side cluster `gap-2 sm:gap-3` → `gap-3 sm:gap-4`; dark-mode toggle `h-9 w-9` → `h-10 w-10 sm:h-9 sm:w-9` so mobile touch target is ≥44px (sm+ stays compact).
+   404→- Fix 2 — HomePage.tsx hero: grid changed to `grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto_auto] md:items-end`; Check Availability button gets `col-span-1 w-full ... sm:col-span-2 md:col-span-1 md:w-auto` (full-width on mobile, both columns on sm, auto on md); hero `min-h-[92vh]` → `min-h-[88vh] sm:min-h-[92vh]`; floating card `translate-y-1/2` → `translate-y-1/3 sm:translate-y-1/2`; spacer below hero `h-32 sm:h-40` → `h-40 sm:h-48`.
+   405→- Fix 3 — page.tsx loading shell: spinner `h-10 w-10` → `h-12 w-12`, gap `gap-4` → `gap-6`, wordmark tracking `tracking-[0.3em]` → `tracking-[0.25em]`. Spinner keeps the existing `animate-pulse` (whole-shell pulse removed per spec).
+   406→- Fix 4 — rename "Good to Know" → "FAQs": constants.ts PUBLIC_NAV label "Good to Know" → "FAQs"; FaqsPage.tsx SectionHeading `eyebrow="Good to Know"` → `eyebrow="FAQs"` and `title="Good to know"` → `title="Frequently asked questions"` (subtitle kept — it didn't reference "Good to know"). Re-grepped to confirm zero remaining occurrences.
+   407→- Fix 5 — mobile polish (375px audit):
+   408→  - RoomsPage.tsx: filter chips already `flex flex-wrap` ✓ + grid already `sm:grid-cols-2 lg:grid-cols-3` ✓ (defaults grid-cols-1 on mobile); bumped chip `min-h-[44px]` for touch targets.
+   409→  - RoomDetailsPage.tsx: thumbnails changed from `grid grid-cols-4 sm:grid-cols-5` to a horizontally scrollable `no-scrollbar flex gap-3 overflow-x-auto` strip on mobile (`w-20 shrink-0 aspect-square`) that reverts to `sm:grid sm:grid-cols-5 sm:overflow-visible sm:w-auto` on sm+; sticky booking card already stacks below gallery on mobile (parent `grid gap-10 lg:grid-cols-[1.6fr_1fr]`).
+   410→  - AmenitiesPage.tsx: amenity grid `sm:grid-cols-2 lg:grid-cols-4` → `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`; card padding `p-5` → `p-4 sm:p-5`; icon `h-11 w-11` → `h-12 w-12` (no longer shrinks below spec).
+   411→  - GalleryPage.tsx: masonry grid `grid-cols-2 sm:auto-rows-[220px] sm:gap-4 lg:grid-cols-4` → `grid-cols-2 sm:auto-rows-[220px] sm:grid-cols-3 sm:gap-4 lg:grid-cols-4`; lightbox already full-screen (`fixed inset-0 z-[100]`) ✓.
+   412→  - AboutPage.tsx: NarrativeSection grid already `grid items-center gap-10 lg:grid-cols-2` (stacks on mobile) ✓; images use `aspect-[4/3] overflow-hidden rounded-xl` + `object-cover` ✓ (no overflow). Location grid already `grid gap-10 lg:grid-cols-2` ✓.
+   413→  - ContactPage.tsx: contact+form grid already `grid gap-8 lg:grid-cols-[1.2fr_1fr]` (stacks on mobile) ✓; both info cards have `p-6 sm:p-7`, form card `p-6 sm:p-8` ✓; inputs already `w-full` ✓.
+   414→  - BookingFlow.tsx: step indicator — labels now `hidden ... sm:inline` (icons/numbers only on mobile), connector line `w-8` → `w-6` on mobile, button gets `min-h-[44px] px-1` for touch target; confirmation screen action buttons (Add to Calendar / Messenger / Call / Find booking) changed from `grid gap-3 sm:grid-cols-2` to `grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:flex-row md:flex-wrap md:justify-center` with `w-full ... md:w-auto` on each (full-width stacked on mobile, 2-col on sm, row on md); review/confirm price breakdown already stacks naturally (each row is `flex items-center justify-between`) ✓.
+   415→  - FindReservation.tsx: lookup inputs already `w-full` ✓; result-card header changed from `flex flex-wrap items-center justify-between gap-3` to `flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between` and Badge gets `w-fit` so on mobile the badge appears ABOVE the reservation number (DOM order kept, visual swap via flex-col-reverse), and on sm+ returns to right-aligned row.
+   416→  - RoomCard.tsx: body padding `p-5` → `p-4 sm:p-5`; price+action footer `flex items-end justify-between gap-3` → `flex flex-wrap items-end justify-between gap-3` so long prices wrap; View Details/Choose/Book Now action gets `min-h-[44px]` touch target; skeleton padding matched `p-4 sm:p-5`.
+   417→- Ran `bun run lint` — 0 errors, 2 pre-existing React Hook Form warnings on admin files (BookingsAdmin.tsx:798 watch, RoomsAdmin.tsx:415 watch) which are explicitly acceptable per task spec.
+   418→- Checked dev.log (most recent lines): clean compiles, no errors after edits.
+   419→
+   420→Stage Summary:
+   421→Files changed (11 total):
+   422→- src/components/public/PublicNav.tsx — desktop nav gap-2 / px-4 + coral underline inset-x-4; right cluster gap-3 sm:gap-4; vertical hairline divider (h-6 w-px bg-border, lg:block) before dark-mode toggle; dark-mode toggle h-10 w-10 sm:h-9 sm:w-9 for 44px mobile touch target.
+   423→- src/components/public/home/HomePage.tsx — hero min-h-[88vh] sm:min-h-[92vh]; floating card translate-y-1/3 sm:translate-y-1/2; booking grid `grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto_auto] md:items-end`; Check Availability button `col-span-1 w-full sm:col-span-2 md:col-span-1 md:w-auto`; spacer h-40 sm:h-48.
+   424→- src/app/page.tsx — loading shell spinner h-12 w-12, gap-6, wordmark tracking-[0.25em] (kept spinner-only animate-pulse).
+   425→- src/lib/constants.ts — PUBLIC_NAV faqs label "Good to Know" → "FAQs".
+   426→- src/components/public/faqs/FaqsPage.tsx — SectionHeading eyebrow "FAQs", title "Frequently asked questions" (subtitle unchanged).
+   427→- src/components/public/rooms/RoomsPage.tsx — filter chips min-h-[44px].
+   428→- src/components/public/rooms/RoomDetailsPage.tsx — thumbnails horizontally scrollable on mobile (`no-scrollbar flex gap-3 overflow-x-auto w-20 shrink-0`), revert to `sm:grid sm:grid-cols-5`.
+   429→- src/components/public/amenities/AmenitiesPage.tsx — grid `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`; card p-4 sm:p-5; icon h-12 w-12.
+   430→- src/components/public/gallery/GalleryPage.tsx — masonry `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`.
+   431→- src/components/public/booking/BookingFlow.tsx — step indicator labels hidden on mobile (sm:inline), connector w-6 sm:w-16, button min-h-[44px]; confirmation action buttons `grid-cols-1 sm:grid-cols-2 md:flex md:flex-row md:flex-wrap md:justify-center` with each button `w-full ... md:w-auto`.
+   432→- src/components/public/booking/FindReservation.tsx — result header `flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between`; Badge gets `w-fit` (badge stacks above reservation number on mobile).
+   433→- src/components/public/RoomCard.tsx — body p-4 sm:p-5; footer flex-wrap; action min-h-[44px]; skeleton p-4 sm:p-5.
+   434→Decisions:
+   435→- AboutPage, ContactPage, AboutPage narrative sections already had correct mobile-first responsive classes (default grid-cols-1, lg:grid-cols-2), so no edits needed there.
+   436→- Used flex-col-reverse (instead of reordering DOM) for FindReservation header so sm+ layout is unchanged (badge right, reservation # left).
+   437→- Kept BookingFlow circle size at h-8 w-8 (spec said "smaller circles") but enlarged the clickable button to min-h-[44px] for touch accessibility.
+   438→- For sm:grid-cols-2 hero booking card on HomePage, gave Check Availability button `sm:col-span-2` so it spans the full row on sm (the guests select takes the other column on row 2).
+   439→Lint result: 0 errors, 2 pre-existing RHF warnings (BookingsAdmin.tsx:798, RoomsAdmin.tsx:415) — both acceptable per task spec.
+   440→
+   441→---
+   442→Task ID: 3-b
+   443→Agent: full-stack-developer (admin mobile responsiveness)
+   444→Task: Fix admin mobile responsiveness across ALL admin pages (375px + tablet, no clipping, no cramping, proper touch targets).
+   445→
+   446→Work Log:
+   447→- Read /home/z/my-project/worklog.md (full prior context — Phase 7 rebrand, Tasks 1/2-a/2-b/2-c, design system, layout structure).
+   448→- Read each admin component fully before editing (AdminLayout, DashboardAdmin, CalendarAdmin, BookingsAdmin, RoomsAdmin, GuestsAdmin, AmenitiesAdmin, GalleryAdmin, ReportsAdmin, SettingsAdmin).
+   449→- AdminLayout: main content padding `p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8` with `min-h-0 flex-1` so mobile browser chrome never clips the page bottom; top-bar action cluster gap tightened `gap-1 sm:gap-1.5` for very small screens.
+   450→- DashboardAdmin: stat cards grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` (was 2-up); Approve/Decline buttons in pending reservations list now `flex-1 sm:flex-none` inside `sm:w-auto` container so they go full-width stacked on mobile; added `pb-6` to quick-actions section root.
+   451→- CalendarAdmin: sticky room column narrowed `w-36 min-w-[9rem]` (was `w-44 min-w-[11rem]`); room name + meta truncated on mobile to fit; date-range label hidden on `< sm` (`hidden sm:inline`) so nav cluster (prev / today / next + range toggle) fits on 375px; hint text wraps (`flex-wrap`); reservation details dialog body scrolls `max-h-[85vh] overflow-y-auto` with `px-4 sm:px-6`, dl values `break-words` so long emails/refs don't overflow.
+   452→- BookingsAdmin: filter chip row already wrapped + 36px targets — kept; search input + New Reservation button stacked `flex-col sm:flex-row`; desktop table switched from `lg:block` to `md:block` and wrapped in `overflow-x-auto`; mobile cards `md:hidden pb-6`; reservation details dialog body scrolls (`max-h-[60vh] overflow-y-auto`), all DialogFooter buttons `w-full sm:w-auto`; CreateReservationDialog body padding `px-4 sm:px-6`, footer buttons full-width on mobile.
+   453→- RoomsAdmin: header row `flex items-center justify-between gap-3 pb-6` with truncated title + shrink-0 button; room card action row `flex flex-wrap` with `min-w-[100px]` Edit button, `min-w-[44px]` status dropdown trigger, `size-9 shrink-0` delete; status label hidden on mobile; room form dialog body `px-4 py-5 sm:px-6`, footer buttons `w-full sm:w-auto`.
+   454→- GuestsAdmin: desktop table `md:block` wrapped in `overflow-x-auto`; mobile card list `md:hidden pb-6`; guest details dialog body `max-h-[85vh] overflow-y-auto` with `px-4 sm:px-6`, avatar gets `shrink-0`, name container `min-w-0`; footer buttons full-width on mobile, `flex-row flex-wrap gap-2`.
+   455→- AmenitiesAdmin: section header `flex items-center justify-between gap-3`, truncated title; amenity card trash button bumped to `size-9` for proper touch target, kept opacity-reveal only on `sm+` (always visible on mobile); add-amenity dialog max-height `max-h-[90vh]` + body `flex-1 overflow-y-auto px-4 py-5 sm:px-6`, footer full-width mobile buttons.
+   456→- GalleryAdmin: filter tabs row + Add Image button split into two rows (filter row `flex flex-wrap`, button row `flex justify-end`) so the button doesn't get pushed off-screen on small phones; image grid keeps `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4` with `pb-6`; trash button only opacity-toggled on `sm+`; add-image dialog preview `max-h-48 w-full object-cover` (was `aspect-video` which could dominate on mobile), body `flex-1 overflow-y-auto px-4 py-5 sm:px-6`, footer full-width mobile buttons.
+   457→- ReportsAdmin: range toggle `self-start` + 36px touch targets; Export CSV button `w-full sm:w-auto`; stat cards `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`; charts grid `grid-cols-1 lg:grid-cols-2 pb-6`; room-popularity YAxis width reduced to 80 + smaller tick font to avoid horizontal clipping on mobile.
+   458→- SettingsAdmin: tab triggers get `shrink-0` (no flex-shrink) so they don't squish when horizontally scrolling on mobile; settings card padding `p-4 sm:p-6`; all Save buttons `w-full sm:w-auto`; root content wrapped in `pb-6`.
+   459→- Ran `bun run lint`: 0 errors, 2 pre-existing acceptable React Hook Form `watch()` warnings (RHF + React Compiler, no clean fix — explicitly exempted by task spec).
+   460→- Verified dev server (port 3000) returns HTTP 200 on `/` and dev.log shows clean recompiles with no runtime errors.
+   461→
+   462→Stage Summary:
+   463→- Files changed (10): src/components/admin/AdminLayout.tsx, DashboardAdmin.tsx, CalendarAdmin.tsx, BookingsAdmin.tsx, RoomsAdmin.tsx, GuestsAdmin.tsx, AmenitiesAdmin.tsx, GalleryAdmin.tsx, ReportsAdmin.tsx, SettingsAdmin.tsx
+   464→- Mobile patterns applied uniformly:
+   465→  - All grids start at `grid-cols-1` and step up at `sm:` / `lg:`.
+   466→  - All tables (Bookings, Guests) wrapped in `hidden md:block overflow-x-auto` with a parallel `md:hidden` mobile card list (Bookings already had one, Guests already had one — breakpoints shifted from `lg` to `md`).
+   467→  - All Dialog/Sheet bodies use `max-h-[85vh] overflow-y-auto` (or existing `max-h-[60-70vh]`) with `px-4 sm:px-6` responsive padding.
+   468→  - All form submit / footer buttons `w-full sm:w-auto`.
+   469→  - All filter chip rows `flex flex-wrap` with `min-h-[36px]` touch targets.
+   470→  - Page roots have `pb-6` so content isn't clipped by mobile browser chrome at the bottom of long pages.
+   471→  - AdminLayout main wrapper now `min-h-0 flex-1 p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8` to guarantee bottom breathing room on mobile.
+   472→- No design system changes (colors, fonts, shadows, border styles untouched).
+   473→- No API/component API changes — all imports preserved, all mutations/queries intact.
+   474→- Lint: 0 errors, 2 acceptable pre-existing RHF warnings.
+   475→
+   476→---
+   477→Task ID: 3-verify
+   478→Agent: lead (Z.ai Code) — UI bug fix verification + orchestration
+   479→Task: Fix UI bugs (hero card overflow, cramped nav, mobile responsiveness for public+admin), rename "Good to Know" → "FAQs", improve loading screen. Verified end-to-end with agent-browser.
+   480→
+   481→Work Log:
+   482→- Analyzed 6 user-uploaded screenshots via VLM to identify specific bugs: (1) hero booking card right-edge cut off on mobile, (2) desktop nav 7 items too cramped at px-3 gap-1, (3) mobile header brand+moon+hamburger too tight at gap-2, (4) admin dashboard mobile clips "Quick actions" + 2x2 stat grid cramps phones, (5) admin calendar mobile overflow, (6) loading screen spinner+wordmark too close.
+   483→- Improved the user's prompt into a structured 7-point task spec, then dispatched 2 parallel full-stack-developer subagents:
+   484→  - Task 3-a: public UI fixes + FAQ rename (12 files changed)
+   485→  - Task 3-b: admin mobile responsiveness (10 files changed)
+   486→- Verified with agent-browser + VLM on BOTH viewports:
+   487→  - Mobile (375x812): header spacing clean (brand/moon/hamburger not touching), hero "Check Availability" button fully visible + full-width (scrollintoview confirmed), FAQ page title = "Frequently asked questions", admin dashboard stat cards stack to 1 column, dashboard bottom "Quick actions" not clipped (pb-16 fix working), admin calendar controls fit 375px with no overflow + legend visible, admin bookings renders mobile cards (not cramped table).
+   488→  - Desktop (1440x900): nav 7 items well-spaced with visual divider before action cluster, admin dashboard 4-col stat row intact (no regression), sidebar visible.
+   489→- Ran `bun run lint`: 0 errors, 2 pre-existing RHF warnings (acceptable).
+   490→
+   491→Stage Summary:
+   492→- All 6 user-reported UI bugs + loading screen spacing FIXED and browser-verified on both mobile (375px) and desktop (1440px).
+   493→- "Good to Know" → "FAQs" rename confirmed in nav + page title (constants.ts + FaqsPage.tsx).
+   494→- No regressions on desktop admin dashboard (4-col stats, sidebar, layout all intact).
+   495→- Lint clean (0 errors). Dev server HTTP 200.
+   496→- Files changed across both subagents (22 total): PublicNav, HomePage, page.tsx, constants.ts, FaqsPage, RoomsPage, RoomDetailsPage, AmenitiesPage, GalleryPage, BookingFlow, FindReservation, RoomCard (public); AdminLayout, DashboardAdmin, CalendarAdmin, BookingsAdmin, RoomsAdmin, GuestsAdmin, AmenitiesAdmin, GalleryAdmin, ReportsAdmin, SettingsAdmin (admin).
+   497→
+   498→---
+   499→Task ID: 4
+   500→Agent: lead (Z.ai Code) — UI bug fix round 2: admin login responsive, hero empty space, rooms card mobile, dark mode contrast
+   501→
+   502→Work Log:
+   503→- Analyzed 3 new user-uploaded screenshots via VLM to identify remaining UI bugs:
+   504→  1. Admin login two-panel layout showing side-by-side on tablet/narrow desktop (lg:grid-cols-2 triggered at 1024px, too low)
+   505→  2. Homepage hero excessive empty space on mobile (min-h-[88vh] + translate-y card + h-40 spacer = big gap)
+   506→  3. Admin Rooms page: truncated descriptions (line-clamp-2 too aggressive), small Edit/Status/Delete buttons (h-9 = 36px, below 44px touch target)
+   507→  4. Dark mode theme color transparency — bg-primary renders as light blue (#4DBFD4) in dark mode, looks washed out on full-panel backgrounds; border/input colors too dark (#243F47) causing low contrast
+   508→- Fixed AdminLogin.tsx:
+   509→  - Changed grid breakpoint from lg:grid-cols-2 → xl:grid-cols-[1.1fr_1fr] so panels stack below 1280px (tablets and small laptops get single-column form)
+   510→  - Left brand panel: changed bg-primary → bg-[#0A3D4A] (fixed deep ocean, consistent in both light/dark mode)
+   511→  - Mobile brand icon: also changed bg-primary → bg-[#0A3D4A]
+   512→  - Reduced brand panel title from text-5xl → text-4xl lg:text-5xl, tagline text-base → text-sm lg:text-base
+   513→  - Mobile brand header: text-2xl → text-xl sm:text-2xl
+   514→  - Form card padding: p-8 → p-5 sm:p-7 xl:p-8 (tighter on mobile)
+   515→  - Demo credentials: bg-sand/50 → bg-muted/50 (better dark mode), text-xs → text-xs sm:text-sm, added break-all for long email, Autofill button h-8 → h-9
+   516→  - Form heading now always visible (removed hidden lg:block) for consistency
+   517→  - Back button: visible below xl (was lg:hidden), smaller text on mobile
+   518→- Fixed HomePage.tsx hero section:
+   519→  - Hero min-height: min-h-[88vh] sm:min-h-[92vh] → min-h-[68vh] sm:min-h-[80vh] lg:min-h-[88vh] (much shorter on mobile)
+   520→  - Hero alignment: items-center → items-end (content sits at bottom, card overlaps naturally)
+   521→  - Hero content padding: pt-24 pb-32 → pt-20 pb-40 sm:pb-40 lg:pb-32 (more bottom padding for card overlap)
+   522→  - Mobile headline: text-4xl → text-3xl sm:text-5xl (smaller on mobile)
+   523→  - Mobile eyebrow: added text-[0.65rem] sm:text-xs responsive size
+   524→  - Mobile description: text-base → text-sm sm:text-lg
+   525→  - Floating card: translate-y-1/3 sm:translate-y-1/2 → translate-y-1/2 (consistent half-translate)
+   526→  - Spacer below hero: h-40 sm:h-48 → h-20 sm:h-32 lg:h-40 (much smaller on mobile)
+   527→  - Darker gradient: from-black/80 → from-black/85 via-black/30 → via-black/35
+   528→- Fixed RoomsAdmin.tsx room card:
+   529→  - Card body padding: p-4 → p-4 sm:p-5
+   530→  - Room name: text-base → text-base sm:text-lg
+   531→  - Room type/number: added mt-0.5, text-xs sm:text-sm
+   532→  - Capacity/view row: text-xs → text-xs sm:text-sm
+   533→  - Description: line-clamp-2 → line-clamp-3, added leading-relaxed sm:text-sm sm:leading-relaxed (shows more text, better readability)
+   534→  - Edit button: h-9 → h-10 (40px touch target), added text-sm
+   535→  - Status dropdown: h-9 → h-10
+   536→  - Delete button: size-9 → size-10
+   537→- Fixed globals.css dark mode:
+   538→  - Border color: #243F47 → #2D4A52 (lighter, better contrast)
+   539→  - Input color: #243F47 → #2D4A52 (matches border)
+   540→  - Added chart colors for dark mode (chart-1 through chart-5) — were missing, causing transparent/invisible chart elements
+   541→- Ran `bun run lint`: 0 errors, 2 pre-existing RHF warnings (acceptable).
+   542→- Verified with agent-browser + VLM on 3 viewports:
+   543→  - Mobile (375px): admin login = single column, brand header centered, form readable, no empty space. Admin rooms = single column cards, 3-line descriptions, 40px buttons. Homepage hero = reasonable height, booking card visible.
+   544→  - Tablet (768px): admin login = single column (stacks below xl), form well-sized, no two-panel side-by-side.
+   545→  - Desktop (1440px): admin login = two-panel with deep teal brand panel + form panel. Homepage hero = booking card overlaps bottom, all fields + Check Availability button visible.
+   546→
+   547→Stage Summary:
+   548→- Files changed (4): src/components/admin/AdminLogin.tsx, src/components/public/home/HomePage.tsx, src/components/admin/RoomsAdmin.tsx, src/app/globals.css
+   549→- All 4 user-reported issues resolved and browser-verified on 375px + 768px + 1440px:
+   550→  1. Admin login now stacks to single column below xl (1280px) — no more cramped two-panel on tablet
+   551→  2. Homepage hero empty space eliminated on mobile (68vh instead of 88vh, smaller spacer)
+   552→  3. Admin rooms cards: 3-line descriptions (was 2), 40px buttons (was 36px), responsive text sizes
+   553→  4. Dark mode: fixed border/input contrast, added missing chart colors, brand panel uses fixed deep ocean (#0A3D4A) instead of theme primary
+   554→- Lint: 0 errors. Dev server: HTTP 200.
+   555→
+   556→---
+   557→Task ID: 5-a
+   558→Agent: full-stack-developer (admin color fix)
+   559→Task: Fix transparent button text in admin components (bg-primary text-white → text-primary-foreground)
+   560→
+   561→Work Log:
+   562→- src/components/admin/AmenitiesAdmin.tsx (1 occurrence)
+   563→- src/components/admin/RoomsAdmin.tsx (3 occurrences)
+   564→- src/components/admin/DashboardAdmin.tsx (1 occurrence)
+   565→- src/components/admin/CalendarAdmin.tsx (1 occurrence)
+   566→- src/components/admin/ReportsAdmin.tsx (1 occurrence)
+   567→- src/components/admin/BookingsAdmin.tsx (7 occurrences)
+   568→- src/components/admin/SettingsAdmin.tsx (3 occurrences)
+   569→- src/components/admin/AdminLogin.tsx (1 occurrence)
+   570→- src/components/admin/GalleryAdmin.tsx (4 occurrences)
+   571→- Total: 22 replacements across 9 admin files.
+   572→- No `bg-coral text-white` patterns found in admin files (no coral changes needed).
+   573→- Lint verified: `bun run lint` → 0 errors, 2 pre-existing RHF warnings (acceptable).
+   574→
+   575→Stage Summary:
+   576→- Resolved the dark-mode "transparent button text" bug in all admin components. Buttons using `bg-primary` now use `text-primary-foreground` (white in light mode, dark ink #0A1F25 in dark mode) for correct contrast in both themes. `hover:bg-primary/90` and tint classes (`bg-primary/10`, `/15`, `/30`, `/40`) were intentionally left untouched. Work record saved to /agent-ctx/5-a-admin-color-fix.md. Public components were NOT touched per task scope and may need a separate pass if the same pattern exists there.
+   577→
+   578→---
+   579→Task ID: 5
+   580→Agent: lead (Z.ai Code) — Fix check-in/out overlap, loading spinner, transparent text color
+   581→
+   582→Task: User reported 3 bugs: (1) Check-in/out booking card being covered by "Our Story" section, (2) loading UI components not running, (3) text color theme becoming transparent in light and dark mode.
+   583→
+   584→Work Log:
+   585→- Analyzed user-uploaded screenshot + live site via agent-browser + VLM to diagnose root causes.
+   586→- **Bug 1 (Booking card overlap)**: Root cause was the hero section's `overflow-hidden` clipping the absolutely-positioned booking card that extended below the hero via `translate-y-1/2`. The card's z-20 was scoped within the hero's stacking context, so the next sibling "Our Story" section painted on top of the card's overflowing portion. Fix: Restructured HomePage hero — moved the booking card OUT of the hero section into its own `<section>` sibling with `-mt-16 sm:-mt-20 lg:-mt-24` negative margin to overlap the hero from below. Removed the old `absolute bottom-0 translate-y-1/2` positioning and the `h-20 spacer` div. The card now sits in normal document flow with a negative margin pulling it up over the hero, and the "Our Story" section follows naturally with no overlap. Also reduced hero bottom padding from `pb-40` to `pb-16 sm:pb-20 lg:pb-28` since the card no longer needs huge bottom space inside the hero.
+   587→- **Bug 2 (Loading spinner not running)**: Root cause was `animate-pulse` (opacity pulse) instead of `animate-spin` (rotation) on the loading spinner in `src/app/page.tsx` line 67. The spinner was a `border-2 border-primary/20 border-t-primary` ring that needs to ROTATE, not pulse. Fix: Changed `animate-pulse` → `animate-spin`. Verified all other Loader2 components already correctly use `animate-spin`.
+   588→- **Bug 3 (Transparent text color)**: Root cause was `bg-primary text-white` on buttons. In dark mode, `--primary: #4DBFD4` (light cyan) with `text-white` (#FFFFFF) = ~1.7:1 contrast ratio (nearly invisible). Same issue with `bg-coral text-white` (coral #E8987E + white = ~2:1). Fix: Changed `text-white` → `text-primary-foreground` on all `bg-primary` buttons/elements, and `text-white` → `text-coral-foreground` on `bg-coral` elements. The `--primary-foreground` variable is `#FFFFFF` in light mode and `#0A1F25` (dark ink) in dark mode — automatically providing correct contrast in both themes. Same for `--coral-foreground` (`#FFFFFF` light / `#1B2A2E` dark). Also fixed: SectionDivider `text-coral/40` (40% opacity) → `text-coral` (solid) for better visibility.
+   589→- Dispatched subagent (Task 5-a) to fix all admin components (22 replacements across 9 files). Fixed public components directly (BookingFlow, HomePage, PublicNav, RoomsPage, GalleryPage, shared.tsx).
+   590→- CTA section in HomePage: `bg-coral text-white` → `bg-coral text-coral-foreground`, `text-white/85` → `text-coral-foreground/85`, outline button `border-white/40 text-white` → `border-coral-foreground/30 text-coral-foreground`.
+   591→- Verified computed styles via agent-browser: "Check Availability" button in dark mode now has bg `rgb(77, 191, 212)` (#4DBFD4 light cyan) + text `rgb(10, 31, 37)` (#0A1F25 dark ink) = high contrast. Previously was white-on-light-cyan (invisible).
+   592→- Ran `bun run lint`: 0 errors, 2 pre-existing RHF warnings (acceptable).
+   593→
+   594→Verification (agent-browser + VLM on 4 viewports):
+   595→- Mobile 375px DARK mode: booking card fully visible, no overlap with Our Story, all button text readable, CTA section text readable. No transparent text anywhere.
+   596→- Mobile 375px LIGHT mode: same — all texts readable, proper spacing, no overlap.
+   597→- Desktop 1440px LIGHT mode: hero booking card overlaps hero properly (all 4 fields on one row), Our Story section below with proper spacing, no overlap.
+   598→- Booking flow page: step indicator, date inputs, guest selectors, Continue button all readable and properly sized for mobile.
+   599→
+   600→Stage Summary:
+   601→- Files changed (public, by lead): src/app/page.tsx, src/components/public/home/HomePage.tsx, src/components/public/booking/BookingFlow.tsx, src/components/public/PublicNav.tsx, src/components/public/rooms/RoomsPage.tsx, src/components/public/gallery/GalleryPage.tsx, src/components/public/shared.tsx
+   602→- Files changed (admin, by subagent Task 5-a): AmenitiesAdmin, RoomsAdmin, DashboardAdmin, CalendarAdmin, ReportsAdmin, BookingsAdmin, SettingsAdmin, AdminLogin, GalleryAdmin (22 replacements)
+   603→- All 3 user-reported bugs FIXED and browser-verified on mobile + desktop, light + dark mode.
+   604→- Lint: 0 errors. Dev server: HTTP 200. No runtime errors.
+   605→- Key architectural change: Booking card moved from absolute positioning inside hero (clipped by overflow-hidden) to a sibling section with negative margin-top (robust, no clipping, no overlap with following sections).
+   606→- Key theme fix: All `bg-primary`/`bg-coral` buttons now use `text-primary-foreground`/`text-coral-foreground` instead of hardcoded `text-white`, ensuring automatic correct contrast in both light and dark mode.
+   607→
+   608→---
+   609→Task ID: 6-a
+   610→Agent: full-stack-developer (features + API)
+   611→Task: Add FAQ items, create contact API, enhance room details
+   612→
+   613→Work Log:
+   614→- Added 5 new FAQ items to FaqsPage.tsx: "wifi" and "safety" and "quiet-hours" (The Villa category), "smoking" and "damages" (House Rules category)
+   615→- Created `/api/contact/route.ts` — POST endpoint with JSON body validation (name, email, message required), email format regex, console logging, and proper error responses (400/200)
+   616→- Updated ContactPage.tsx — replaced mock `setTimeout` onSubmit with real `fetch("/api/contact")` call with error handling and try/catch/finally
+   617→- Enhanced RoomDetailsPage.tsx — added `RoomCard` import, `RoomsApiResponse` interface, secondary query for all rooms, `otherRooms` memo (filtered, max 3), breadcrumb text changed from "Back to The Villa" to "The Villa", and new "Other configurations" section at bottom with RoomCard grid
+   618→
+   619→Stage Summary:
+   620→- FAQ count increased from 10 to 15 items across 4 categories
+   621→- Contact form now submits to real API endpoint with validation (no more mock delay)
+   622→- Room details page now shows up to 3 other room configurations below the main content
+   623→- Lint: 0 errors (2 pre-existing RHF warnings). Dev server: compiling successfully.
+   624→
+   625→---
+   626→Task ID: 7
+   627→Agent: lead (Z.ai Code) — Hero crossfade slideshow with 3 uploaded images
+   628→
+   629→Task: User requested replacing the single static Unsplash hero image with 3 uploaded images (hero-1.png pool with palms, hero-2.png beach sunset with lounge chairs, hero-3.png couple in infinity pool), with a simple fade in/out transition on loop. Must keep the existing flow (gradient overlay, headline, booking card) smooth and intact.
+   630→
+   631→Work Log:
+   632→- Copied 3 user-uploaded images from /home/z/my-project/upload/ to /home/z/my-project/public/:
+   633→  - hero-1(1).png → /public/hero-1.png (tropical pool with palms and thatched pavilions)
+   634→  - hero-1(2).png → /public/hero-2.png (beach sunset with lounge chairs and umbrellas)
+   635→  - hero-1(3).png → /public/hero-3.png (couple relaxing in infinity pool)
+   636→- Analyzed all 3 images via VLM to confirm content and mood.
+   637→- Replaced the `HERO_BG` constant (single Unsplash URL) with a `HERO_SLIDES` array of 3 local image paths.
+   638→- Created a new `HeroSlideshow` component in HomePage.tsx:
+   639→  - Stacks 3 `<div>` layers absolutely positioned (`absolute inset-0`)
+   640→  - Each layer uses `background-image` with `bg-cover bg-center`
+   641→  - Uses React state `index` (0→1→2→0) cycling every 6 seconds via `setInterval`
+   642→  - Active layer: `opacity: 1`, inactive: `opacity: 0`
+   643→  - Pure CSS opacity transition: `transition-opacity duration-[1500ms] ease-in-out` — GPU-accelerated, very smooth fade
+   644→  - `aria-hidden` attribute toggled for accessibility (screen readers only announce active slide)
+   645→  - `useEffect` cleanup clears the interval on unmount
+   646→  - Initially added indicator dots but removed them because the booking card section (`z-20 -mt-16`) overlapped the dots positioned at `bottom-6` of the hero. Kept it simple per user's request ("simple fade in and fade out lang").
+   647→- Replaced the old single-background `<div>` in the hero `<section>` with `<HeroSlideshow />`.
+   648→- Kept the gradient overlay (`bg-gradient-to-t from-black/85 via-black/35 to-black/40`) on top of the slideshow so the headline and description remain readable across all 3 images.
+   649→- Kept the text content (eyebrow "Botolan · Zambales", headline, description) and booking card section completely unchanged — the flow is preserved.
+   650→- Ran `bun run lint`: 0 errors, 2 pre-existing RHF warnings.
+   651→- Verified with agent-browser + VLM:
+   652→  - Took 3 screenshots at 6-second intervals — confirmed all 3 images cycle in order (pool with palms → beach sunset → couple in pool → loops back).
+   653→  - Verified via DOM eval that opacity transitions correctly (active slide opacity=1, others opacity=0).
+   654→  - Confirmed headline "A beachfront villa all your own." is readable over all 3 images thanks to the gradient overlay.
+   655→  - Confirmed booking card (Check-in/Check-out/Guests/Check Availability) is fully visible below the hero with no overlap.
+   656→  - Tested mobile (375px): hero image shows, headline readable, booking card visible — no issues.
+   657→
+   658→Stage Summary:
+   659→- Files changed (1): src/components/public/home/HomePage.tsx
+   660→- Images added (3): /public/hero-1.png, /public/hero-2.png, /public/hero-3.png
+   661→- Hero is now a smooth, looping 3-image crossfade slideshow with 1.5s fade transitions and 6s display per image.
+   662→- Existing flow fully preserved: gradient overlay, text content, booking card overlap, "Our Story" section — all intact.
+   663→- Lint: 0 errors. Dev server: HTTP 200, no runtime errors.
+   664→- Simple, smooth, on-loop as requested.
+   665→
+   666→---
+   667→Task ID: HERO-1
+   668→Agent: Main (Z.ai Code)
+   669→Task: Replace hero image with a 3-image crossfade slideshow using the user's uploaded beachfront villa photos. Simple fade in/fade out transition, looping, smooth — no disruption to existing flow (booking card overlap, text readability, etc.)
+   670→
+   671→Work Log:
+   672→- Analyzed 3 uploaded hero images via VLM skill:
+   673→  - hero-1(1).png: Couple in infinity pool (intimate, experiential)
+   674→  - hero-1(2).png: Beachfront palapas at sunset (scenic, aspirational)
+   675→  - hero-1(3).png: Villa pool with gazebos & landscaping (best establishing shot — shows actual property)
+   676→- Copied all 3 images to /public/ as hero-1.png, hero-2.png, hero-3.png (replacing old placeholder images)
+   677→- Reordered HERO_SLIDES array: [hero-3.png (villa pool), hero-2.png (beachfront sunset), hero-1.png (couple in pool)] — best establishing shot first
+   678→- Enhanced HeroSlideshow component:
+   679→  - Added image preloading (new Image() onload) so first transition is flash-free
+   680→  - Interval starts only after all 3 images loaded (prevents white flash)
+   681→  - 6500ms slide duration, 1600ms crossfade transition (ease-in-out, GPU-accelerated opacity)
+   682→  - Added subtle slide indicator dots (progress bars) at bottom-right — clickable to jump to slide
+   683→  - Active dot has a CSS keyframe animation (hero-progress) that fills over 6.5s
+   684→  - Added @keyframes hero-progress to globals.css
+   685→  - Positioned dots at bottom-24 on mobile (above booking card overlap) and bottom-8 on desktop
+   686→- Verified via agent-browser:
+   687→  - Desktop (1440x900): Hero image, headline, dots all visible ✅
+   688→  - Mobile (375x812): Hero image, headline, dots all visible above booking card ✅
+   689→  - Crossfade transition confirmed working (screenshots at t=0, t=7s, t=14s show different images)
+   690→  - Booking card still correctly overlapping hero via -mt-16/-mt-20/-mt-24 negative margin ✅
+   691→  - No console errors, no page errors ✅
+   692→  - Dev log: all 200 responses, no compile errors ✅
+   693→  - Lint: 0 errors (2 pre-existing RHF warnings) ✅
+   694→
+   695→Stage Summary:
+   696→- Hero now features a smooth, looping 3-image crossfade slideshow using the user's actual beachfront villa photos
+   697→- Transition is pure CSS opacity (1600ms ease-in-out) — very smooth, GPU-accelerated, no jank
+   698→- Images preload before slideshow starts, so no white flash on first transition
+   699→- Slide indicator dots show progress and are clickable for manual navigation
+   700→- Existing flow preserved: booking card still overlaps hero correctly, text still readable, layout intact
+   701→- Order: villa pool showcase → beachfront sunset → couple in infinity pool (loops back)
+   702→
+   703→---
+   704→Task ID: 8
+   705→Agent: Main (Z.ai Code) — Fix mobile footer and mobile nav X button
+   706→
+   707→Task: User reported two mobile issues: (1) Footer looks bad and is way too long on mobile viewing, (2) Mobile navigation menu has X button issues and is too long.
+   708→
+   709→Work Log:
+   710→- **Diagnosed mobile nav issue**: Found TWO overlapping close buttons in the mobile Sheet menu — the default `SheetPrimitive.Close` button rendered by `SheetContent` (absolute top-4 right-4, 16px icon) PLUS our custom `SheetClose` button in the header (36px). This caused a confusing double-X.
+   711→- **Fixed mobile nav**: Removed the custom `SheetClose` button entirely, now using only the default close button from `SheetContent`. Added `pr-14` to the `SheetHeader` so the title never overlaps with the absolute-positioned close button. Cleaned up unused imports (`X`, `SheetClose`). Made the nav more compact: reduced padding (`py-3` → `py-2.5`), reduced gaps (`gap-1` → `gap-0.5`), smaller font (`text-base` → `text-[0.95rem]`), tighter header (`p-4` → `px-5 py-4`), smaller Book Your Stay button (`size="lg"` → default with `min-h-[44px]`).
+   712→- **Diagnosed footer issue**: On mobile, the footer stacked 4 full columns vertically (Brand+story+socials, Explore with 9 links, The Villa with 5 links, Get in Touch with 4 contact items) + copyright bar = extremely long scroll.
+   713→- **Redesigned footer with mobile-first approach**: Created a completely separate mobile layout (`lg:hidden`) that is compact:
+   714→  - Brand row: logo + 4 social icons inline on one row (not stacked)
+   715→  - Compact contact strip: phone, email, check-in/out times in a single wrap row with small icons
+   716→  - 2-column link grid: Explore (4 links) | The Villa (4 links) side by side
+   717→  - Secondary links row: About, FAQs, Contact + Find My Booking in a compact wrap row
+   718→  - Full-width "Book Your Stay" CTA button (coral, prominent)
+   719→  - Copyright bar with Admin Login
+   720→  - Desktop layout (`hidden lg:grid`): keeps the original 4-column grid unchanged
+   721→- Reduced mobile footer vertical padding from `py-14` to `py-10` (saves ~32px)
+   722→- Verified via agent-browser + VLM:
+   723→  - Mobile nav: exactly ONE close button ✅, no overlaps ✅, compact layout ✅, 7 nav items + Find My Booking + Book Your Stay ✅
+   724→  - Mobile footer: compact (~1-1.5 screen heights, was much longer before) ✅, brand + socials inline ✅, contact strip readable ✅, 2-column link grid ✅, CTA button prominent ✅, clean and polished ✅
+   725→  - Desktop footer: 4-column layout intact ✅, all content visible ✅, no issues ✅
+   726→  - Lint: 0 errors (2 pre-existing RHF warnings) ✅
+   727→  - Dev server: HTTP 200, no compile errors ✅
+   728→
+   729→Stage Summary:
+   730→- Files changed (2): src/components/public/PublicNav.tsx, src/components/public/PublicFooter.tsx
+   731→- Mobile nav: Fixed duplicate X button (now single default close button), made menu more compact and tighter spacing
+   732→- Mobile footer: Completely redesigned with mobile-first compact layout — brand+socials inline, contact strip, 2-column link grid, secondary links row, CTA button. Desktop 4-column layout preserved unchanged.
+   733→- Both components now look clean and polished on mobile without being excessively long.
+   734→- Lint: 0 errors. Dev server: HTTP 200, no runtime errors.
+   735→
+   736→---
+   737→Task ID: 9
+   738→Agent: Main (Z.ai Code) — Mobile nav 2-column side-by-side layout
+   739→
+   740→Task: User requested making the mobile navigation menu links 2 side-by-side for a cleaner UI view (was single-column vertical stack).
+   741→
+   742→Work Log:
+   743→- Analyzed user-uploaded screenshot of the mobile nav menu showing 7 nav links stacked vertically in a single column.
+   744→- Redesigned the mobile nav layout in PublicNav.tsx:
+   745→  - Changed nav links container from `flex flex-col gap-0.5` to `grid grid-cols-2 gap-1.5` — 7 links now arranged in a 2-column grid (4 rows × 2 cols, last row has 1 item)
+   746→  - Added `justify-center` to link buttons for centered text in the grid cells
+   747→  - Reduced font slightly (`text-[0.95rem]` → `text-[0.9rem]`) for better fit in narrower columns
+   748→  - Reduced horizontal padding (`px-4` → `px-3`) for the grid cells
+   749→  - Made "Find My Booking" and "Book Your Stay" side-by-side in a 2-column grid (was stacked vertically with Book Your Stay as full-width button below)
+   750→  - Changed Book Your Stay button from `rounded-full` to `rounded-lg` to match the grid cell shape
+   751→- Verified via agent-browser + VLM:
+   752→  - Nav links in 2-column grid ✅
+   753→  - Find My Booking + Book Your Stay side by side ✅
+   754→  - Clean and compact ✅
+   755→  - X close button visible at top-right ✅
+   756→  - No issues ✅
+   757→- Lint: 0 errors (2 pre-existing RHF warnings) ✅
+   758→
+   759→Stage Summary:
+   760→- File changed (1): src/components/public/PublicNav.tsx
+   761→- Mobile nav now uses a clean 2-column grid layout for both primary links and secondary actions
+   762→- More compact vertical footprint, cleaner visual rhythm
+   763→- Lint: 0 errors. Dev server: HTTP 200.
+   764→
+   765→---
+   766→Task ID: 10-a
+   767→Agent: Explore (Research) — Audit admin components for lists, pagination, tabs, button styling
+   768→
+   769→Task: Examine GuestsAdmin, RoomsAdmin, BookingsAdmin, AdminLayout and the ui/ folder. Report structure around lists, pagination, tabs, button styling. No edits — research only.
+   770→
+   771→Findings:
+   772→
+   773→## 1. /home/z/my-project/src/components/admin/GuestsAdmin.tsx (415 lines)
+   774→**List rendering:**
+   775→- Desktop (md+): shadcn `<Table>` inside a `<Card>`, columns: Guest | Contact | Location | Stays | Last stay (lines 99–192).
+   776→- Mobile: stacked `<Card>` list (lines 194–251).
+   777→- Rows render every guest returned by the API — no slicing, no pagination.
+   778→- Loading state shows 5 skeleton rows (desktop) / 3 skeleton cards (mobile).
+   779→
+   780→**Search:**
+   781→- Yes — debounced (300ms) text search box at top (`placeholder="Search name, email, or phone"`, lines 84–92).
+   782→- Sends `?search=` query param to `/api/guests`.
+   783→
+   784→**Pagination:**
+   785→- None. All guests from response are rendered. Only a count badge (`{guests.length} guests`) is shown.
+   786→
+   787→**Modals:**
+   788→- `GuestDetailsDialog` (line 265): shows profile, contact InfoRows, notes, and a "Reservation history" `<ul>` listing the guest's reservations (no pagination on this inner list either).
+   789→- Dialog footer buttons: `variant="outline"` "New booking for this guest", `variant="ghost"` "Close" — no `bg-primary` button.
+   790→
+   791→**Button styling issues:**
+   792→- No `bg-primary text-white` violations.
+   793→- No `bg-coral text-white` violations.
+   794→- No highlighted/active/selected button patterns in this file.
+   795→
+   796→---
+   797→
+   798→## 2. /home/z/my-project/src/components/admin/RoomsAdmin.tsx (695 lines)
+   799→**List rendering:**
+   800→- Responsive grid of `<RoomCard>` components: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` (line 160).
+   801→- Each RoomCard: image (4/3 aspect), status badge, price overlay, name/type/number, capacity/view, line-clamped description, action row (Edit / Status dropdown / Trash).
+   802→- Renders every active room (`r.isActive`) — no pagination, no search, no count limit.
+   803→
+   804→**Pagination:**
+   805→- None.
+   806→
+   807→**Edit/Add Room modal (`RoomFormDialog`, line 370):**
+   808→- Image URL list (lines 582–617): each image row is a flex `<li>` with:
+   809→  - 12×12 thumbnail
+   810→  - `min-w-0 flex-1` container with `truncate text-xs` for URL and `truncate text-xs` for alt text
+   811→  - Small ghost icon button to remove
+   812→- **Overflow assessment:** No horizontal overflow — the parent has `min-w-0 flex-1` and the URL/alt use `truncate` (text-overflow ellipsis). However, **truncated URLs have no `title` attribute**, so users cannot see the full URL on hover. Vertical: list uses `space-y-2` so each row stacks cleanly. Image add row (lines 618–642) is a responsive flex row (URL input + alt input + Add button) — wraps on mobile.
+   813→- Form fields: name, number, description, price, capacity, view, room type (Select), status (Select), images list.
+   814→
+   815→**Buttons using `bg-primary` (all CORRECT — use `text-primary-foreground`):**
+   816→- Line 131: header "Add Room" — `bg-primary text-primary-foreground hover:bg-primary/90`
+   817→- Line 152: empty-state "Add Room" — `bg-primary text-primary-foreground hover:bg-primary/90`
+   818→- Line 661: modal submit "Save changes"/"Add room" — `bg-primary text-primary-foreground hover:bg-primary/90`
+   819→
+   820→**Other notable button styling:**
+   821→- Line 215: delete AlertDialogAction uses `bg-destructive text-white hover:bg-destructive/90` — **MINOR ISSUE**: should be `text-destructive-foreground` for dark-mode consistency (token is `#FFFFFF` light / `#0F1F24` dark). Currently `text-white` is invisible-adjacent in dark mode if destructive lightens (but destructive stays dark red in both modes per globals.css, so it works — just not token-semantic).
+   822→- Line 343–351: trash icon button — `hover:bg-red-50 hover:text-red-700` (ghost variant).
+   823→- Line 604–613: remove-image X button — `hover:bg-red-50 hover:text-red-700` (ghost variant).
+   824→- No `bg-coral text-white` violations.
+   825→- No highlighted/active/selected button patterns in this file (dropdown menu items use shadcn defaults).
+   826→
+   827→---
+   828→
+   829→## 3. /home/z/my-project/src/components/admin/BookingsAdmin.tsx (1020 lines)
+   830→**Tabs:**
+   831→- Yes — `STATUS_TABS` array (lines 69–76) rendered as pill buttons (lines 159–185):
+   832→  - All | Pending | Confirmed | Checked in | Completed | Cancelled
+   833→- **No dedicated "History" / "Past bookings" tab.** Past bookings are reachable only by selecting "Completed" or "Cancelled" individually — there is no unified history view.
+   834→- Each tab pill shows a count badge (number of matching reservations) when count > 0.
+   835→
+   836→**Active vs past distinction:**
+   837→- Distinguished only by `BookingStatusBadge` (status badge in row) and by the `RowActions` available per status (lines 410–501):
+   838→  - PENDING: Approve (emerald) / Decline (red outline)
+   839→  - CONFIRMED: Check in (primary)
+   840→  - CHECKED_IN: Check out (primary)
+   841→  - COMPLETED / CANCELLED / REJECTED / NO_SHOW: View (ghost)
+   842→  - All rows also have a "Details" ghost button (always visible)
+   843→- No visual row-styling difference (no opacity, no muted text, no divider) between active and past reservations — they look identical except for the status badge and action buttons.
+   844→
+   845→**List rendering:**
+   846→- Desktop (md+): shadcn `<Table>` inside `<Card>` (lines 209–319). Columns: Reference | Guest | Dates | Room | Nights | Total | Status | Actions.
+   847→- Mobile: stacked `<Card>` list (lines 322–380).
+   848→- Renders every reservation returned — no pagination, no limit, no "load more".
+   849→
+   850→**Search:**
+   851→- Yes — debounced (300ms) text search (lines 187–196) by name or reference.
+   852→
+   853→**Pagination:**
+   854→- None.
+   855→
+   856→**Active tab pill styling (lines 167–184):**
+   857→- Active: `border-primary bg-primary text-primary-foreground` ✅ (correct)
+   858→- Inactive: `border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground`
+   859→- Count badge color (line 179): `active ? "text-white/80" : "text-muted-foreground"` — **MINOR ISSUE**: should be `text-primary-foreground/80` for dark-mode consistency (primary-foreground is `#0A1F25` in dark mode = dark ink on light-cyan primary bg; white/80 on light cyan in dark mode = poor contrast).
+   860→
+   861→**Buttons using `bg-primary` (all CORRECT — use `text-primary-foreground`):**
+   862→- Line 199: "New Reservation" header button
+   863→- Line 457: "Check in" (RowActions, CONFIRMED state)
+   864→- Line 468: "Check out" (RowActions, CHECKED_IN state)
+   865→- Line 672: "Check in" (Dialog footer, CONFIRMED)
+   866→- Line 682: "Check out" (Dialog footer, CHECKED_IN)
+   867→- Line 990: "Create reservation" (modal submit)
+   868→
+   869→**Other button styling:**
+   870→- Lines 435, 661: Approve buttons use `bg-emerald-600 text-white hover:bg-emerald-700` — semantic success color (emerald is a fixed Tailwind color, not theme-driven, so this is fine in both modes).
+   871→- Lines 445, 653: Decline buttons use `border-red-300 text-red-700 hover:bg-red-50` (outline variant).
+   872→- No `bg-coral text-white` violations.
+   873→- No `bg-destructive` usage in this file.
+   874→
+   875→---
+   876→
+   877→## 4. /home/z/my-project/src/components/admin/AdminLayout.tsx (491 lines)
+   878→**Admin nav tabs (from `ADMIN_NAV` in `src/lib/constants.ts`, lines 203–213):**
+   879→1. Today → `admin-dashboard` (LayoutDashboard)
+   880→2. Reservations → `admin-bookings` (CalendarCheck)
+   881→3. Calendar → `admin-calendar` (CalendarDays)
+   882→4. The Villa → `admin-rooms` (Home)
+   883→5. Guests → `admin-guests` (Users)
+   884→6. Amenities → `admin-amenities` (Sparkles)
+   885→7. Photos → `admin-gallery` (Images)
+   886→8. Reports → `admin-reports` (BarChart3)
+   887→9. Settings → `admin-settings` (Settings)
+   888→
+   889→**Layout structure:**
+   890→- Desktop: fixed 256px sidebar (`<aside>`) on lg+.
+   891→- Mobile: Sheet (slide-in left) with hamburger in TopBar.
+   892→- TopBar: title/subtitle, mobile-menu button, theme toggle, NotificationsBell, "View Site" outline button, avatar.
+   893→- Auth gate: shows `<AdminLogin>` if not authenticated, skeleton while verifying.
+   894→
+   895→**Active nav state (lines 232–243):**
+   896→- Active: `bg-sidebar-accent text-white` with coral left indicator bar (`bg-coral`, 1×6px) and coral icon.
+   897→- Inactive: `text-sidebar-foreground/70 hover:bg-white/5 hover:text-white`.
+   898→- `bg-sidebar-accent text-white` is acceptable — sidebar-accent is `#0F4C5C` (light mode) / `#122E38` (dark mode), both dark colors where white text works. (Could be more semantic as `text-sidebar-accent-foreground` but functionally correct.)
+   899→
+   900→**NotificationsBell (lines 364–469):**
+   901→- Unread count badge (line 397): `bg-coral text-[9px] font-bold text-white` — **REAL VIOLATION**: should be `text-coral-foreground`. In dark mode, `--coral: #E8987E` (light peachy) + `text-white` = ~2:1 contrast (nearly invisible). The `--coral-foreground` token correctly resolves to `#FFFFFF` (light) / `#1B2A2E` (dark).
+   902→- Unread notification indicator dot (line 446): `bg-coral` only (no text) — fine.
+   903→- Notification row highlight (line 441): `bg-coral/5` for unread — fine.
+   904→
+   905→**Other text-white usages in AdminLayout (all on dark sidebar background — acceptable):**
+   906→- Line 210: brand name `text-white` on `bg-sidebar` — fine.
+   907→- Line 261: avatar fallback `bg-white/10 text-white` — fine.
+   908→- Line 266: user name `text-white` — fine.
+   909→
+   910→**No `bg-primary text-white` violations in AdminLayout.**
+   911→
+   912→---
+   913→
+   914→## 5. /home/z/my-project/src/components/ui/ — UI component inventory
+   915→A standard shadcn/ui installation. **47 components** including:
+   916→- **`pagination.tsx` (128 lines)** — EXISTS but **NOT imported or used anywhere in the codebase** (grep across `src/**/*.tsx` for `Pagination`/`PaginationContent`/`PaginationLink` returned zero matches outside the component file itself). Exports: `Pagination`, `PaginationContent`, `PaginationLink`, `PaginationItem`, `PaginationPrevious`, `PaginationNext`, `PaginationEllipsis`. Built on `buttonVariants` — uses `variant="outline"` for active page and `variant="ghost"` for inactive.
+   917→- Other relevant components: `button.tsx`, `card.tsx`, `table.tsx`, `tabs.tsx` (shadcn Tabs — also not used by admin; admin uses custom pill buttons), `dialog.tsx`, `alert-dialog.tsx`, `select.tsx`, `dropdown-menu.tsx`, `input.tsx`, `skeleton.tsx`, `badge.tsx`, `avatar.tsx`, `sheet.tsx`, `scroll-area.tsx`.
+   918→
+   919→---
+   920→
+   921→## Summary of issues for the main agent to fix
+   922→
+   923→### Pagination
+   924→- **GuestsAdmin, RoomsAdmin, BookingsAdmin all render full result sets with no pagination.** The shadcn `Pagination` component exists but is unused. If pagination is desired, the API routes (`/api/guests`, `/api/rooms`, `/api/reservations`) would need to accept `page` / `limit` params and return total counts; the UI would need page state and the `<Pagination>` component wired in.
+   925→- The guest details dialog also has an unbounded "Reservation history" list.
+   926→
+   927→### Tabs / History view (BookingsAdmin)
+   928→- Tabs exist (status filter pills) but there is **no unified "History" / "Past" tab**. Past bookings are split across "Completed" and "Cancelled". Consider adding a `HISTORY` pseudo-tab that aggregates `COMPLETED | CANCELLED | REJECTED | NO_SHOW`.
+   929→- Active vs past rows are visually identical except for status badge and action buttons. Consider muting past rows (e.g. `opacity-70` or `text-muted-foreground` on row text).
+   930→
+   931→### Button styling violations (text-white on token backgrounds)
+   932→1. **AdminLayout.tsx line 397** — `bg-coral text-[9px] font-bold text-white` → should be `text-coral-foreground`. **REAL dark-mode bug.**
+   933→2. **BookingsAdmin.tsx line 179** — count badge `active ? "text-white/80" : ...` → should be `text-primary-foreground/80`. **REAL dark-mode bug.**
+   934→3. **RoomsAdmin.tsx line 215** — `bg-destructive text-white hover:bg-destructive/90` → should be `text-destructive-foreground`. **Token-consistency issue** (functionally OK because destructive stays dark in both modes, but not semantic).
+   935→
+   936→### Image URL display (RoomsAdmin edit modal)
+   937→- No overflow (URLs are truncated with `truncate` and parent has `min-w-0 flex-1`), but **truncated URLs lack a `title` attribute** — users cannot hover to see the full URL. Consider adding `title={img.url}` to the URL `<div>` or making URLs clickable/open-in-new-tab.
+   938→
+   939→### Verified clean
+   940→- All `bg-primary` buttons in admin files correctly use `text-primary-foreground` (no `bg-primary text-white` violations).
+   941→- No `bg-coral text-white` direct-adjacent violations (the one in AdminLayout has classes in between: `bg-coral text-[9px] font-bold text-white`).
+   942→- Emerald buttons (`bg-emerald-600 text-white`) are fine — emerald is a fixed Tailwind color, not a theme token.
+   943→
+   944→Stage Summary:
+   945→- Research-only task, no files changed.
+   946→- Audited 4 admin components (2,621 total lines) + ui/ folder inventory (47 components).
+   947→- Found: 0 pagination implementations, 1 unused `<Pagination>` component, 6 status tabs (no History tab), 3 button-styling violations (2 real dark-mode bugs + 1 token-consistency issue), 1 minor URL-truncation usability gap.
+   948→- Next actions for main agent: (a) decide whether to add pagination to guests/rooms/bookings lists (requires API + UI work), (b) consider a unified History tab in BookingsAdmin, (c) fix the 3 button-styling violations, (d) optionally add `title` attribute to truncated image URLs in RoomsAdmin modal.
+   949→
+   950→---
+   951→Task ID: 10-c
+   952→Agent: full-stack-developer (GuestsAdmin pagination)
+   953→Task: Add client-side pagination (10 guests/page) to GuestsAdmin.tsx for both the desktop table and mobile card views, using the existing shadcn `<Pagination>` component, without changing any API calls or existing functionality (search, guest details dialog, reservation history).
+   954→
+   955→Work Log:
+   956→- Read worklog.md, GuestsAdmin.tsx, and components/ui/pagination.tsx to understand the current implementation and the Pagination API (Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationPrevious, PaginationNext, PaginationEllipsis — all built on buttonVariants).
+   957→- Verified `ChevronsLeft`/`ChevronsRight` icons exist in lucide-react for First/Last controls.
+   958→- Added `PAGE_SIZE = 10` constant and a `page` state (`useState(1)`) to GuestsAdmin.
+   959→- Added a `useEffect` that resets `page` to 1 whenever `debouncedSearch` changes (required by the task). Annotated the `setPage(1)` line with an `eslint-disable-next-line react-hooks/set-state-in-effect` comment because the project's React-hooks lint rule otherwise blocks setState-in-effect; this is the intended reset behavior.
+   960→- Derived client-side pagination values from the full `guests` array (API call untouched): `totalGuests`, `totalPages`, `currentPage` (clamped), `startIdx`, `endIdx`, `pagedGuests` (slice), and `pageRange` (via a new `getPageRange` helper that emits first/last + current±1 + ellipses for >7 pages, otherwise all pages).
+   961→- Replaced `guests.map(...)` with `pagedGuests.map(...)` in BOTH the desktop `<Table>` rows and the mobile `<Card>` list; updated the empty-state guards from `guests.length === 0` to `pagedGuests.length === 0`.
+   962→- Kept `selected` guest lookup on the full `guests` array so the details dialog still opens correctly regardless of the active page.
+   963→- Added a shared pagination footer below both views (visible on all breakpoints) containing:
+   964→  - "Showing {startIdx+1}–{endIdx} of {totalGuests} guests" text.
+   965→  - A `<Pagination>` bar (only rendered when `totalPages > 1`) with First (ChevronsLeft), Prev (PaginationPrevious), numbered page links (with PaginationEllipsis for gaps and active page highlighted via `isActive`), Next (PaginationNext), and Last (ChevronsRight) controls.
+   966→  - Used a small `PageNavButton` wrapper around `PaginationLink` to provide keyboard-accessible (`role="button"`, `tabIndex`, Enter/Space `onKeyDown`) and disabled-state handling for the First/Last/number buttons; Prev/Next use the same accessibility attributes inline.
+   967→  - Responsive layout: stacks centered on mobile, row with text-left / pagination-right on `sm+`.
+   968→- Ran `bun run lint`: 0 errors, 0 warnings in GuestsAdmin.tsx (the only remaining 2 warnings are pre-existing `react-hooks/incompatible-library` warnings in BookingsAdmin.tsx and RoomsAdmin.tsx, unrelated to this task).
+   969→- Confirmed the dev server recompiled successfully (dev.log shows clean compiles, no errors).
+   970→
+   971→Stage Summary:
+   972→- GuestsAdmin now paginates client-side at 10 guests per page across both desktop table and mobile card views.
+   973→- Search still fetches filtered data from the API (no API change); changing the search query resets to page 1.
+   974→- Guest details dialog and reservation history remain fully functional (lookup uses the un-paginated guest list).
+   975→- Pagination controls (First/Prev/numbers/Next/Last) are keyboard-accessible, show ellipses for large page counts, disable themselves at the boundaries, and the active page is visually highlighted via `buttonVariants` `outline` variant.
+   976→- "Showing X–Y of Z guests" text appears below the list whenever guests are present.
+   977→- Lint passes cleanly for the modified file.
+   978→
+   979→---
+   980→Task ID: 10-b
+   981→Agent: full-stack-developer (BookingsAdmin pagination + history tab)
+   982→Task: Add a "History" tab (aggregating COMPLETED / CANCELLED / REJECTED / NO_SHOW bookings) and client-side pagination (8 bookings/page) to BookingsAdmin.tsx for both the desktop table and mobile card views, using the existing shadcn `<Pagination>` component, without changing any API endpoints or existing functionality (search, status badges, action buttons, modals).
+   983→
+   984→Work Log:
+   985→- Read worklog.md, BookingsAdmin.tsx (1,021 lines), components/ui/pagination.tsx, and the `/api/reservations` route to understand the current server-side status/search filtering and the Pagination component API (Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationPrevious, PaginationNext, PaginationEllipsis — all built on buttonVariants).
+   986→- Verified `BookingStatus` type includes all 4 history statuses (COMPLETED, CANCELLED, REJECTED, NO_SHOW) and that `ChevronsLeft`/`ChevronsRight` are available in lucide-react for First/Last controls.
+   987→- Feature 1 — History tab:
+   988→  - Added module-level `HISTORY_STATUSES: BookingStatus[]` constant and appended `{ value: "HISTORY", label: "History" }` to `STATUS_TABS` after "Cancelled".
+   989→  - Added a `countForTab(tab, reservations)` helper that returns `reservations.length` for ALL, the count of the 4 history statuses for HISTORY, and a single-status count otherwise — used for the tab count badges.
+   990→  - To make every tab count accurate and the History tab viable (the API only accepts a single `status`), switched the client to fetch ALL reservations (dropped the `status` query param and removed `status` from the query key). Server-side search is preserved unchanged; status filtering is now done client-side via a `useMemo` (`filteredReservations`) so HISTORY can aggregate multiple statuses. The `/api/reservations` route handler was NOT modified.
+   991→- Feature 2 — client-side pagination:
+   992→  - Added `PAGE_SIZE = 8` constant and a `page` state (`useState(1)`).
+   993→  - Derived `totalPages`, `safePage` (clamped to `[1, totalPages]`), `startIdx`, `endIdx`, `paginatedReservations` (slice), and a `goToPage` helper that clamps input.
+   994→  - Added a `getPageRange(current, total)` helper that emits all pages for ≤7 pages, otherwise first/last + current±1 with `PaginationEllipsis` gaps.
+   995→  - Reset `page` to 1 inside the tab `onClick` and search `onChange` event handlers (NOT via useEffect) — this avoids the project's `react-hooks/set-state-in-effect` lint error without needing a disable comment, and gives instant page reset on tab/search change.
+   996→  - Replaced `reservations.map(...)` with `paginatedReservations.map(...)` in BOTH the desktop `<Table>` rows and the mobile `<Card>` list; updated the empty-state guards from `reservations.length === 0` to `filteredReservations.length === 0` so the empty state still shows when a tab/search yields no rows.
+   997→  - Kept `selected` reservation lookup on the full `allReservations` array so the details dialog opens correctly regardless of the active page/tab.
+   998→  - Added a shared pagination footer below both views (visible on all breakpoints, only when not loading and `filteredReservations.length > 0`) containing:
+   999→    - "Showing {startIdx+1}–{endIdx} of {filteredReservations.length} bookings" text.
+  1000→    - A `<Pagination>` bar (only rendered when `totalPages > 1`) with First (ChevronsLeft), Prev (PaginationPrevious), numbered page links (with `PaginationEllipsis` for gaps and active page highlighted via `isActive` → `buttonVariants` `outline` variant), Next (PaginationNext), and Last (ChevronsRight) controls.
+  1001→    - All controls use `href="#"` + `onClick` with `preventDefault` (standard shadcn pattern; anchors are Tab-focusable and Enter triggers the click). First/Prev disable at page 1; Next/Last disable at the last page via `pointer-events-none opacity-50`. `PaginationContent` uses `flex-wrap` so the bar wraps gracefully on narrow screens.
+  1002→- Ran `bun run lint`: 0 errors, 2 warnings — both pre-existing `react-hooks/incompatible-library` warnings for React Hook Form `watch()` in BookingsAdmin's CreateReservationDialog and RoomsAdmin (unrelated to this task). No new errors or warnings introduced.
+  1003→- Confirmed the dev server recompiled cleanly (dev.log shows `GET /api/reservations? 200` — note the bare `?` confirming no `status` param is sent — and no compile errors).
+  1004→
+  1005→Stage Summary:
+  1006→- BookingsAdmin now has a 7th "History" tab (after "Cancelled") that aggregates COMPLETED, CANCELLED, REJECTED, and NO_SHOW bookings, with an accurate total count badge.
+  1007→- All 6 existing tabs continue to work exactly as before (server-side search unchanged; status filtering moved client-side so counts are now accurate across tabs rather than only for the active tab).
+  1008→- Client-side pagination at 8 bookings/page is applied to both the desktop table and mobile card views, with a shared footer showing "Showing X–Y of Z bookings" and First/Prev/numbers/Next/Last controls (with ellipses for large page counts, disabled at boundaries, active page highlighted).
+  1009→- Page resets to 1 on tab switch or search input (handled in event handlers, not effects).
+  1010→- No API endpoints were changed; the `/api/reservations` route handler is untouched (only the client query params were trimmed — `status` dropped, `search` kept).
+  1011→- Search, status badges, action buttons (Approve/Decline/Check in/Check out/View/Details), the details dialog, and the create-reservation dialog all remain fully functional.
+  1012→- Lint passes with 0 errors (2 pre-existing unrelated warnings).
+  1013→
+  1014→---
+  1015→Task ID: 10
+  1016→Agent: Main (Z.ai Code) + 2 subagents — Pagination, History tab, button color fixes, image overflow fix
+  1017→
+  1018→Task: User requested: (1) Add pagination so lists don't overflow when they get large, (2) Fix all issues shown in 3 uploaded screenshots, (3) Fix button text color on highlighted buttons, (4) Add a History tab for past booking records (not just active ones).
+  1019→
+  1020→Work Log:
+  1021→- Analyzed 3 uploaded screenshots via VLM:
+  1022→  - Screenshot 1: Edit room modal — image URL overflow, no scrollable image list
+  1023→  - Screenshot 2: Add room modal — room list could grow long
+  1024→  - Screenshot 3: Guests page — 10 guests, no pagination
+  1025→- Dispatched Explore subagent (Task 10-a) to audit all admin components. Found:
+  1026→  - GuestsAdmin: no pagination, no tabs
+  1027→  - RoomsAdmin: no pagination, image URLs lack title attr, no max-height on image list
+  1028→  - BookingsAdmin: 6 status tabs but no History tab, no pagination
+  1029→  - AdminLayout: notification badge uses `bg-coral text-white` (dark mode bug)
+  1030→  - BookingsAdmin: active tab count uses `text-white/80` (dark mode bug)
+  1031→  - RoomsAdmin: delete button uses `bg-destructive text-white` (token inconsistency)
+  1032→  - Unused `<Pagination>` component exists in ui/pagination.tsx
+  1033→
+  1034→- **Button text color fixes** (done by main agent):
+  1035→  - AdminLayout.tsx:397 — `bg-coral text-white` → `bg-coral text-coral-foreground`
+  1036→  - BookingsAdmin.tsx:179 — `text-white/80` → `text-primary-foreground/80`
+  1037→  - RoomsAdmin.tsx:215 — `bg-destructive text-white` → `bg-destructive text-destructive-foreground`
+  1038→
+  1039→- **Image URL overflow fix** (done by main agent in RoomsAdmin.tsx):
+  1040→  - Added `max-h-48 overflow-y-auto` to image list `<ul>` so it scrolls internally
+  1041→  - Added `title={img.url}` and `title={img.altText}` attributes for hover-to-see-full-URL
+  1042→  - Added `shrink-0` to remove button to prevent it from being squeezed
+  1043→
+  1044→- **BookingsAdmin: History tab + pagination** (done by subagent Task 10-b):
+  1045→  - Added "History" tab (value: HISTORY) after "Cancelled" — aggregates COMPLETED, CANCELLED, REJECTED, NO_SHOW
+  1046→  - Added HISTORY_STATUSES constant + countForTab() helper for accurate badge count
+  1047→  - Changed to fetch all reservations (dropped status param) and filter client-side via useMemo
+  1048→  - Added client-side pagination (PAGE_SIZE=8): page state, totalPages, currentPage, startIdx, endIdx, paginatedReservations
+  1049→  - Page resets on tab switch and search (handled in event handlers, not useEffect)
+  1050→  - Replaced reservations.map with paginatedReservations.map in both desktop table and mobile cards
+  1051→  - Added footer with "Showing X–Y of Z bookings" + <Pagination> component (First/Prev/numbers/Next/Last with ellipses)
+  1052→  - Details dialog still uses full allReservations array
+  1053→
+  1054→- **GuestsAdmin: pagination** (done by subagent Task 10-c):
+  1055→  - Added PAGE_SIZE=10, page state, useEffect to reset page on search change
+  1056→  - Derived totalGuests, totalPages, currentPage, startIdx, endIdx, pagedGuests
+  1057→  - Replaced guests.map with pagedGuests.map in both desktop table and mobile cards
+  1058→  - Added footer with "Showing X–Y of Z guests" + <Pagination> component
+  1059→  - Guest details dialog still uses full guests array
+  1060→
+  1061→- **RoomsAdmin: pagination** (done by main agent):
+  1062→  - Added ROOMS_PAGE_SIZE=6, page state, pagination derivation
+  1063→  - Replaced rooms.map with pagedRooms.map
+  1064→  - Added pagination footer with "Showing X–Y of Z rooms" + <Pagination> component (only visible when totalPages > 1)
+  1065→  - Includes ellipsis logic for large page counts
+  1066→
+  1067→Verification (agent-browser + VLM):
+  1068→- Admin login: successful ✅
+  1069→- BookingsAdmin: History tab visible with count 4 ✅, pagination visible ✅, History tab shows past bookings (Cancelled, Declined, Completed) ✅
+  1070→- GuestsAdmin: "Showing 1–10 of 10 guests" text visible ✅ (pagination hidden since only 1 page — correct)
+  1071→- RoomsAdmin: 5 room cards visible ✅ (pagination hidden since < 6 rooms — correct)
+  1072→- Room edit modal: image URLs truncated properly ✅, no horizontal overflow ✅, modal scrollable ✅
+  1073→- Dark mode: all tab text readable ✅, count numbers readable ✅, no contrast issues ✅
+  1074→- Lint: 0 errors (2 pre-existing RHF warnings) ✅
+  1075→- Dev server: HTTP 200, clean compiles ✅
+  1076→
+  1077→Stage Summary:
+  1078→- Files changed (4): AdminLayout.tsx, BookingsAdmin.tsx, GuestsAdmin.tsx, RoomsAdmin.tsx
+  1079→- Pagination added to 3 admin lists (Bookings 8/page, Guests 10/page, Rooms 6/page)
+  1080→- History tab added to BookingsAdmin (aggregates COMPLETED + CANCELLED + REJECTED + NO_SHOW)
+  1081→- 3 button text color bugs fixed (dark mode contrast)
+  1082→- Image URL overflow fixed in room edit modal (max-height + scroll + title attributes)
+  1083→- All existing functionality preserved (search, filters, modals, dialogs, actions)
+  1084→- Lint: 0 errors. Dev server: HTTP 200, no runtime errors.
+  1085→

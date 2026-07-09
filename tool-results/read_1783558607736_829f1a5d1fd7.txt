@@ -1,0 +1,1209 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import * as React from "react";
+     4→     4→import { useQuery, useMutation } from "@tanstack/react-query";
+     5→     5→import { useForm } from "react-hook-form";
+     6→     6→import { zodResolver } from "@hookform/resolvers/zod";
+     7→     7→import {
+     8→     8→  ArrowLeft,
+     9→     9→  ArrowRight,
+    10→    10→  Calendar as CalendarIcon,
+    11→    11→  Check,
+    12→    12→  Loader2,
+    13→    13→  Minus,
+    14→    14→  Plus,
+    15→    15→  Phone,
+    16→    16→  Users,
+    17→    17→  BedDouble,
+    18→    18→  Download,
+    19→    19→  MessageSquare,
+    20→    20→  Home,
+    21→    21→  Search,
+    22→    22→} from "lucide-react";
+    23→    23→import { toast } from "sonner";
+    24→    24→import { Button } from "@/components/ui/button";
+    25→    25→import { Card } from "@/components/ui/card";
+    26→    26→import { Input } from "@/components/ui/input";
+    27→    27→import { Label } from "@/components/ui/label";
+    28→    28→import { Textarea } from "@/components/ui/textarea";
+    29→    29→import { Badge } from "@/components/ui/badge";
+    30→    30→import {
+    31→    31→  Form,
+    32→    32→  FormControl,
+    33→    33→  FormField,
+    34→    34→  FormItem,
+    35→    35→  FormLabel,
+    36→    36→  FormMessage,
+    37→    37→} from "@/components/ui/form";
+    38→    38→import { apiFetch, ApiError } from "@/lib/api-client";
+    39→    39→import {
+    40→    40→  cn,
+    41→    41→  formatCurrency,
+    42→    42→  formatDate,
+    43→    43→  nightsBetween,
+    44→    44→} from "@/lib/utils";
+    45→    45→import { useViewStore } from "@/store/useViewStore";
+    46→    46→import { useBookingStore } from "@/store/useBookingStore";
+    47→    47→import { BOOKING_STATUS_CONFIG, RESORT_INFO } from "@/lib/constants";
+    48→    48→import { guestInfoSchema, type GuestInfoInput } from "@/lib/validators";
+    49→    49→import type { Reservation, Room } from "@/types";
+    50→    50→import { RoomCard, RoomCardSkeleton } from "../RoomCard";
+    51→    51→import { FadeUpSection } from "../shared";
+    52→    52→
+    53→    53→interface RoomsResponse {
+    54→    54→  rooms: Room[];
+    55→    55→}
+    56→    56→interface ReservationResponse {
+    57→    57→  reservation: Reservation;
+    58→    58→}
+    59→    59→
+    60→    60→type Step = 1 | 2 | 3;
+    61→    61→
+    62→    62→const STEPS: { value: Step; label: string }[] = [
+    63→    63→  { value: 1, label: "Dates" },
+    64→    64→  { value: 2, label: "Details" },
+    65→    65→  { value: 3, label: "Confirm" },
+    66→    66→];
+    67→    67→
+    68→    68→export function BookingFlow() {
+    69→    69→  const navigate = useViewStore((s) => s.navigate);
+    70→    70→  const booking = useBookingStore();
+    71→    71→  const setSearch = useBookingStore((s) => s.setSearch);
+    72→    72→  const selectRoom = useBookingStore((s) => s.selectRoom);
+    73→    73→
+    74→    74→  const [step, setStep] = React.useState<Step>(1);
+    75→    75→  const [confirmed, setConfirmed] = React.useState<Reservation | null>(null);
+    76→    76→  // Guest details captured in Step 2 — kept in local state because the booking
+    77→    77→  // store only holds dates/guests/room (per the lead agent's foundation design).
+    78→    78→  const [guestInfo, setGuestInfo] = React.useState<GuestInfoInput>({
+    79→    79→    firstName: "",
+    80→    80→    lastName: "",
+    81→    81→    email: "",
+    82→    82→    phone: "",
+    83→    83→    city: "",
+    84→    84→    country: "",
+    85→    85→    specialRequests: "",
+    86→    86→  });
+    87→    87→
+    88→    88→  const {
+    89→    89→    data: roomsData,
+    90→    90→    isLoading: roomsLoading,
+    91→    91→  } = useQuery({
+    92→    92→    queryKey: ["rooms", "booking-flow"],
+    93→    93→    queryFn: () => apiFetch<RoomsResponse>("/api/rooms"),
+    94→    94→  });
+    95→    95→  const rooms = roomsData?.rooms ?? [];
+    96→    96→  const selectedRoom = rooms.find((r) => r.id === booking.selectedRoomId);
+    97→    97→
+    98→    98→  const createMutation = useMutation({
+    99→    99→    mutationFn: (payload: {
+   100→   100→      roomId: string;
+   101→   101→      checkIn: string;
+   102→   102→      checkOut: string;
+   103→   103→      adults: number;
+   104→   104→      children: number;
+   105→   105→      guest: GuestInfoInput;
+   106→   106→      specialRequests?: string;
+   107→   107→    }) =>
+   108→   108→      apiFetch<ReservationResponse>("/api/reservations", {
+   109→   109→        method: "POST",
+   110→   110→        body: JSON.stringify(payload),
+   111→   111→      }),
+   112→   112→    onSuccess: (data) => {
+   113→   113→      setConfirmed(data.reservation);
+   114→   114→      setStep(3);
+   115→   115→      toast.success("Booking request received!");
+   116→   116→    },
+   117→   117→    onError: (err) => {
+   118→   118→      const msg =
+   119→   119→        err instanceof ApiError
+   120→   120→          ? err.message
+   121→   121→          : "Something went wrong. Please try again.";
+   122→   122→      toast.error(msg);
+   123→   123→    },
+   124→   124→  });
+   125→   125→
+   126→   126→  // Reset confirmation when leaving the flow.
+   127→   127→  React.useEffect(() => {
+   128→   128→    return () => {
+   129→   129→      if (confirmed) {
+   130→   130→        // If we have a confirmed booking, reset store on unmount so a fresh
+   131→   131→        // visit starts at step 1.
+   132→   132→        booking.reset();
+   133→   133→      }
+   134→   134→    };
+   135→   135→  }, [confirmed, booking]);
+   136→   136→
+   137→   137→  // ============== Confirmation screen ==============
+   138→   138→  if (confirmed) {
+   139→   139→    return (
+   140→   140→      <ConfirmationScreen
+   141→   141→        reservation={confirmed}
+   142→   142→        onReset={() => {
+   143→   143→          booking.reset();
+   144→   144→          setConfirmed(null);
+   145→   145→          setStep(1);
+   146→   146→          navigate("home");
+   147→   147→        }}
+   148→   148→      />
+   149→   149→    );
+   150→   150→  }
+   151→   151→
+   152→   152→  return (
+   153→   153→    <div className="pt-8 sm:pt-12">
+   154→   154→      {/* Progress indicator */}
+   155→   155→      <div className="border-b border-border bg-section">
+   156→   156→        <div className="container-luxury py-5">
+   157→   157→          <div className="flex items-center justify-center gap-2 sm:gap-4">
+   158→   158→            {STEPS.map((s, i) => {
+   159→   159→              const active = step === s.value;
+   160→   160→              const done = step > s.value;
+   161→   161→              return (
+   162→   162→                <React.Fragment key={s.value}>
+   163→   163→                  <button
+   164→   164→                    type="button"
+   165→   165→                    onClick={() => {
+   166→   166→                      // Allow going back to previous steps.
+   167→   167→                      if (s.value < step) setStep(s.value);
+   168→   168→                    }}
+   169→   169→                    disabled={s.value > step}
+   170→   170→                    className="flex min-h-[44px] items-center gap-2 px-1"
+   171→   171→                  >
+   172→   172→                    <span
+   173→   173→                      className={cn(
+   174→   174→                        "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors",
+   175→   175→                        active
+   176→   176→                          ? "bg-primary text-primary-foreground"
+   177→   177→                          : done
+   178→   178→                            ? "bg-primary/15 text-primary"
+   179→   179→                            : "bg-muted text-muted-foreground"
+   180→   180→                      )}
+   181→   181→                    >
+   182→   182→                      {done ? <Check className="h-4 w-4" /> : s.value}
+   183→   183→                    </span>
+   184→   184→                    <span
+   185→   185→                      className={cn(
+   186→   186→                        "hidden text-sm font-medium transition-colors sm:inline",
+   187→   187→                        active
+   188→   188→                          ? "text-foreground"
+   189→   189→                          : "text-muted-foreground"
+   190→   190→                      )}
+   191→   191→                    >
+   192→   192→                      {s.label}
+   193→   193→                    </span>
+   194→   194→                  </button>
+   195→   195→                  {i < STEPS.length - 1 && (
+   196→   196→                    <span
+   197→   197→                      className={cn(
+   198→   198→                        "h-px w-6 sm:w-16",
+   199→   199→                        step > s.value ? "bg-primary/40" : "bg-border"
+   200→   200→                      )}
+   201→   201→                    />
+   202→   202→                  )}
+   203→   203→                </React.Fragment>
+   204→   204→              );
+   205→   205→            })}
+   206→   206→          </div>
+   207→   207→        </div>
+   208→   208→      </div>
+   209→   209→
+   210→   210→      <div className="py-8 sm:py-12">
+   211→   211→        <div className="container-luxury">
+   212→   212→          {/* ============================================================
+   213→   213→              STEP 1 — Dates & Guests + Choose your stay
+   214→   214→          ============================================================ */}
+   215→   215→          {step === 1 && (
+   216→   216→            <Step1Dates
+   217→   217→              booking={booking}
+   218→   218→              setSearch={setSearch}
+   219→   219→              selectRoom={selectRoom}
+   220→   220→              rooms={rooms}
+   221→   221→              roomsLoading={roomsLoading}
+   222→   222→              selectedRoom={selectedRoom}
+   223→   223→              onContinue={() => setStep(2)}
+   224→   224→            />
+   225→   225→          )}
+   226→   226→
+   227→   227→          {/* ============================================================
+   228→   228→              STEP 2 — Your Details
+   229→   229→          ============================================================ */}
+   230→   230→          {step === 2 && (
+   231→   231→            <Step2Details
+   232→   232→              defaultValues={guestInfo}
+   233→   233→              onBack={() => setStep(1)}
+   234→   234→              onContinue={(values) => {
+   235→   235→                setGuestInfo(values);
+   236→   236→                setStep(3);
+   237→   237→              }}
+   238→   238→            />
+   239→   239→          )}
+   240→   240→
+   241→   241→          {/* ============================================================
+   242→   242→              STEP 3 — Review & Confirm
+   243→   243→          ============================================================ */}
+   244→   244→          {step === 3 && (
+   245→   245→            <Step3Confirm
+   246→   246→              booking={booking}
+   247→   247→              guestInfo={guestInfo}
+   248→   248→              selectedRoom={selectedRoom}
+   249→   249→              onBack={() => setStep(2)}
+   250→   250→              onConfirm={() => {
+   251→   251→                if (!selectedRoom) {
+   252→   252→                  toast.error("Please choose your stay first");
+   253→   253→                  setStep(1);
+   254→   254→                  return;
+   255→   255→                }
+   256→   256→                createMutation.mutate({
+   257→   257→                  roomId: selectedRoom.id,
+   258→   258→                  checkIn: booking.checkIn,
+   259→   259→                  checkOut: booking.checkOut,
+   260→   260→                  adults: booking.adults,
+   261→   261→                  children: booking.children,
+   262→   262→                  guest: guestInfo,
+   263→   263→                  specialRequests: guestInfo.specialRequests || undefined,
+   264→   264→                });
+   265→   265→              }}
+   266→   266→              submitting={createMutation.isPending}
+   267→   267→            />
+   268→   268→          )}
+   269→   269→        </div>
+   270→   270→      </div>
+   271→   271→    </div>
+   272→   272→  );
+   273→   273→}
+   274→   274→
+   275→   275→// ============================================================
+   276→   276→// STEP 1
+   277→   277→// ============================================================
+   278→   278→function Step1Dates({
+   279→   279→  booking,
+   280→   280→  setSearch,
+   281→   281→  selectRoom,
+   282→   282→  rooms,
+   283→   283→  roomsLoading,
+   284→   284→  selectedRoom,
+   285→   285→  onContinue,
+   286→   286→}: {
+   287→   287→  booking: ReturnType<typeof useBookingStore.getState>;
+   288→   288→  setSearch: (patch: Partial<{ checkIn: string; checkOut: string; adults: number; children: number; selectedRoomId: string | null }>) => void;
+   289→   289→  selectRoom: (id: string) => void;
+   290→   290→  rooms: Room[];
+   291→   291→  roomsLoading: boolean;
+   292→   292→  selectedRoom?: Room;
+   293→   293→  onContinue: () => void;
+   294→   294→}) {
+   295→   295→  const checkIn = booking.checkIn || defaultDate(1);
+   296→   296→  const checkOut = booking.checkOut || defaultDate(3);
+   297→   297→  const nights = nightsBetween(checkIn, checkOut);
+   298→   298→
+   299→   299→  const onContinueClick = () => {
+   300→   300→    if (!booking.checkIn || !booking.checkOut) {
+   301→   301→      setSearch({ checkIn, checkOut });
+   302→   302→    }
+   303→   303→    if (!selectedRoom) {
+   304→   304→      toast.error("Please pick your stay below first");
+   305→   305→      return;
+   306→   306→    }
+   307→   307→    onContinue();
+   308→   308→  };
+   309→   309→
+   310→   310→  return (
+   311→   311→    <div className="mx-auto max-w-4xl">
+   312→   312→      <FadeUpSection>
+   313→   313→        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+   314→   314→          Pick your dates
+   315→   315→        </h1>
+   316→   316→        <p className="mt-2 text-muted-foreground">
+   317→   317→          Tell us when you&rsquo;d like to visit and how many guests. Then
+   318→   318→          choose the whole villa or a single bedroom.
+   319→   319→        </p>
+   320→   320→      </FadeUpSection>
+   321→   321→
+   322→   322→      {/* Dates + Guests card */}
+   323→   323→      <FadeUpSection delay={0.05} className="mt-6">
+   324→   324→        <Card className="rounded-xl border border-border bg-card p-5 shadow-card sm:p-6">
+   325→   325→          <div className="grid gap-4 sm:grid-cols-2">
+   326→   326→            <div className="space-y-1.5">
+   327→   327→              <Label
+   328→   328→                htmlFor="bk-checkin"
+   329→   329→                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+   330→   330→              >
+   331→   331→                Check-in
+   332→   332→              </Label>
+   333→   333→              <div className="relative">
+   334→   334→                <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
+   335→   335→                <Input
+   336→   336→                  id="bk-checkin"
+   337→   337→                  type="date"
+   338→   338→                  value={checkIn}
+   339→   339→                  min={defaultDate(0)}
+   340→   340→                  onChange={(e) =>
+   341→   341→                    setSearch({ checkIn: e.target.value })
+   342→   342→                  }
+   343→   343→                  className="rounded-lg pl-9"
+   344→   344→                />
+   345→   345→              </div>
+   346→   346→            </div>
+   347→   347→            <div className="space-y-1.5">
+   348→   348→              <Label
+   349→   349→                htmlFor="bk-checkout"
+   350→   350→                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+   351→   351→              >
+   352→   352→                Check-out
+   353→   353→              </Label>
+   354→   354→              <div className="relative">
+   355→   355→                <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
+   356→   356→                <Input
+   357→   357→                  id="bk-checkout"
+   358→   358→                  type="date"
+   359→   359→                  value={checkOut}
+   360→   360→                  min={checkIn || defaultDate(1)}
+   361→   361→                  onChange={(e) =>
+   362→   362→                    setSearch({ checkOut: e.target.value })
+   363→   363→                  }
+   364→   364→                  className="rounded-lg pl-9"
+   365→   365→                />
+   366→   366→              </div>
+   367→   367→            </div>
+   368→   368→          </div>
+   369→   369→
+   370→   370→          {/* Guests steppers */}
+   371→   371→          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+   372→   372→            <Stepper
+   373→   373→              label="Adults"
+   374→   374→              hint="Ages 13+"
+   375→   375→              value={booking.adults}
+   376→   376→              min={1}
+   377→   377→              max={25}
+   378→   378→              onChange={(v) => setSearch({ adults: v })}
+   379→   379→            />
+   380→   380→            <Stepper
+   381→   381→              label="Children"
+   382→   382→              hint="Ages 0–12"
+   383→   383→              value={booking.children}
+   384→   384→              min={0}
+   385→   385→              max={20}
+   386→   386→              onChange={(v) => setSearch({ children: v })}
+   387→   387→            />
+   388→   388→          </div>
+   389→   389→
+   390→   390→          {/* Summary */}
+   391→   391→          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-section px-4 py-3 text-sm">
+   392→   392→            <span className="inline-flex items-center gap-1.5 text-foreground">
+   393→   393→              <CalendarIcon className="h-3.5 w-3.5 text-primary" />
+   394→   394→              {formatDate(checkIn)} → {formatDate(checkOut)}
+   395→   395→            </span>
+   396→   396→            <span className="inline-flex items-center gap-1.5 text-foreground">
+   397→   397→              <Users className="h-3.5 w-3.5 text-primary" />
+   398→   398→              {booking.adults + booking.children} guest
+   399→   399→              {booking.adults + booking.children === 1 ? "" : "s"}
+   400→   400→            </span>
+   401→   401→            <span className="text-muted-foreground">
+   402→   402→              {nights} night{nights === 1 ? "" : "s"}
+   403→   403→            </span>
+   404→   404→          </div>
+   405→   405→        </Card>
+   406→   406→      </FadeUpSection>
+   407→   407→
+   408→   408→      {/* Selected room summary OR room picker */}
+   409→   409→      {selectedRoom ? (
+   410→   410→        <FadeUpSection delay={0.1} className="mt-8">
+   411→   411→          <div className="flex items-center justify-between">
+   412→   412→            <h2 className="font-display text-2xl font-semibold tracking-tight">
+   413→   413→              Your stay
+   414→   414→            </h2>
+   415→   415→            <button
+   416→   416→              onClick={() => selectRoom("")}
+   417→   417→              className="text-sm font-medium text-primary transition-colors hover:text-coral"
+   418→   418→            >
+   419→   419→              Change
+   420→   420→            </button>
+   421→   421→          </div>
+   422→   422→          <Card className="mt-4 flex overflow-hidden rounded-xl border border-border bg-card shadow-card">
+   423→   423→            <div className="relative aspect-[4/3] w-32 shrink-0 bg-muted sm:w-48">
+   424→   424→              {selectedRoom.images?.[0] ? (
+   425→   425→                <img
+   426→   426→                  src={selectedRoom.images[0].url}
+   427→   427→                  alt={selectedRoom.name}
+   428→   428→                  className="h-full w-full object-cover"
+   429→   429→                />
+   430→   430→              ) : (
+   431→   431→                <div className="flex h-full w-full items-center justify-center">
+   432→   432→                  <BedDouble className="h-8 w-8 text-muted-foreground/40" />
+   433→   433→                </div>
+   434→   434→              )}
+   435→   435→            </div>
+   436→   436→            <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
+   437→   437→              <div>
+   438→   438→                <p className="eyebrow text-[0.6rem]">
+   439→   439→                  {selectedRoom.type?.name}
+   440→   440→                </p>
+   441→   441→                <h3 className="mt-1 font-display text-lg font-semibold">
+   442→   442→                  {selectedRoom.name}
+   443→   443→                </h3>
+   444→   444→                <p className="mt-1 text-sm text-muted-foreground">
+   445→   445→                  Sleeps {selectedRoom.capacity}
+   446→   446→                </p>
+   447→   447→              </div>
+   448→   448→              <div className="mt-3 font-display text-lg font-semibold text-primary">
+   449→   449→                {formatCurrency(selectedRoom.pricePerNight)}
+   450→   450→                <span className="ml-1 text-xs font-normal text-muted-foreground">
+   451→   451→                  / night
+   452→   452→                </span>
+   453→   453→              </div>
+   454→   454→            </div>
+   455→   455→          </Card>
+   456→   456→        </FadeUpSection>
+   457→   457→      ) : (
+   458→   458→        <FadeUpSection delay={0.1} className="mt-8">
+   459→   459→          <h2 className="font-display text-2xl font-semibold tracking-tight">
+   460→   460→            Choose your stay
+   461→   461→          </h2>
+   462→   462→          <p className="mt-1 text-sm text-muted-foreground">
+   463→   463→            Pick the whole villa for a group celebration, or a single bedroom
+   464→   464→            for a quieter escape.
+   465→   465→          </p>
+   466→   466→          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   467→   467→            {roomsLoading
+   468→   468→              ? Array.from({ length: 5 }).map((_, i) => (
+   469→   469→                  <RoomCardSkeleton key={i} />
+   470→   470→                ))
+   471→   471→              : rooms.map((room) => (
+   472→   472→                  <RoomCard
+   473→   473→                    key={room.id}
+   474→   474→                    room={room}
+   475→   475→                    selected={room.id === booking.selectedRoomId}
+   476→   476→                    onSelect={(r) => selectRoom(r.id)}
+   477→   477→                  />
+   478→   478→                ))}
+   479→   479→          </div>
+   480→   480→        </FadeUpSection>
+   481→   481→      )}
+   482→   482→
+   483→   483→      {/* Mobile sticky continue bar */}
+   484→   484→      <MobileStickyBar>
+   485→   485→        <Button
+   486→   486→          onClick={onContinueClick}
+   487→   487→          size="lg"
+   488→   488→          className="w-full rounded-full"
+   489→   489→        >
+   490→   490→          Continue
+   491→   491→          <ArrowRight className="h-4 w-4" />
+   492→   492→        </Button>
+   493→   493→      </MobileStickyBar>
+   494→   494→
+   495→   495→      {/* Desktop continue */}
+   496→   496→      <div className="mt-8 hidden justify-end sm:flex">
+   497→   497→        <Button
+   498→   498→          onClick={onContinueClick}
+   499→   499→          size="lg"
+   500→   500→          className="rounded-full"
+   501→   501→        >
+   502→   502→          Continue
+   503→   503→          <ArrowRight className="h-4 w-4" />
+   504→   504→        </Button>
+   505→   505→      </div>
+   506→   506→    </div>
+   507→   507→  );
+   508→   508→}
+   509→   509→
+   510→   510→// ============================================================
+   511→   511→// STEP 2
+   512→   512→// ============================================================
+   513→   513→type Step2Form = GuestInfoInput;
+   514→   514→
+   515→   515→function Step2Details({
+   516→   516→  defaultValues,
+   517→   517→  onBack,
+   518→   518→  onContinue,
+   519→   519→}: {
+   520→   520→  defaultValues: Step2Form;
+   521→   521→  onBack: () => void;
+   522→   522→  onContinue: (values: Step2Form) => void;
+   523→   523→}) {
+   524→   524→  const form = useForm<Step2Form>({
+   525→   525→    resolver: zodResolver(guestInfoSchema),
+   526→   526→    defaultValues,
+   527→   527→    mode: "onTouched",
+   528→   528→  });
+   529→   529→
+   530→   530→  const onSubmit = (values: Step2Form) => {
+   531→   531→    onContinue(values);
+   532→   532→  };
+   533→   533→
+   534→   534→  return (
+   535→   535→    <div className="mx-auto max-w-2xl">
+   536→   536→      <FadeUpSection>
+   537→   537→        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+   538→   538→          Your details
+   539→   539→        </h1>
+   540→   540→        <p className="mt-2 text-muted-foreground">
+   541→   541→          We&rsquo;ll use this to confirm your booking and reach out by phone
+   542→   542→          or Messenger.
+   543→   543→        </p>
+   544→   544→      </FadeUpSection>
+   545→   545→
+   546→   546→      <FadeUpSection delay={0.05} className="mt-6">
+   547→   547→        <Form {...form}>
+   548→   548→          <form
+   549→   549→            onSubmit={form.handleSubmit(onSubmit)}
+   550→   550→            className="space-y-5 rounded-xl border border-border bg-card p-5 shadow-card sm:p-7"
+   551→   551→          >
+   552→   552→            <div className="grid gap-4 sm:grid-cols-2">
+   553→   553→              <FormField
+   554→   554→                control={form.control}
+   555→   555→                name="firstName"
+   556→   556→                render={({ field }) => (
+   557→   557→                  <FormItem>
+   558→   558→                    <FormLabel>First name *</FormLabel>
+   559→   559→                    <FormControl>
+   560→   560→                      <Input
+   561→   561→                        placeholder="Juan"
+   562→   562→                        className="rounded-lg"
+   563→   563→                        {...field}
+   564→   564→                      />
+   565→   565→                    </FormControl>
+   566→   566→                    <FormMessage />
+   567→   567→                  </FormItem>
+   568→   568→                )}
+   569→   569→              />
+   570→   570→              <FormField
+   571→   571→                control={form.control}
+   572→   572→                name="lastName"
+   573→   573→                render={({ field }) => (
+   574→   574→                  <FormItem>
+   575→   575→                    <FormLabel>Last name *</FormLabel>
+   576→   576→                    <FormControl>
+   577→   577→                      <Input
+   578→   578→                        placeholder="Dela Cruz"
+   579→   579→                        className="rounded-lg"
+   580→   580→                        {...field}
+   581→   581→                      />
+   582→   582→                    </FormControl>
+   583→   583→                    <FormMessage />
+   584→   584→                  </FormItem>
+   585→   585→                )}
+   586→   586→              />
+   587→   587→            </div>
+   588→   588→
+   589→   589→            <div className="grid gap-4 sm:grid-cols-2">
+   590→   590→              <FormField
+   591→   591→                control={form.control}
+   592→   592→                name="email"
+   593→   593→                render={({ field }) => (
+   594→   594→                  <FormItem>
+   595→   595→                    <FormLabel>Email *</FormLabel>
+   596→   596→                    <FormControl>
+   597→   597→                      <Input
+   598→   598→                        type="email"
+   599→   599→                        placeholder="you@email.com"
+   600→   600→                        className="rounded-lg"
+   601→   601→                        {...field}
+   602→   602→                      />
+   603→   603→                    </FormControl>
+   604→   604→                    <FormMessage />
+   605→   605→                  </FormItem>
+   606→   606→                )}
+   607→   607→              />
+   608→   608→              <FormField
+   609→   609→                control={form.control}
+   610→   610→                name="phone"
+   611→   611→                render={({ field }) => (
+   612→   612→                  <FormItem>
+   613→   613→                    <FormLabel>Phone *</FormLabel>
+   614→   614→                    <FormControl>
+   615→   615→                      <Input
+   616→   616→                        type="tel"
+   617→   617→                        placeholder="+63 917 555 0101"
+   618→   618→                        className="rounded-lg"
+   619→   619→                        {...field}
+   620→   620→                      />
+   621→   621→                    </FormControl>
+   622→   622→                    <FormMessage />
+   623→   623→                  </FormItem>
+   624→   624→                )}
+   625→   625→              />
+   626→   626→            </div>
+   627→   627→
+   628→   628→            <div className="grid gap-4 sm:grid-cols-2">
+   629→   629→              <FormField
+   630→   630→                control={form.control}
+   631→   631→                name="city"
+   632→   632→                render={({ field }) => (
+   633→   633→                  <FormItem>
+   634→   634→                    <FormLabel>City</FormLabel>
+   635→   635→                    <FormControl>
+   636→   636→                      <Input
+   637→   637→                        placeholder="Manila"
+   638→   638→                        className="rounded-lg"
+   639→   639→                        {...field}
+   640→   640→                      />
+   641→   641→                    </FormControl>
+   642→   642→                    <FormMessage />
+   643→   643→                  </FormItem>
+   644→   644→                )}
+   645→   645→              />
+   646→   646→              <FormField
+   647→   647→                control={form.control}
+   648→   648→                name="country"
+   649→   649→                render={({ field }) => (
+   650→   650→                  <FormItem>
+   651→   651→                    <FormLabel>Country</FormLabel>
+   652→   652→                    <FormControl>
+   653→   653→                      <Input
+   654→   654→                        placeholder="Philippines"
+   655→   655→                        className="rounded-lg"
+   656→   656→                        {...field}
+   657→   657→                      />
+   658→   658→                    </FormControl>
+   659→   659→                    <FormMessage />
+   660→   660→                  </FormItem>
+   661→   661→                )}
+   662→   662→              />
+   663→   663→            </div>
+   664→   664→
+   665→   665→            <FormField
+   666→   666→              control={form.control}
+   667→   667→              name="specialRequests"
+   668→   668→              render={({ field }) => (
+   669→   669→                <FormItem>
+   670→   670→                  <FormLabel>Special requests</FormLabel>
+   671→   671→                  <FormControl>
+   672→   672→                    <Textarea
+   673→   673→                      placeholder="Anything we should know? Early check-in, celebration setup, accessibility needs…"
+   674→   674→                      className="min-h-[100px] rounded-lg"
+   675→   675→                      {...field}
+   676→   676→                    />
+   677→   677→                  </FormControl>
+   678→   678→                  <p className="text-xs text-muted-foreground">
+   679→   679→                    Optional. We&rsquo;ll do our best to accommodate.
+   680→   680→                  </p>
+   681→   681→                  <FormMessage />
+   682→   682→                </FormItem>
+   683→   683→              )}
+   684→   684→            />
+   685→   685→
+   686→   686→            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-between">
+   687→   687→              <Button
+   688→   688→                type="button"
+   689→   689→                variant="ghost"
+   690→   690→                onClick={onBack}
+   691→   691→                className="rounded-full"
+   692→   692→              >
+   693→   693→                <ArrowLeft className="h-4 w-4" />
+   694→   694→                Back
+   695→   695→              </Button>
+   696→   696→              <Button
+   697→   697→                type="submit"
+   698→   698→                size="lg"
+   699→   699→                className="rounded-full sm:px-8"
+   700→   700→              >
+   701→   701→                Continue
+   702→   702→                <ArrowRight className="h-4 w-4" />
+   703→   703→              </Button>
+   704→   704→            </div>
+   705→   705→          </form>
+   706→   706→        </Form>
+   707→   707→      </FadeUpSection>
+   708→   708→    </div>
+   709→   709→  );
+   710→   710→}
+   711→   711→
+   712→   712→// ============================================================
+   713→   713→// STEP 3 — Review & Confirm
+   714→   714→// ============================================================
+   715→   715→function Step3Confirm({
+   716→   716→  booking,
+   717→   717→  guestInfo,
+   718→   718→  selectedRoom,
+   719→   719→  onBack,
+   720→   720→  onConfirm,
+   721→   721→  submitting,
+   722→   722→}: {
+   723→   723→  booking: ReturnType<typeof useBookingStore.getState>;
+   724→   724→  guestInfo: GuestInfoInput;
+   725→   725→  selectedRoom?: Room;
+   726→   726→  onBack: () => void;
+   727→   727→  onConfirm: () => void;
+   728→   728→  submitting: boolean;
+   729→   729→}) {
+   730→   730→  const nights = nightsBetween(booking.checkIn, booking.checkOut);
+   731→   731→  const pricePerNight = selectedRoom?.pricePerNight ?? 0;
+   732→   732→  const subtotal = pricePerNight * Math.max(nights, 1);
+   733→   733→  const total = subtotal; // taxRate = 0 per settings
+   734→   734→
+   735→   735→  if (!selectedRoom || !booking.checkIn || !booking.checkOut) {
+   736→   736→    return (
+   737→   737→      <div className="mx-auto max-w-2xl text-center">
+   738→   738→        <p className="text-muted-foreground">
+   739→   739→          Something&rsquo;s missing. Please go back and pick your dates and
+   740→   740→          stay.
+   741→   741→        </p>
+   742→   742→        <Button onClick={onBack} className="mt-4 rounded-full">
+   743→   743→          <ArrowLeft className="h-4 w-4" />
+   744→   744→          Back
+   745→   745→        </Button>
+   746→   746→      </div>
+   747→   747→    );
+   748→   748→  }
+   749→   749→
+   750→   750→  return (
+   751→   751→    <div className="mx-auto max-w-3xl">
+   752→   752→      <FadeUpSection>
+   753→   753→        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+   754→   754→          Review &amp; confirm
+   755→   755→        </h1>
+   756→   756→        <p className="mt-2 text-muted-foreground">
+   757→   757→          Take a look at the details below. When you&rsquo;re ready,
+   758→   758→          we&rsquo;ll send your request to the villa.
+   759→   759→        </p>
+   760→   760→      </FadeUpSection>
+   761→   761→
+   762→   762→      <FadeUpSection delay={0.05} className="mt-6">
+   763→   763→        <Card className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+   764→   764→          {/* Stay header */}
+   765→   765→          <div className="flex items-center gap-4 border-b border-border bg-section p-5">
+   766→   766→            {selectedRoom.images?.[0] ? (
+   767→   767→              <img
+   768→   768→                src={selectedRoom.images[0].url}
+   769→   769→                alt={selectedRoom.name}
+   770→   770→                className="h-16 w-16 rounded-lg object-cover sm:h-20 sm:w-20"
+   771→   771→              />
+   772→   772→            ) : (
+   773→   773→              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-muted sm:h-20 sm:w-20">
+   774→   774→                <BedDouble className="h-6 w-6 text-muted-foreground/40" />
+   775→   775→              </div>
+   776→   776→            )}
+   777→   777→            <div>
+   778→   778→              <p className="eyebrow text-[0.6rem]">
+   779→   779→                {selectedRoom.type?.name}
+   780→   780→              </p>
+   781→   781→              <h3 className="mt-0.5 font-display text-lg font-semibold">
+   782→   782→                {selectedRoom.name}
+   783→   783→              </h3>
+   784→   784→              <p className="text-sm text-muted-foreground">
+   785→   785→                Sleeps {selectedRoom.capacity}
+   786→   786→              </p>
+   787→   787→            </div>
+   788→   788→          </div>
+   789→   789→
+   790→   790→          {/* Details */}
+   791→   791→          <div className="space-y-5 p-5 sm:p-7">
+   792→   792→            <Section title="Dates">
+   793→   793→              <Row label="Check-in" value={`${formatDate(booking.checkIn)}`} />
+   794→   794→              <Row
+   795→   795→                label="Check-out"
+   796→   796→                value={`${formatDate(booking.checkOut)}`}
+   797→   797→              />
+   798→   798→              <Row
+   799→   799→                label="Length of stay"
+   800→   800→                value={`${nights} night${nights === 1 ? "" : "s"}`}
+   801→   801→              />
+   802→   802→            </Section>
+   803→   803→
+   804→   804→            <Section title="Guests">
+   805→   805→              <Row
+   806→   806→                label="Adults"
+   807→   807→                value={`${booking.adults}`}
+   808→   808→              />
+   809→   809→              {booking.children > 0 && (
+   810→   810→                <Row
+   811→   811→                  label="Children"
+   812→   812→                  value={`${booking.children}`}
+   813→   813→                />
+   814→   814→              )}
+   815→   815→              <Row
+   816→   816→                label="Total"
+   817→   817→                value={`${booking.adults + booking.children} guest${
+   818→   818→                  booking.adults + booking.children === 1 ? "" : "s"
+   819→   819→                }`}
+   820→   820→              />
+   821→   821→            </Section>
+   822→   822→
+   823→   823→            <Section title="Primary guest">
+   824→   824→              <Row
+   825→   825→                label="Name"
+   826→   826→                value={`${guestInfo.firstName ?? ""} ${guestInfo.lastName ?? ""}`.trim()}
+   827→   827→              />
+   828→   828→              <Row label="Email" value={guestInfo.email ?? ""} />
+   829→   829→              <Row label="Phone" value={guestInfo.phone ?? ""} />
+   830→   830→              {guestInfo.city || guestInfo.country ? (
+   831→   831→                <Row
+   832→   832→                  label="From"
+   833→   833→                  value={[guestInfo.city, guestInfo.country].filter(Boolean).join(", ")}
+   834→   834→                />
+   835→   835→              ) : null}
+   836→   836→            </Section>
+   837→   837→
+   838→   838→            {guestInfo.specialRequests && (
+   839→   839→              <Section title="Special requests">
+   840→   840→                <p className="text-sm text-muted-foreground">
+   841→   841→                  {guestInfo.specialRequests}
+   842→   842→                </p>
+   843→   843→              </Section>
+   844→   844→            )}
+   845→   845→
+   846→   846→            {/* Price breakdown */}
+   847→   847→            <div className="rounded-lg border border-border bg-section p-4">
+   848→   848→              <div className="flex items-center justify-between text-sm">
+   849→   849→                <span className="text-muted-foreground">
+   850→   850→                  {formatCurrency(pricePerNight)} × {nights} night
+   851→   851→                  {nights === 1 ? "" : "s"}
+   852→   852→                </span>
+   853→   853→                <span className="font-medium">{formatCurrency(subtotal)}</span>
+   854→   854→              </div>
+   855→   855→              <div className="my-3 h-px bg-border" />
+   856→   856→              <div className="flex items-center justify-between">
+   857→   857→                <span className="font-display text-base font-semibold">
+   858→   858→                  Total
+   859→   859→                </span>
+   860→   860→                <span className="font-display text-xl font-semibold text-primary">
+   861→   861→                  {formatCurrency(total)}
+   862→   862→                </span>
+   863→   863→              </div>
+   864→   864→              <p className="mt-2 text-xs text-muted-foreground">
+   865→   865→                No taxes or service fees.
+   866→   866→              </p>
+   867→   867→            </div>
+   868→   868→
+   869→   869→            {/* Plain-language note */}
+   870→   870→            <div className="rounded-lg bg-coral/10 p-4 text-sm text-foreground">
+   871→   871→              <p className="font-medium">No payment needed now.</p>
+   872→   872→              <p className="mt-1 text-muted-foreground">
+   873→   873→                We&rsquo;ll review your request, confirm your dates, and reach
+   874→   874→                out by phone or Messenger to arrange deposit and details.
+   875→   875→              </p>
+   876→   876→            </div>
+   877→   877→
+   878→   878→            {/* Actions */}
+   879→   879→            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-between">
+   880→   880→              <Button
+   881→   881→                type="button"
+   882→   882→                variant="ghost"
+   883→   883→                onClick={onBack}
+   884→   884→                disabled={submitting}
+   885→   885→                className="rounded-full"
+   886→   886→              >
+   887→   887→                <ArrowLeft className="h-4 w-4" />
+   888→   888→                Back
+   889→   889→              </Button>
+   890→   890→              <Button
+   891→   891→                type="button"
+   892→   892→                size="lg"
+   893→   893→                disabled={submitting}
+   894→   894→                onClick={() => onConfirm()}
+   895→   895→                className="rounded-full sm:px-8"
+   896→   896→              >
+   897→   897→                {submitting ? (
+   898→   898→                  <>
+   899→   899→                    <Loader2 className="h-4 w-4 animate-spin" />
+   900→   900→                    Sending…
+   901→   901→                  </>
+   902→   902→                ) : (
+   903→   903→                  <>Confirm My Booking</>
+   904→   904→                )}
+   905→   905→              </Button>
+   906→   906→            </div>
+   907→   907→          </div>
+   908→   908→        </Card>
+   909→   909→      </FadeUpSection>
+   910→   910→    </div>
+   911→   911→  );
+   912→   912→}
+   913→   913→
+   914→   914→// ============================================================
+   915→   915→// CONFIRMATION SCREEN
+   916→   916→// ============================================================
+   917→   917→function ConfirmationScreen({
+   918→   918→  reservation,
+   919→   919→  onReset,
+   920→   920→}: {
+   921→   921→  reservation: Reservation;
+   922→   922→  onReset: () => void;
+   923→   923→}) {
+   924→   924→  const navigate = useViewStore((s) => s.navigate);
+   925→   925→  const statusConfig =
+   926→   926→    BOOKING_STATUS_CONFIG[reservation.status] ?? BOOKING_STATUS_CONFIG.PENDING;
+   927→   927→
+   928→   928→  const downloadIcs = () => {
+   929→   929→    const ics = buildIcs(reservation);
+   930→   930→    const blob = new Blob([ics], { type: "text/calendar" });
+   931→   931→    const url = URL.createObjectURL(blob);
+   932→   932→    const a = document.createElement("a");
+   933→   933→    a.href = url;
+   934→   934→    a.download = `the-twenty-fifth-${reservation.referenceNo}.ics`;
+   935→   935→    document.body.appendChild(a);
+   936→   936→    a.click();
+   937→   937→    document.body.removeChild(a);
+   938→   938→    URL.revokeObjectURL(url);
+   939→   939→  };
+   940→   940→
+   941→   941→  return (
+   942→   942→    <div className="py-12 sm:py-20">
+   943→   943→      <div className="container-tight">
+   944→   944→        <FadeUpSection className="text-center">
+   945→   945→          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success">
+   946→   946→            <Check className="h-7 w-7" />
+   947→   947→          </div>
+   948→   948→          <p className="eyebrow mt-5">Booking received</p>
+   949→   949→          <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+   950→   950→            We&rsquo;ve got your request.
+   951→   951→          </h1>
+   952→   952→
+   953→   953→          {/* Reference number */}
+   954→   954→          <div className="mx-auto mt-8 max-w-xl rounded-xl border border-border bg-card p-6 shadow-card">
+   955→   955→            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+   956→   956→              Your reference number
+   957→   957→            </p>
+   958→   958→            <p className="mt-2 font-display text-3xl font-semibold tracking-tight text-primary sm:text-4xl">
+   959→   959→              {reservation.referenceNo}
+   960→   960→            </p>
+   961→   961→            <div className="mt-4 flex justify-center">
+   962→   962→              <Badge
+   963→   963→                className={cn(
+   964→   964→                  "rounded-full border-0 px-4 py-1.5 text-sm",
+   965→   965→                  statusConfig.bg,
+   966→   966→                  statusConfig.text
+   967→   967→                )}
+   968→   968→              >
+   969→   969→                {statusConfig.friendly}
+   970→   970→              </Badge>
+   971→   971→            </div>
+   972→   972→            <p className="mt-4 text-sm text-muted-foreground">
+   973→   973→              {statusConfig.description}
+   974→   974→            </p>
+   975→   975→          </div>
+   976→   976→
+   977→   977→          <p className="mx-auto mt-6 max-w-md text-sm text-muted-foreground">
+   978→   978→            Save your reference number — you&rsquo;ll use it to look up your
+   979→   979→            booking later. We&rsquo;ll also email it to{" "}
+   980→   980→            <span className="font-medium text-foreground">
+   981→   981→              {reservation.guest?.email}
+   982→   982→            </span>
+   983→   983→            .
+   984→   984→          </p>
+   985→   985→        </FadeUpSection>
+   986→   986→
+   987→   987→        {/* What happens next */}
+   988→   988→        <FadeUpSection delay={0.1} className="mx-auto mt-12 max-w-2xl">
+   989→   989→          <h2 className="font-display text-2xl font-semibold tracking-tight">
+   990→   990→            What happens next
+   991→   991→          </h2>
+   992→   992→          <ol className="mt-5 space-y-4">
+   993→   993→            {[
+   994→   994→              {
+   995→   995→                title: "We review your request",
+   996→   996→                body: "We check the dates and availability, usually within a few hours.",
+   997→   997→              },
+   998→   998→              {
+   999→   999→                title: "We confirm by phone or Messenger",
+  1000→  1000→                body: "We'll reach out to lock in your dates and arrange the deposit.",
+  1001→  1001→              },
+  1002→  1002→              {
+  1003→  1003→                title: "See you at the beach!",
+  1004→  1004→                body: `Check-in from 2:00 PM at ${RESORT_INFO.addressShort}.`,
+  1005→  1005→              },
+  1006→  1006→            ].map((step, i) => (
+  1007→  1007→              <li
+  1008→  1008→                key={step.title}
+  1009→  1009→                className="flex gap-4 rounded-xl border border-border bg-card p-5 shadow-card"
+  1010→  1010→              >
+  1011→  1011→                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+  1012→  1012→                  {i + 1}
+  1013→  1013→                </span>
+  1014→  1014→                <div>
+  1015→  1015→                  <p className="font-medium">{step.title}</p>
+  1016→  1016→                  <p className="mt-1 text-sm text-muted-foreground">
+  1017→  1017→                    {step.body}
+  1018→  1018→                  </p>
+  1019→  1019→                </div>
+  1020→  1020→              </li>
+  1021→  1021→            ))}
+  1022→  1022→          </ol>
+  1023→  1023→        </FadeUpSection>
+  1024→  1024→
+  1025→  1025→        {/* Action buttons */}
+  1026→  1026→        <FadeUpSection delay={0.15} className="mx-auto mt-10 max-w-2xl">
+  1027→  1027→          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:flex-row md:flex-wrap md:justify-center">
+  1028→  1028→            <Button
+  1029→  1029→              onClick={downloadIcs}
+  1030→  1030→              variant="outline"
+  1031→  1031→              className="w-full rounded-full md:w-auto"
+  1032→  1032→            >
+  1033→  1033→              <Download className="h-4 w-4" />
+  1034→  1034→              Add to Calendar
+  1035→  1035→            </Button>
+  1036→  1036→            <a
+  1037→  1037→              href={RESORT_INFO.social.messenger}
+  1038→  1038→              target="_blank"
+  1039→  1039→              rel="noopener noreferrer"
+  1040→  1040→              className="md:w-auto"
+  1041→  1041→            >
+  1042→  1042→              <Button className="w-full rounded-full md:w-auto">
+  1043→  1043→                <MessageSquare className="h-4 w-4" />
+  1044→  1044→                Message us on Messenger
+  1045→  1045→              </Button>
+  1046→  1046→            </a>
+  1047→  1047→            <a href={`tel:${RESORT_INFO.phoneRaw}`} className="md:w-auto">
+  1048→  1048→              <Button
+  1049→  1049→                variant="outline"
+  1050→  1050→                className="w-full rounded-full md:w-auto"
+  1051→  1051→              >
+  1052→  1052→                <Phone className="h-4 w-4" />
+  1053→  1053→                Call the villa
+  1054→  1054→              </Button>
+  1055→  1055→            </a>
+  1056→  1056→            <Button
+  1057→  1057→              onClick={() => navigate("find-reservation")}
+  1058→  1058→              variant="outline"
+  1059→  1059→              className="w-full rounded-full md:w-auto"
+  1060→  1060→            >
+  1061→  1061→              <Search className="h-4 w-4" />
+  1062→  1062→              Find my booking later
+  1063→  1063→            </Button>
+  1064→  1064→          </div>
+  1065→  1065→
+  1066→  1066→          <div className="mt-6 flex justify-center">
+  1067→  1067→            <Button
+  1068→  1068→              onClick={onReset}
+  1069→  1069→              variant="ghost"
+  1070→  1070→              className="rounded-full text-muted-foreground"
+  1071→  1071→            >
+  1072→  1072→              <Home className="h-4 w-4" />
+  1073→  1073→              Back to home
+  1074→  1074→            </Button>
+  1075→  1075→          </div>
+  1076→  1076→        </FadeUpSection>
+  1077→  1077→      </div>
+  1078→  1078→    </div>
+  1079→  1079→  );
+  1080→  1080→}
+  1081→  1081→
+  1082→  1082→// ============================================================
+  1083→  1083→// Shared small components
+  1084→  1084→// ============================================================
+  1085→  1085→function Stepper({
+  1086→  1086→  label,
+  1087→  1087→  hint,
+  1088→  1088→  value,
+  1089→  1089→  min,
+  1090→  1090→  max,
+  1091→  1091→  onChange,
+  1092→  1092→}: {
+  1093→  1093→  label: string;
+  1094→  1094→  hint?: string;
+  1095→  1095→  value: number;
+  1096→  1096→  min: number;
+  1097→  1097→  max: number;
+  1098→  1098→  onChange: (v: number) => void;
+  1099→  1099→}) {
+  1100→  1100→  return (
+  1101→  1101→    <div className="rounded-lg border border-border bg-card p-4">
+  1102→  1102→      <div className="flex items-center justify-between">
+  1103→  1103→        <div>
+  1104→  1104→          <p className="text-sm font-medium">{label}</p>
+  1105→  1105→          {hint && (
+  1106→  1106→            <p className="text-xs text-muted-foreground">{hint}</p>
+  1107→  1107→          )}
+  1108→  1108→        </div>
+  1109→  1109→        <div className="flex items-center gap-2">
+  1110→  1110→          <button
+  1111→  1111→            type="button"
+  1112→  1112→            onClick={() => onChange(Math.max(min, value - 1))}
+  1113→  1113→            disabled={value <= min}
+  1114→  1114→            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+  1115→  1115→            aria-label={`Decrease ${label}`}
+  1116→  1116→          >
+  1117→  1117→            <Minus className="h-4 w-4" />
+  1118→  1118→          </button>
+  1119→  1119→          <span className="w-8 text-center font-display text-lg font-semibold tabular-nums">
+  1120→  1120→            {value}
+  1121→  1121→          </span>
+  1122→  1122→          <button
+  1123→  1123→            type="button"
+  1124→  1124→            onClick={() => onChange(Math.min(max, value + 1))}
+  1125→  1125→            disabled={value >= max}
+  1126→  1126→            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+  1127→  1127→            aria-label={`Increase ${label}`}
+  1128→  1128→          >
+  1129→  1129→            <Plus className="h-4 w-4" />
+  1130→  1130→          </button>
+  1131→  1131→        </div>
+  1132→  1132→      </div>
+  1133→  1133→    </div>
+  1134→  1134→  );
+  1135→  1135→}
+  1136→  1136→
+  1137→  1137→function MobileStickyBar({ children }: { children: React.ReactNode }) {
+  1138→  1138→  return (
+  1139→  1139→    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-4 backdrop-blur sm:hidden">
+  1140→  1140→      {children}
+  1141→  1141→    </div>
+  1142→  1142→  );
+  1143→  1143→}
+  1144→  1144→
+  1145→  1145→function Section({
+  1146→  1146→  title,
+  1147→  1147→  children,
+  1148→  1148→}: {
+  1149→  1149→  title: string;
+  1150→  1150→  children: React.ReactNode;
+  1151→  1151→}) {
+  1152→  1152→  return (
+  1153→  1153→    <div>
+  1154→  1154→      <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+  1155→  1155→        {title}
+  1156→  1156→      </h3>
+  1157→  1157→      <div className="mt-2 space-y-1.5 text-sm">{children}</div>
+  1158→  1158→    </div>
+  1159→  1159→  );
+  1160→  1160→}
+  1161→  1161→
+  1162→  1162→function Row({ label, value }: { label: string; value: string }) {
+  1163→  1163→  return (
+  1164→  1164→    <div className="flex items-start justify-between gap-3">
+  1165→  1165→      <span className="text-muted-foreground">{label}</span>
+  1166→  1166→      <span className="text-right font-medium text-foreground">{value}</span>
+  1167→  1167→    </div>
+  1168→  1168→  );
+  1169→  1169→}
+  1170→  1170→
+  1171→  1171→// ============================================================
+  1172→  1172→// Helpers
+  1173→  1173→// ============================================================
+  1174→  1174→function defaultDate(daysFromNow: number): string {
+  1175→  1175→  const d = new Date();
+  1176→  1176→  d.setDate(d.getDate() + daysFromNow);
+  1177→  1177→  return d.toISOString().slice(0, 10);
+  1178→  1178→}
+  1179→  1179→
+  1180→  1180→function buildIcs(reservation: Reservation): string {
+  1181→  1181→  const dt = (s: string) => {
+  1182→  1182→    const d = new Date(s);
+  1183→  1183→    // All-day event: check-out day is exclusive.
+  1184→  1184→    return (
+  1185→  1185→      d.getUTCFullYear() +
+  1186→  1186→      String(d.getUTCMonth() + 1).padStart(2, "0") +
+  1187→  1187→      String(d.getUTCDate()).padStart(2, "0")
+  1188→  1188→    );
+  1189→  1189→  };
+  1190→  1190→  const lines = [
+  1191→  1191→    "BEGIN:VCALENDAR",
+  1192→  1192→    "VERSION:2.0",
+  1193→  1193→    "PRODID:-//The Twenty-Fifth//Booking//EN",
+  1194→  1194→    "CALSCALE:GREGORIAN",
+  1195→  1195→    "METHOD:PUBLISH",
+  1196→  1196→    "BEGIN:VEVENT",
+  1197→  1197→    `UID:${reservation.referenceNo}@the25thinzambales.com`,
+  1198→  1198→    `DTSTAMP:${dt(new Date().toISOString())}T000000Z`,
+  1199→  1199→    `DTSTART;VALUE=DATE:${dt(reservation.checkIn)}`,
+  1200→  1200→    `DTEND;VALUE=DATE:${dt(reservation.checkOut)}`,
+  1201→  1201→    `SUMMARY:Stay at The Twenty-Fifth`,
+  1202→  1202→    `LOCATION:${RESORT_INFO.address}`,
+  1203→  1203→    `DESCRIPTION:Reference: ${reservation.referenceNo}\\nGuests: ${reservation.adults + reservation.children}\\nStatus: ${reservation.status}`,
+  1204→  1204→    "END:VEVENT",
+  1205→  1205→    "END:VCALENDAR",
+  1206→  1206→  ];
+  1207→  1207→  return lines.join("\r\n");
+  1208→  1208→}
+  1209→  1209→

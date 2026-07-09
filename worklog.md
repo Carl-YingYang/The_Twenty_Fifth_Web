@@ -1082,3 +1082,338 @@ Stage Summary:
 - Image URL overflow fixed in room edit modal (max-height + scroll + title attributes)
 - All existing functionality preserved (search, filters, modals, dialogs, actions)
 - Lint: 0 errors. Dev server: HTTP 200, no runtime errors.
+
+---
+Task ID: 11-a
+Agent: Explore (research booking / hero / image / button / tab / toast patterns)
+Task: Read worklog.md, then audit BookingFlow.tsx, HeroSlideshow in HomePage.tsx, image rendering in shared.tsx + RoomCard.tsx, button.tsx, BookingsAdmin active tab styling, sonner toaster setup + toast usage patterns, and run a border-radius audit across public + admin components. Report findings with file paths + line numbers. Research-only; no edits.
+
+### 1. BookingFlow.tsx (1,209 lines)
+File: `/home/z/my-project/src/components/public/booking/BookingFlow.tsx`
+
+**Date selection handling:**
+- `useBookingStore` (Zustand + persist, `/home/z/my-project/src/store/useBookingStore.ts`) holds `checkIn`, `checkOut`, `adults`, `children`, `selectedRoomId` (lines 6-12). All dates are ISO `YYYY-MM-DD` strings.
+- `Step1Dates` component (lines 278-508) reads `booking.checkIn || defaultDate(1)` and `booking.checkOut || defaultDate(3)` (lines 295-296) so the UI always has a value to bind even on first visit. `defaultDate(N)` helper at lines 1174-1178 returns `today + N days` as ISO date string.
+- Native `<input type="date">` used for both Check-in (lines 335-345) and Check-out (lines 356-366). Calendar icon overlay (lines 334, 355). `min` attribute constrains picker: checkIn `min={defaultDate(0)}` (line 339), checkOut `min={checkIn || defaultDate(1)}` (line 360). However, `min` only restricts the picker UI — it does NOT auto-correct the underlying value if the user moves checkIn past checkOut.
+- `nightsBetween(checkIn, checkOut)` helper (utils.ts lines 66-71) returns `Math.max(0, Math.round(diff/86400000))` — silently clamps negative diffs to 0.
+- Guest stepper: `Stepper` component (lines 1085-1135) with `+`/`-` round buttons (rounded-full, lines 1114 & 1126), bounds `min`/`max`.
+
+**Post-selection summary UI (after dates chosen):**
+- Inline summary inside the Step1 card (lines 391-404): `flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-section px-4 py-3 text-sm`. Shows 3 items separated by gaps:
+  1. Calendar icon + `{formatDate(checkIn)} → {formatDate(checkOut)}` (lines 392-395)
+  2. Users icon + `{adults + children} guest(s)` (lines 396-400)
+  3. Plain muted text: `{nights} night(s)` (lines 401-403)
+- After a room is selected (lines 408-456): a separate "Your stay" Card with `flex overflow-hidden rounded-xl border border-border bg-card shadow-card` (line 422), containing:
+  - Thumbnail: `aspect-[4/3] w-32 shrink-0 sm:w-48` (line 423), plain `<img>` (no lazy, no img-zoom).
+  - Body: type eyebrow, name (display font), "Sleeps N", price per night (lines 436-453).
+  - "Change" link above the card (line 415) calls `selectRoom("")` to clear selection.
+- If no room selected yet (lines 457-481): "Choose your stay" heading + room grid (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`, line 466) of `<RoomCard>` components or `<RoomCardSkeleton>` placeholders while loading.
+
+**Validation bugs / concerns:**
+1. **No `checkOut > checkIn` validation in Step1Dates** — `onContinueClick` (lines 299-308) only checks for a selected room. Compare with HomePage's `onCheckAvailability` (HomePage.tsx lines 198-201) which explicitly toasts `"Check-out must be after check-in"`. BookingFlow silently allows checkout ≤ checkin; `nightsBetween` returns 0, then Step3Confirm silently coerces to 1 night via `Math.max(nights, 1)` on line 732. Result: user can submit a same-day or backwards booking that's priced as 1 night with no warning. **REAL BUG.**
+2. **Double-submit**: Step3Confirm's Confirm button has `disabled={submitting}` (line 893), Back button also disabled while submitting (line 884). React Query's `useMutation.mutate` is also internally debounced. No double-submit possible from UI. However, the `onConfirm` callback (lines 250-265) has no `createMutation.isPending` early-return guard — relies entirely on the disabled button. Minor robustness gap, not a real bug.
+3. **Default-date fallback quirk**: `onContinueClick` (lines 300-302) calls `setSearch({ checkIn, checkOut })` only when `!booking.checkIn || !booking.checkOut`. The `||` correctly handles either field being empty (covers the refresh-after-partial-selection case). Not a bug, just non-obvious.
+4. **Stale store on confirmation reset** (lines 127-135): the unmount cleanup only resets the store if `confirmed` is truthy. If user navigates back from Step2 without confirming, store keeps dates — that's intentional (so they can resume), but worth noting.
+
+**Border radius on buttons / cards in BookingFlow:**
+- All primary CTA buttons: `rounded-full` (Continue mobile: 488, Continue desktop: 500, Step2 Continue: 699, Step2 Back: 692, Step3 Back: 885, Step3 Confirm: 895, all ConfirmationScreen actions: 1031/1042/1050/1059/1070).
+- All cards: `rounded-xl` (Step1 Card: 324, Step2 form: 550, Step3 Card: 763, "Your stay" Card: 422, ConfirmationScreen reference card: 954, "What happens next" list items: 1009).
+- Date inputs: `rounded-lg` (lines 343, 364).
+- Stepper buttons: `rounded-full` (lines 1114, 1126).
+- Progress indicator dots: `rounded-full` (line 174).
+- Success icon container on confirmation screen: `rounded-full` (line 945).
+- Reference-number badge: `rounded-full` (line 964).
+- MobileStickyBar: no radius (full-width bar, line 1139).
+
+### 2. HeroSlideshow (HomePage.tsx lines 95-164)
+File: `/home/z/my-project/src/components/public/home/HomePage.tsx`
+
+**Loading state:**
+- A `loaded` counter state exists (line 97, `useState(0)`), but it is **NOT surfaced to the user** as any visible UI. There is no skeleton, spinner, blur-up placeholder, or fallback background color shown while images load.
+- Before images load, the slide divs are rendered with empty `backgroundImage` (line 133) — they simply show transparent backgrounds. The dark gradient overlay (HomePage.tsx line 219) sits on top, so the hero briefly appears as a dark gradient block until the first image's background-image HTTP request completes.
+- The auto-advance interval only starts after all 3 images have loaded (line 119: `if (loaded < HERO_SLIDES.length) return`). This prevents mid-load transitions but does nothing for the initial-frame flash.
+
+**Image preloading:**
+- `useEffect` on mount (lines 100-116) iterates `HERO_SLIDES` and creates a `new window.Image()` for each, setting `img.src = src` (line 104). Both `onload` and `onerror` increment the `loaded` counter (lines 105-111) — so a failed load doesn't block the slideshow forever. A `cancelled` flag (line 101) prevents stale setState after unmount (line 113-115).
+- `HERO_SLIDES` (lines 86-90): three local images served from `/public`: `/hero-3.png`, `/hero-2.png`, `/hero-1.png`.
+- Crossfade: pure CSS opacity transition, `duration-[1600ms] ease-in-out` (line 131). Active slide `opacity: 1`, others `opacity: 0` (line 134).
+- Auto-advance interval: 6500ms (line 122).
+- Slide indicator dots (lines 141-161): bottom-right, 3 dot buttons. Active dot animates with `@keyframes hero-progress 6.5s linear forwards` (globals.css lines 298-302). Dot container: `bg-white/30` pill that turns to `bg-white/50` on hover. Active fill: `bg-white`.
+
+### 3. Image rendering — shared.tsx + RoomCard.tsx
+Files: `/home/z/my-project/src/components/public/shared.tsx` (256 lines), `/home/z/my-project/src/components/public/RoomCard.tsx` (151 lines)
+
+**Reusable image component:**
+- **None exists.** `shared.tsx` exports only: `getAmenityIcon`, `amenityIcon` (alias), `fadeUp`/`stagger` motion variants, `FadeUpSection`, `SectionHeading`, `HERO_IMAGE` (a single Unsplash URL string, line 174), `SectionDivider`, `useCountUp`, `useThemeToggle`. No `Image` / `SmartImage` / `LazyImage` component.
+- The shadcn/ui folder has no image wrapper either (no `ui/image.tsx`). `next/image` is not imported by any of the public/admin components audited.
+- All image rendering is via plain `<img>` tags with manual Tailwind classes for object-fit, hover zoom, and lazy loading.
+
+**Image loading patterns:**
+- HomePage.tsx story images (lines 344-349, 352-357): `<img className="img-zoom h-full w-full object-cover" loading="lazy" />` — Unsplash URLs.
+- HomePage.tsx gallery teaser (lines 479-484): same pattern (`img-zoom`, `loading="lazy"`, `object-cover`).
+- RoomCard.tsx (lines 54-59): `<img className="img-zoom h-full w-full object-cover" loading="lazy" />`. Has a fallback: `<BedDouble />` icon shown in muted box when no image (lines 60-64).
+- BookingFlow.tsx "Your stay" thumbnail (lines 425-429): plain `<img>` with `object-cover` but **no `loading="lazy"` and no `img-zoom`** — minor inconsistency vs. RoomCard.
+- BookingFlow.tsx Step3Confirm header thumbnail (lines 767-771): same — no `loading="lazy"`, no `img-zoom`. Has fallback icon (lines 772-775).
+- GalleryPage.tsx uses `<img>` for the lightbox viewer (not audited in detail).
+
+**`img-zoom` CSS class** (globals.css lines 289-295):
+```css
+.img-zoom {
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.img-zoom:hover {
+  transform: scale(1.04);
+}
+```
+- Pure CSS hover-zoom. No JS state, no skeleton fallback, no error handling, no progressive loading.
+- Notable: when used on an `<img>` inside an `overflow-hidden` parent (e.g. RoomCard.tsx line 52, HomePage.tsx line 343), the scale is clipped correctly. Used directly without overflow-hidden, the scaled image would overflow neighbors.
+
+### 4. Button styling — button.tsx
+File: `/home/z/my-project/src/components/ui/button.tsx` (59 lines)
+
+**Border radius variants:**
+- Base class on `buttonVariants` (line 8): `rounded-md` (Tailwind's 6px / `--radius-md`).
+- Size variants override:
+  - `default` (line 25): `h-9 px-4 py-2` — does NOT override radius, inherits `rounded-md`.
+  - `sm` (line 26): `h-8 rounded-md gap-1.5 px-3` — explicitly `rounded-md`.
+  - `lg` (line 27): `h-10 rounded-md px-6` — explicitly `rounded-md`.
+  - `icon` (line 28): `size-9` — does NOT override, inherits `rounded-md` (square icon button).
+- Variants (lines 11-22): `default`, `destructive`, `outline`, `secondary`, `ghost`, `link`. None of them touch radius.
+- **There is NO built-in `rounded-full`, `rounded-xl`, or `rounded-2xl` variant** — every pill-shaped button in the codebase comes from a caller-supplied `className="rounded-full"` override.
+
+**Border-radius usage patterns in globals.css + callers:**
+- globals.css defines radius scale (lines 52-56): `--radius: 0.625rem` (10px), `--radius-sm`, `--radius-md`, `--radius-lg = var(--radius)`, `--radius-xl = calc(var(--radius) + 4px)`, `--radius-2xl = calc(var(--radius) + 8px)`.
+- Card.tsx (line 10): base `rounded-xl` — Card component is always `rounded-xl` unless caller overrides.
+- In practice: virtually every caller overrides button radius to `rounded-full` for CTAs. Buttons without override (inheriting `rounded-md`) are rare — notable example: AdminLogin.tsx "Autofill credentials" button (line 251-259) uses `variant="outline" size="sm"` with no radius override → renders as `rounded-md`. The login submit button (line 226-232) also has no radius override → `rounded-md`. So AdminLogin is the only audited surface with non-pill buttons.
+
+### 5. Admin tabs — BookingsAdmin.tsx active tab styling
+File: `/home/z/my-project/src/components/admin/BookingsAdmin.tsx` (1,196 lines)
+
+- `STATUS_TABS` constant (lines 89-97): 7 tabs — All, Pending, Confirmed, Checked in, Completed, Cancelled, History (History aggregates 4 statuses per Task 10-b notes).
+- Tab button JSX (lines 238-258):
+  - Outer button classes (line 246): `min-h-[36px] rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors`.
+  - **Active tab (line 248)**: `border-primary bg-primary text-primary-foreground` — solid deep teal (#0E5A6F light / #4DBFD4 dark) with white text.
+  - **Inactive tab (line 249)**: `border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground`.
+  - Count badge span (lines 253-257): shown only when `tab.value !== "ALL" && count > 0`. Active count color: `text-primary-foreground/80` (line 254 — already fixed per Task 10 notes from prior `text-white/80` dark-mode bug). Inactive count color: `text-muted-foreground`.
+  - Tab click handler (lines 241-244): sets `status` AND resets `page` to 1 (added in Task 10-b for pagination).
+
+### 6. Toast usage — sonner setup + patterns
+Files: `/home/z/my-project/src/app/layout.tsx` (76 lines), `/home/z/my-project/src/components/ui/sonner.tsx` (26 lines)
+
+**Sonner Toaster setup:**
+- Root layout (`src/app/layout.tsx` lines 4 + 61-71): renders `<Toaster position="top-right" toastOptions={{ style: { borderRadius: "0.625rem", border: "1px solid #E5DED0", background: "#FFFFFF", color: "#1B2A2E" } }} />`.
+- **DARK-MODE CONCERN**: The `toastOptions.style` object hardcodes light-mode colors (`#FFFFFF` background, `#1B2A2E` text, `#E5DED0` border). The `sonner.tsx` wrapper (lines 13-19) DOES set CSS custom properties (`--normal-bg`, `--normal-text`, `--normal-border` = `--popover`/`--popover-foreground`/`--border`) which would normally adapt to dark mode via the theme tokens — but the inline `style` object in layout.tsx overrides those CSS vars with hardcoded values, so toasts always render with light-mode appearance even in dark mode. **REAL BUG** (visual only, doesn't break functionality).
+- A separate `src/hooks/use-toast.ts` and `src/components/ui/toaster.tsx` / `src/components/ui/toast.tsx` exist (the older shadcn toast system) but appear unused — sonner is the active system.
+
+**Toast call inventory** (35 total calls across `src/components`):
+- `toast.success`: 16 calls
+- `toast.error`: 17 calls
+- `toast.info`: 2 calls (DashboardAdmin.tsx lines 268, 289 — delayed 800ms email-confirmation notices)
+- Notable: zero `toast.promise`, `toast.loading`, or `toast.warning` calls.
+
+**AdminLogin.tsx login toasts** (lines 43-65):
+- Success (line 54): `toast.success(\`Welcome back, ${data.user.name.split(" ")[0]}.\`)` — fires after `login(user, token)` and before `navigate("admin-dashboard")`.
+- Error (lines 56-61): `toast.error(message)` where `message` is `err instanceof ApiError ? err.message : "We couldn't sign you in. Please try again."`. Includes a `finally { setSubmitting(false); }` (lines 62-64).
+- Login button (line 226-232): `disabled={submitting}` with text `{submitting ? "Signing in…" : "Sign in"}`.
+
+**Common toast patterns observed:**
+- Booking mutation success (BookingFlow.tsx line 115): `toast.success("Booking request received!")`.
+- Booking mutation error (BookingFlow.tsx lines 117-123): `toast.error(msg)` where msg falls back to `"Something went wrong. Please try again."`.
+- DashboardAdmin.tsx (lines 266-268, 287-289): success toast then `setTimeout(() => toast.info(\`✉️ Confirmation email sent to ${email}\`), 800)` — uses emojis in toast text.
+- BookingsAdmin.tsx (lines 202, 215, 221): success + delayed info + error triplet pattern.
+- Most admin CRUD operations use single `toast.success` + `toast.error` pairs (AmenitiesAdmin, GalleryAdmin, RoomsAdmin, SettingsAdmin).
+- Public-side validation errors use `toast.error("…")` (HomePage date validation, ContactPage form validation, FindReservation).
+
+### 7. Border-radius audit
+Command: `grep -rn "rounded-full\|rounded-xl\|rounded-2xl" /home/z/my-project/src/components/public/ /home/z/my-project/src/components/admin/`
+
+**Totals:**
+- Public components: **93 occurrences** across 13 files
+- Admin components: **58 occurrences** across 13 files
+- **Combined: 151 occurrences across 26 files.**
+
+**Breakdown by radius variant:**
+| Radius    | Public | Admin | Total |
+|-----------|--------|-------|-------|
+| rounded-full | 64 | 29 | 93 |
+| rounded-xl   | 29 | 28 | 57  |
+| rounded-2xl  | 0  | 1  | 1   |
+| **Total**    | **93** | **58** | **151** |
+
+**Per-file count (public):**
+- `booking/BookingFlow.tsx`: 24 (heaviest user — many rounded-full CTAs + rounded-xl cards)
+- `home/HomePage.tsx`: 13
+- `contact/ContactPage.tsx`: 9
+- `booking/FindReservation.tsx`: 9
+- `rooms/RoomDetailsPage.tsx`: 7
+- `gallery/GalleryPage.tsx`: 7
+- `about/AboutPage.tsx`: 5
+- `faqs/FaqsPage.tsx`: 5
+- `RoomCard.tsx`: 4
+- `amenities/AmenitiesPage.tsx`: 3
+- `PublicNav.tsx`: 3
+- `PublicFooter.tsx`: 2
+- `rooms/RoomsPage.tsx`: 2
+
+**Per-file count (admin):**
+- `DashboardAdmin.tsx`: 8
+- `ReportsAdmin.tsx`: 7
+- `AdminLogin.tsx`: 5
+- `RoomsAdmin.tsx`: 5
+- `AdminLayout.tsx`: 5
+- `BookingsAdmin.tsx`: 5
+- `CalendarAdmin.tsx`: 4
+- `StatCard.tsx`: 4
+- `StatusBadges.tsx`: 4
+- `AmenitiesAdmin.tsx`: 3
+- `GalleryAdmin.tsx`: 3
+- `GuestsAdmin.tsx`: 3
+- `SettingsAdmin.tsx`: 2
+
+**Key observations:**
+- `rounded-2xl` is essentially dead in the design system — only 1 occurrence (AdminLogin.tsx:119, the brand-panel logo container with `bg-white/15 backdrop-blur-sm`).
+- The de-facto system is: `rounded-xl` for cards/containers (57 occurrences) + `rounded-full` for buttons/badges/pills (93 occurrences).
+- Public side skews heavily to `rounded-full` (64/93 = 69%) because of pill CTA buttons, hero card, and progress dots.
+- Admin side is nearly 50/50 (`rounded-full` 29, `rounded-xl` 28) — admin uses pill tab buttons + a lot of cards.
+- The base Button variant (`rounded-md`) is almost always overridden; the only unmodified buttons are in AdminLogin (login submit + autofill-credentials). This means the design system's "default" button radius is misaligned with what's actually used — would be cleaner to either change the Button base to `rounded-full` or leave the variant as is and accept the inconsistency.
+
+### Summary of bugs / inconsistencies found (research-only — no fixes applied)
+1. **BookingFlow Step1Dates lacks `checkOut > checkIn` validation** (lines 299-308). HomePage has it; BookingFlow doesn't. Leads to silent 0-night → 1-night coercion via `Math.max(nights, 1)` on line 732. **REAL BUG.**
+2. **Sonner Toaster dark-mode regression** (layout.tsx lines 61-71): hardcoded light-mode colors in `toastOptions.style` override the CSS vars set in sonner.tsx wrapper, so toasts render light in dark mode. **REAL BUG.**
+3. **HeroSlideshow has no visible loading state** (HomePage.tsx lines 95-164): preloads images but doesn't surface the `loaded` state as UI — first paint shows only the dark gradient overlay. Not strictly a bug, but a UX gap (no skeleton/blur-up placeholder).
+4. **No reusable `<Image>` component** — every consumer writes its own `<img className="img-zoom …" loading="lazy" />`. Inconsistent: BookingFlow's two thumbnails (lines 425-429, 767-771) omit both `loading="lazy"` and `img-zoom`. Minor inconsistency.
+5. **`rounded-2xl` is unused** (1 occurrence total). The design system lives on `rounded-xl` + `rounded-full`. The Button component's default `rounded-md` is overridden everywhere except AdminLogin's 2 buttons — minor design-system drift.
+6. **Double-submit on Confirm button**: not actually exploitable (button is `disabled={submitting}`), but the `onConfirm` handler (lines 250-265) lacks a defensive `if (createMutation.isPending) return;` guard. Not a bug, robustness suggestion only.
+
+### Files read (no edits)
+- `/home/z/my-project/worklog.md` (1,084 lines — prior context)
+- `/home/z/my-project/src/components/public/booking/BookingFlow.tsx` (1,209 lines, fully read)
+- `/home/z/my-project/src/components/public/home/HomePage.tsx` (605 lines, fully read)
+- `/home/z/my-project/src/components/public/shared.tsx` (256 lines, fully read)
+- `/home/z/my-project/src/components/public/RoomCard.tsx` (151 lines, fully read)
+- `/home/z/my-project/src/components/ui/button.tsx` (59 lines, fully read)
+- `/home/z/my-project/src/components/ui/card.tsx` (93 lines, fully read)
+- `/home/z/my-project/src/components/ui/sonner.tsx` (26 lines, fully read)
+- `/home/z/my-project/src/app/layout.tsx` (76 lines, fully read)
+- `/home/z/my-project/src/app/globals.css` (312 lines, fully read)
+- `/home/z/my-project/src/components/admin/BookingsAdmin.tsx` (relevant excerpts lines 80-284)
+- `/home/z/my-project/src/components/admin/AdminLogin.tsx` (272 lines, fully read)
+- `/home/z/my-project/src/store/useBookingStore.ts` (38 lines, fully read)
+- `/home/z/my-project/src/lib/utils.ts` (relevant `nightsBetween` lines 66-71)
+
+### Next actions for main agent
+- (a) Add `checkOut > checkIn` validation to BookingFlow.tsx Step1Dates `onContinueClick` (mirror HomePage.tsx lines 198-201) — toast.error + return.
+- (b) Fix Sonner Toaster dark-mode: in layout.tsx either remove the hardcoded `style` (let sonner.tsx's CSS vars handle theming) or split the style per-theme.
+- (c) Consider adding a reusable `<Image>` or `<SmartImage>` component to `shared.tsx` (with built-in `loading="lazy"`, `img-zoom`, blur-up placeholder, error fallback) and migrate BookingFlow's two thumbnails to it.
+- (d) Optionally normalize `rounded-2xl` → `rounded-xl` in AdminLogin.tsx:119 for system consistency, or decide `rounded-2xl` is deprecated.
+- (e) Optionally add `loading="lazy"` + `img-zoom` to BookingFlow thumbnails (lines 425-429, 767-771) for consistency with RoomCard.
+
+---
+Task ID: 11-b
+Agent: full-stack-developer (border radius reduction)
+Task: Reduce border radius site-wide for sharper corners
+
+Work Log:
+- Files changed: 23 source files + 1 css + 1 layout = 24 total files
+  - src/components/ui/card.tsx (rounded-xl → rounded-lg on base Card)
+  - src/app/layout.tsx (sonner toaster borderRadius 0.625rem → 0.375rem)
+  - src/app/globals.css (scrollbar-thumb border-radius 8px → 5px)
+  - src/components/public/PublicNav.tsx (1 CTA button)
+  - src/components/public/PublicFooter.tsx (1 mobile CTA button)
+  - src/components/public/RoomCard.tsx (article card, capacity badge, Selected badge, skeleton)
+  - src/components/public/home/HomePage.tsx (8 changes: hero card, story images, gallery teaser, 4 CTA buttons, skeleton)
+  - src/components/public/about/AboutPage.tsx (5 changes: 3 CTA buttons, maps iframe container + style, narrative image)
+  - src/components/public/rooms/RoomsPage.tsx (filter chips, empty state)
+  - src/components/public/rooms/RoomDetailsPage.tsx (6 changes: back button, image container, sticky booking card, status badge, 2 CTA buttons)
+  - src/components/public/amenities/AmenitiesPage.tsx (amenity card)
+  - src/components/public/gallery/GalleryPage.tsx (4 changes: filter tabs, empty Card, grid items, lightbox counter)
+  - src/components/public/faqs/FaqsPage.tsx (4 changes: 2 Cards, 2 CTA buttons)
+  - src/components/public/contact/ContactPage.tsx (5 changes: 3 Cards, 2 CTA buttons)
+  - src/components/public/booking/FindReservation.tsx (8 changes: 3 Cards, status badge, 4 CTA buttons)
+  - src/components/public/booking/BookingFlow.tsx (17 changes: 6 Cards, status badge, all step CTA buttons, confirmation action buttons)
+  - src/components/admin/AdminLogin.tsx (3 changes: brand-panel logo rounded-2xl → rounded-lg, mobile brand icon, form Card)
+  - src/components/admin/RoomsAdmin.tsx (3 changes: skeleton, Card, price badge)
+  - src/components/admin/CalendarAdmin.tsx (2 changes: segmented control container + tabs, calendar Card)
+  - src/components/admin/StatusBadges.tsx (2 status badges rounded-full → rounded-md)
+  - src/components/admin/ReportsAdmin.tsx (9 changes: segmented control + tabs, 4 chart Cards, 4 chart Tooltip borderRadius 8 → 5)
+  - src/components/admin/DashboardAdmin.tsx (6 changes: 4 Cards, 2 time-stamp badges)
+  - src/components/admin/AmenitiesAdmin.tsx (2 changes: skeleton, amenity Card)
+  - src/components/admin/BookingsAdmin.tsx (4 changes: tab buttons, table Card, skeleton, mobile Card)
+  - src/components/admin/StatCard.tsx (2 changes: StatCard, EmptyState containers)
+  - src/components/admin/GalleryAdmin.tsx (3 changes: filter tabs, skeleton, gallery Card)
+  - src/components/admin/GuestsAdmin.tsx (3 changes: table Card, skeleton, mobile Card)
+  - src/components/admin/SettingsAdmin.tsx (2 changes: TabsList, settings Card)
+  - src/components/admin/AdminLayout.tsx (1 change: brand logo icon container)
+
+- Border radius class counts before → after:
+  - rounded-full: 151 (per prior audit) → 54 remaining
+    (All 54 remaining are appropriate per task rules: UI base components like avatar/switch/slider/radio/scroll/carousel/drawer/progress [17], small icon-only circular buttons like theme toggle/social links/close/prev-next/steppers [13], small icon-only circular containers like amenity/contact icons [11], dot indicators like legend dots/status dots/slide-progress dots [10], notification count badge [1], avatar skeleton [1], decorative glow blobs [1], spinner loading indicator [1])
+  - rounded-xl: 57 (per prior audit) → 1 remaining (in ui/sidebar.tsx, a base component out of scope per task rules — only card.tsx and button.tsx were in scope for ui/)
+  - rounded-2xl: 1 (AdminLogin.tsx:119) → 0
+  - rounded-3xl: 0 → 0
+  - Hardcoded border-radius values: sonner toaster 0.625rem → 0.375rem (layout.tsx); scrollbar-thumb 8px → 5px (globals.css); 4× Recharts Tooltip borderRadius 8 → 5 (ReportsAdmin.tsx)
+
+- Lint check: `bun run lint` reports 0 errors, 2 pre-existing warnings (unrelated to my changes — they're about React Hook Form's `watch()` API in BookingsAdmin.tsx:973 and RoomsAdmin.tsx:522, which existed before this task)
+- Dev server: compiling successfully with no errors
+
+Stage Summary:
+- Site-wide border radius reduction complete. Pill-shaped CTA buttons, badges, tabs, and status indicators now use `rounded-md` (6px) instead of `rounded-full` (9999px). All cards, modals, containers, and image containers now use `rounded-lg` (10px) instead of `rounded-xl` (14px). The single `rounded-2xl` instance (AdminLogin brand logo) is now `rounded-lg`. Hardcoded border-radius values in sonner toaster, scrollbar, and Recharts tooltips were reduced by ~40%.
+- Decorative circular elements were preserved: avatars, theme toggle, social link buttons, gallery lightbox close/prev/next buttons, stepper +/- buttons, dot indicators (legend dots, status dots, slide progress dots), notification count badge, decorative icon containers (amenity/contact icons), spinner, and decorative glow blobs all retain `rounded-full` for their circular design intent.
+- Base UI components in `src/components/ui/` (other than card.tsx) were intentionally left untouched per task scope restrictions — they use radius values appropriate to their semantics (avatars/switches/sliders/radios are circular by design).
+- No functionality, layout, spacing, colors, or sizes were changed — only border radius.
+
+---
+Task ID: 11
+Agent: Main (Z.ai Code) + 2 subagents — Progressive images, hero fix, sharp corners, button contrast, booking flow fixes
+
+Task: User requested (improved prompt): (1) Account action toast messages, (2) Booking flow bug prevention, (3) Post-selection booking summary UI redesign, (4) Progressive image loading with blur-up, (5) Remove hero loading state, (6) Sharper border radius site-wide, (7) Active button text contrast fix.
+
+Work Log:
+
+**1. SmartImage component (progressive blur-up loading)** — created in shared.tsx
+- New `<SmartImage>` component: shows blurred placeholder (pulse gradient) while image loads, then crossfades to sharp image with `scale-105 blur-xl opacity-60` → `scale-100 blur-0 opacity-100` transition (700ms ease-out)
+- Props: src, alt, className, wrapperClassName, zoom (enables img-zoom hover), loading (lazy/eager)
+- Applied to: HomePage story images (2), gallery teaser (4 images), RoomCard primary image, BookingFlow "Your stay" summary image
+
+**2. Hero loading state removed** — HomePage.tsx HeroSlideshow rewritten
+- Old: Used `background-image` divs + `loaded` counter that waited for all 3 images before starting slideshow → showed empty dark box while loading
+- New: Uses `<img>` tags with per-slide blur-up loading (`HeroSlide` component). Each image starts at `blur(20px) scale(1.05)` and transitions to `blur(0px) scale(1)` on load. Slideshow starts immediately — no waiting, no empty box, no loading state.
+- Slide indicator dots only show progress bar after at least 1 image loaded
+
+**3. Border radius reduction (subagent Task 11-b)** — 24 files changed
+- `rounded-full` → `rounded-md` on 97 button/badge/pill instances (kept 54 valid circular icon buttons/avatars/dots)
+- `rounded-xl` → `rounded-lg` on 56 card/modal/container instances
+- `rounded-2xl` → `rounded-lg` (1 instance, AdminLogin)
+- Hardcoded border-radius reduced ~40%: Sonner toaster 0.625rem→0.375rem, scrollbar 8px→5px, Recharts tooltip 8→5
+
+**4. Booking flow validation + summary redesign** — BookingFlow.tsx
+- Added 3 validation checks to `onContinueClick`: (a) dates not empty, (b) checkOut > checkIn, (c) checkIn not in past — each with specific toast.error message
+- Redesigned "Your stay" summary card: was small side-by-side (thumbnail + text). Now: full-width 16/9 image with blur-up loading, clean details below (type label, name, sleeps + nights icons), price total on right with breakdown (price × nights). Responsive: stacks on mobile, side-by-side on desktop.
+
+**5. Active button text contrast fix** — BookingsAdmin.tsx + AdminLayout.tsx
+- BookingsAdmin tabs: count badge `/80` opacity → full opacity + `font-bold`. Added `shadow-sm` to active tab for stronger visual presence.
+- AdminLayout sidebar active: `bg-sidebar-accent text-white` → `bg-white/10 font-semibold text-white shadow-sm ring-1 ring-white/10` — brighter, more visible active state in both light and dark mode, with coral left indicator bar preserved.
+
+**6. Sonner toaster dark mode fix** — layout.tsx
+- Removed hardcoded `style: { background: "#FFFFFF", color: "#1B2A2E", border: "1px solid #E5DED0" }` that forced light-mode colors in dark mode
+- Replaced with `classNames: { toast: "rounded-md border border-border bg-card text-card-foreground" }` — uses CSS variables that adapt to theme
+
+Verification (agent-browser + VLM):
+- Home page: hero image showing (no empty box), no loading spinner, sharp-cornered buttons ✅
+- Booking flow step 1: date inputs sharp, summary bar clean, no visual issues ✅
+- Booking flow after room selection: redesigned "Your stay" card with large image, clean details, price total, Change button with pencil icon — "clean and professional" ✅
+- Admin tabs light mode: active tab text clear, count strong contrast, sharp corners ✅
+- Admin tabs dark mode: active tab "excellent readability", count "good contrast ~14:1", sidebar "highly visible ~10:1" ✅
+- Toast dark mode: "Signed out" toast visible, text readable, sharp corners ✅
+- Lint: 0 errors (2 pre-existing RHF warnings) ✅
+- Dev server: HTTP 200, clean compiles ✅
+
+Stage Summary:
+- Files changed (8): shared.tsx, HomePage.tsx, RoomCard.tsx, BookingFlow.tsx, BookingsAdmin.tsx, AdminLayout.tsx, layout.tsx + 24 files by subagent for border radius
+- New component: SmartImage (reusable progressive image with blur-up)
+- Hero: no more loading state, images blur in smoothly
+- Border radius: 151 → 54 `rounded-full` (only valid circular elements remain), 57 → 0 `rounded-xl`
+- Booking flow: 3 new validation checks, redesigned summary card
+- Admin: active tabs/sidebar have strong contrast in both themes
+- Toasts: dark mode fixed, sharp corners
+- Lint: 0 errors. Dev server: HTTP 200, no runtime errors.

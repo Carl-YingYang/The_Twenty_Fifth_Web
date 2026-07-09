@@ -179,7 +179,7 @@ export function ReportsAdmin() {
     <AdminLayout title="Reports" subtitle="Performance insights for the villa">
       {/* Range + export */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1 self-start rounded-full border border-border bg-card p-1">
+        <div className="flex items-center gap-1 self-start rounded-md border border-border bg-card p-1">
           {RANGE_OPTIONS.map((opt) => {
             const active = range === opt.value;
             return (
@@ -187,7 +187,7 @@ export function ReportsAdmin() {
                 key={opt.value}
                 onClick={() => setRange(opt.value)}
                 className={cn(
-                  "min-h-[36px] rounded-full px-3.5 text-xs font-medium transition-colors",
+                  "min-h-[36px] rounded-md px-3.5 text-xs font-medium transition-colors",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -246,7 +246,7 @@ export function ReportsAdmin() {
       {/* Charts */}
       <div className="mt-6 grid grid-cols-1 gap-6 pb-6 lg:grid-cols-2">
         {/* Monthly revenue */}
-        <Card className="rounded-xl border border-border p-5 shadow-card">
+        <Card className="rounded-lg border border-border p-5 shadow-card">
           <div className="mb-4">
             <div className="eyebrow">Last 12 months</div>
             <h3 className="mt-1 font-display text-lg font-medium tracking-tight">
@@ -278,7 +278,7 @@ export function ReportsAdmin() {
                 <Tooltip
                   formatter={(v: number) => [formatCurrency(v), "Revenue"]}
                   contentStyle={{
-                    borderRadius: 8,
+                    borderRadius: 5,
                     border: "1px solid #E5DED0",
                     fontSize: 12,
                   }}
@@ -290,7 +290,7 @@ export function ReportsAdmin() {
         </Card>
 
         {/* Bookings trend */}
-        <Card className="rounded-xl border border-border p-5 shadow-card">
+        <Card className="rounded-lg border border-border p-5 shadow-card">
           <div className="mb-4">
             <div className="eyebrow">Last 8 weeks</div>
             <h3 className="mt-1 font-display text-lg font-medium tracking-tight">
@@ -322,7 +322,7 @@ export function ReportsAdmin() {
                 <Tooltip
                   formatter={(v: number) => [v, "Bookings"]}
                   contentStyle={{
-                    borderRadius: 8,
+                    borderRadius: 5,
                     border: "1px solid #E5DED0",
                     fontSize: 12,
                   }}
@@ -341,7 +341,7 @@ export function ReportsAdmin() {
         </Card>
 
         {/* Status distribution */}
-        <Card className="rounded-xl border border-border p-5 shadow-card">
+        <Card className="rounded-lg border border-border p-5 shadow-card">
           <div className="mb-4">
             <div className="eyebrow">Distribution</div>
             <h3 className="mt-1 font-display text-lg font-medium tracking-tight">
@@ -377,7 +377,7 @@ export function ReportsAdmin() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        borderRadius: 8,
+                        borderRadius: 5,
                         border: "1px solid #E5DED0",
                         fontSize: 12,
                       }}
@@ -407,7 +407,7 @@ export function ReportsAdmin() {
         </Card>
 
         {/* Room popularity */}
-        <Card className="rounded-xl border border-border p-5 shadow-card">
+        <Card className="rounded-lg border border-border p-5 shadow-card">
           <div className="mb-4">
             <div className="eyebrow">Most booked</div>
             <h3 className="mt-1 font-display text-lg font-medium tracking-tight">
@@ -446,7 +446,7 @@ export function ReportsAdmin() {
                 <Tooltip
                   formatter={(v: number) => [v, "Bookings"]}
                   contentStyle={{
-                    borderRadius: 8,
+                    borderRadius: 5,
                     border: "1px solid #E5DED0",
                     fontSize: 12,
                   }}

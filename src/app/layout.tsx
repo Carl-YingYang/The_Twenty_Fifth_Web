@@ -61,11 +61,8 @@ export default function RootLayout({
         <Toaster
           position="top-right"
           toastOptions={{
-            style: {
-              borderRadius: "0.625rem",
-              border: "1px solid #E5DED0",
-              background: "#FFFFFF",
-              color: "#1B2A2E",
+            classNames: {
+              toast: "rounded-md border border-border bg-card text-card-foreground",
             },
           }}
         />

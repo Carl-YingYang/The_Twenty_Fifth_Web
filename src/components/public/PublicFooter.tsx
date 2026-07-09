@@ -171,7 +171,7 @@ export function PublicFooter() {
         {/* Mobile CTA button */}
         <button
           onClick={() => navigate("book")}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-coral px-5 py-3 text-sm font-medium text-coral-foreground transition-colors hover:bg-coral/90 lg:hidden"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-coral px-5 py-3 text-sm font-medium text-coral-foreground transition-colors hover:bg-coral/90 lg:hidden"
         >
           Book Your Stay
           <ArrowRight className="h-3.5 w-3.5" />

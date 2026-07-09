@@ -254,3 +254,50 @@ export function useThemeToggle() {
 
   return { dark, toggle, ready };
 }
+
+// ============================================================
+// SmartImage — progressive image loading with blur-up effect.
+// Shows a blurred placeholder while the full image loads,
+// then crossfades to the sharp image. No jarring pop-in.
+//
+// Usage: <SmartImage src="..." alt="..." className="h-full w-full object-cover" />
+// ============================================================
+export const SmartImage: React.FC<{
+  src: string;
+  alt: string;
+  className?: string;
+  /** Extra classes for the wrapper div (e.g. aspect ratio) */
+  wrapperClassName?: string;
+  /** Enable hover zoom (adds img-zoom class) */
+  zoom?: boolean;
+  /** Native loading strategy — default "lazy" */
+  loading?: "lazy" | "eager";
+}> = ({ src, alt, className, wrapperClassName, zoom = false, loading = "lazy" }) => {
+  const [loaded, setLoaded] = React.useState(false);
+
+  return (
+    <div className={cn("relative overflow-hidden bg-muted", wrapperClassName)}>
+      {/* Blurred placeholder — visible until the real image loads */}
+      {!loaded && (
+        <div
+          className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted to-muted/60"
+          aria-hidden="true"
+        />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        loading={loading}
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        className={cn(
+          "h-full w-full object-cover transition-all duration-700 ease-out",
+          zoom && "img-zoom",
+          loaded ? "scale-100 blur-0 opacity-100" : "scale-105 blur-xl opacity-60",
+          className
+        )}
+      />
+    </div>
+  );
+};
+

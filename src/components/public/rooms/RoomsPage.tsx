@@ -66,7 +66,7 @@ export function RoomsPage() {
                 key={f.value}
                 onClick={() => setFilter(f.value)}
                 className={cn(
-                  "min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                  "min-h-[44px] rounded-md border px-4 py-2 text-sm font-medium transition-colors",
                   filter === f.value
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card text-foreground/70 hover:border-primary/40 hover:text-foreground"
@@ -94,7 +94,7 @@ export function RoomsPage() {
               ))}
             </div>
           ) : rooms.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border py-20 text-center">
+            <div className="rounded-lg border border-dashed border-border py-20 text-center">
               <p className="text-sm text-muted-foreground">
                 No options match this filter. Try another tab.
               </p>

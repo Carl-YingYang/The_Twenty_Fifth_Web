@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Home,
   Search,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ import { BOOKING_STATUS_CONFIG, RESORT_INFO } from "@/lib/constants";
 import { guestInfoSchema, type GuestInfoInput } from "@/lib/validators";
 import type { Reservation, Room } from "@/types";
 import { RoomCard, RoomCardSkeleton } from "../RoomCard";
-import { FadeUpSection } from "../shared";
+import { FadeUpSection, SmartImage } from "../shared";
 
 interface RoomsResponse {
   rooms: Room[];
@@ -297,6 +298,19 @@ function Step1Dates({
   const nights = nightsBetween(checkIn, checkOut);
 
   const onContinueClick = () => {
+    // Validate dates — prevent accidental invalid submissions
+    if (!checkIn || !checkOut) {
+      toast.error("Please pick your check-in and check-out dates");
+      return;
+    }
+    if (new Date(checkOut) <= new Date(checkIn)) {
+      toast.error("Check-out must be after check-in");
+      return;
+    }
+    if (new Date(checkIn) < new Date(defaultDate(0))) {
+      toast.error("Check-in can't be in the past");
+      return;
+    }
     if (!booking.checkIn || !booking.checkOut) {
       setSearch({ checkIn, checkOut });
     }
@@ -321,7 +335,7 @@ function Step1Dates({
 
       {/* Dates + Guests card */}
       <FadeUpSection delay={0.05} className="mt-6">
-        <Card className="rounded-xl border border-border bg-card p-5 shadow-card sm:p-6">
+        <Card className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label
@@ -414,18 +428,21 @@ function Step1Dates({
             </h2>
             <button
               onClick={() => selectRoom("")}
-              className="text-sm font-medium text-primary transition-colors hover:text-coral"
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-coral"
             >
+              <Pencil className="h-3 w-3" />
               Change
             </button>
           </div>
-          <Card className="mt-4 flex overflow-hidden rounded-xl border border-border bg-card shadow-card">
-            <div className="relative aspect-[4/3] w-32 shrink-0 bg-muted sm:w-48">
+          <Card className="mt-4 overflow-hidden rounded-lg border border-border bg-card shadow-card">
+            {/* Room image — full width with blur-up loading */}
+            <div className="relative aspect-[16/9] w-full bg-muted sm:aspect-[21/9]">
               {selectedRoom.images?.[0] ? (
-                <img
+                <SmartImage
                   src={selectedRoom.images[0].url}
                   alt={selectedRoom.name}
                   className="h-full w-full object-cover"
+                  wrapperClassName="h-full w-full"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
@@ -433,22 +450,35 @@ function Step1Dates({
                 </div>
               )}
             </div>
-            <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
-              <div>
-                <p className="eyebrow text-[0.6rem]">
+            {/* Room details — clean layout below image */}
+            <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <div className="min-w-0">
+                <p className="eyebrow text-[0.6rem] text-coral">
                   {selectedRoom.type?.name}
                 </p>
-                <h3 className="mt-1 font-display text-lg font-semibold">
+                <h3 className="mt-1.5 font-display text-xl font-semibold tracking-tight">
                   {selectedRoom.name}
                 </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Sleeps {selectedRoom.capacity}
-                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5 text-primary" />
+                    Sleeps {selectedRoom.capacity}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarIcon className="h-3.5 w-3.5 text-primary" />
+                    {nights} night{nights === 1 ? "" : "s"}
+                  </span>
+                </div>
               </div>
-              <div className="mt-3 font-display text-lg font-semibold text-primary">
-                {formatCurrency(selectedRoom.pricePerNight)}
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  / night
+              <div className="flex shrink-0 flex-col items-start border-t border-border pt-4 sm:items-end sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Total
+                </span>
+                <span className="font-display text-2xl font-semibold text-primary">
+                  {formatCurrency(selectedRoom.pricePerNight * Math.max(nights, 1))}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {formatCurrency(selectedRoom.pricePerNight)} × {Math.max(nights, 1)} nights
                 </span>
               </div>
             </div>
@@ -485,7 +515,7 @@ function Step1Dates({
         <Button
           onClick={onContinueClick}
           size="lg"
-          className="w-full rounded-full"
+          className="w-full rounded-md"
         >
           Continue
           <ArrowRight className="h-4 w-4" />
@@ -497,7 +527,7 @@ function Step1Dates({
         <Button
           onClick={onContinueClick}
           size="lg"
-          className="rounded-full"
+          className="rounded-md"
         >
           Continue
           <ArrowRight className="h-4 w-4" />
@@ -547,7 +577,7 @@ function Step2Details({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-5 rounded-xl border border-border bg-card p-5 shadow-card sm:p-7"
+            className="space-y-5 rounded-lg border border-border bg-card p-5 shadow-card sm:p-7"
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
@@ -688,7 +718,7 @@ function Step2Details({
                 type="button"
                 variant="ghost"
                 onClick={onBack}
-                className="rounded-full"
+                className="rounded-md"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
@@ -696,7 +726,7 @@ function Step2Details({
               <Button
                 type="submit"
                 size="lg"
-                className="rounded-full sm:px-8"
+                className="rounded-md sm:px-8"
               >
                 Continue
                 <ArrowRight className="h-4 w-4" />
@@ -739,7 +769,7 @@ function Step3Confirm({
           Something&rsquo;s missing. Please go back and pick your dates and
           stay.
         </p>
-        <Button onClick={onBack} className="mt-4 rounded-full">
+        <Button onClick={onBack} className="mt-4 rounded-md">
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
@@ -760,7 +790,7 @@ function Step3Confirm({
       </FadeUpSection>
 
       <FadeUpSection delay={0.05} className="mt-6">
-        <Card className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+        <Card className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
           {/* Stay header */}
           <div className="flex items-center gap-4 border-b border-border bg-section p-5">
             {selectedRoom.images?.[0] ? (
@@ -882,7 +912,7 @@ function Step3Confirm({
                 variant="ghost"
                 onClick={onBack}
                 disabled={submitting}
-                className="rounded-full"
+                className="rounded-md"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
@@ -892,7 +922,7 @@ function Step3Confirm({
                 size="lg"
                 disabled={submitting}
                 onClick={() => onConfirm()}
-                className="rounded-full sm:px-8"
+                className="rounded-md sm:px-8"
               >
                 {submitting ? (
                   <>
@@ -951,7 +981,7 @@ function ConfirmationScreen({
           </h1>
 
           {/* Reference number */}
-          <div className="mx-auto mt-8 max-w-xl rounded-xl border border-border bg-card p-6 shadow-card">
+          <div className="mx-auto mt-8 max-w-xl rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
               Your reference number
             </p>
@@ -961,7 +991,7 @@ function ConfirmationScreen({
             <div className="mt-4 flex justify-center">
               <Badge
                 className={cn(
-                  "rounded-full border-0 px-4 py-1.5 text-sm",
+                  "rounded-md border-0 px-4 py-1.5 text-sm",
                   statusConfig.bg,
                   statusConfig.text
                 )}
@@ -1006,7 +1036,7 @@ function ConfirmationScreen({
             ].map((step, i) => (
               <li
                 key={step.title}
-                className="flex gap-4 rounded-xl border border-border bg-card p-5 shadow-card"
+                className="flex gap-4 rounded-lg border border-border bg-card p-5 shadow-card"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                   {i + 1}
@@ -1028,7 +1058,7 @@ function ConfirmationScreen({
             <Button
               onClick={downloadIcs}
               variant="outline"
-              className="w-full rounded-full md:w-auto"
+              className="w-full rounded-md md:w-auto"
             >
               <Download className="h-4 w-4" />
               Add to Calendar
@@ -1039,7 +1069,7 @@ function ConfirmationScreen({
               rel="noopener noreferrer"
               className="md:w-auto"
             >
-              <Button className="w-full rounded-full md:w-auto">
+              <Button className="w-full rounded-md md:w-auto">
                 <MessageSquare className="h-4 w-4" />
                 Message us on Messenger
               </Button>
@@ -1047,7 +1077,7 @@ function ConfirmationScreen({
             <a href={`tel:${RESORT_INFO.phoneRaw}`} className="md:w-auto">
               <Button
                 variant="outline"
-                className="w-full rounded-full md:w-auto"
+                className="w-full rounded-md md:w-auto"
               >
                 <Phone className="h-4 w-4" />
                 Call the villa
@@ -1056,7 +1086,7 @@ function ConfirmationScreen({
             <Button
               onClick={() => navigate("find-reservation")}
               variant="outline"
-              className="w-full rounded-full md:w-auto"
+              className="w-full rounded-md md:w-auto"
             >
               <Search className="h-4 w-4" />
               Find my booking later
@@ -1067,7 +1097,7 @@ function ConfirmationScreen({
             <Button
               onClick={onReset}
               variant="ghost"
-              className="rounded-full text-muted-foreground"
+              className="rounded-md text-muted-foreground"
             >
               <Home className="h-4 w-4" />
               Back to home

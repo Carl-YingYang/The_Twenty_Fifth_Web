@@ -147,7 +147,7 @@ export function AboutPage() {
               >
                 <Button
                   variant="outline"
-                  className="rounded-full border-primary/30 text-primary hover:bg-primary hover:text-white"
+                  className="rounded-md border-primary/30 text-primary hover:bg-primary hover:text-white"
                 >
                   Get Directions
                   <ArrowRight className="h-4 w-4" />
@@ -157,12 +157,12 @@ export function AboutPage() {
 
             <FadeUpSection delay={0.1}>
               {/* Google Maps embed */}
-              <div className="relative overflow-hidden rounded-xl border border-border shadow-card">
+              <div className="relative overflow-hidden rounded-lg border border-border shadow-card">
                 <iframe
                   src="https://maps.google.com/maps?q=Panan+Botolan+Zambales+Philippines&t=&z=13&ie=UTF8&iwloc=&output=embed"
                   width="100%"
                   height="300"
-                  style={{ border: 0, borderRadius: "0.625rem" }}
+                  style={{ border: 0, borderRadius: "0.375rem" }}
                   allowFullScreen
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
@@ -190,7 +190,7 @@ export function AboutPage() {
             <Button
               onClick={() => navigate("book")}
               size="lg"
-              className="rounded-full bg-white text-coral hover:bg-white/90"
+              className="rounded-md bg-white text-coral hover:bg-white/90"
             >
               Book Your Stay
               <ArrowRight className="h-4 w-4" />
@@ -199,7 +199,7 @@ export function AboutPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full rounded-full border-coral-foreground/30 bg-transparent text-coral-foreground hover:bg-coral-foreground/10 sm:w-auto"
+                className="w-full rounded-md border-coral-foreground/30 bg-transparent text-coral-foreground hover:bg-coral-foreground/10 sm:w-auto"
               >
                 <Phone className="h-4 w-4" />
                 Call the villa
@@ -236,7 +236,7 @@ function NarrativeSection({
           }`}
         >
           <FadeUpSection className={reverse ? "lg:[direction:ltr]" : ""}>
-            <div className="aspect-[4/3] overflow-hidden rounded-xl">
+            <div className="aspect-[4/3] overflow-hidden rounded-lg">
               <img
                 src={image}
                 alt={imageAlt}

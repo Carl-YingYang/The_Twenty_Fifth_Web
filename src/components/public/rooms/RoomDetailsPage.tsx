@@ -86,7 +86,7 @@ export function RoomDetailsPage() {
         </p>
         <Button
           onClick={() => navigate("rooms")}
-          className="mt-6 rounded-full"
+          className="mt-6 rounded-md"
         >
           Back to The Villa
         </Button>
@@ -172,7 +172,7 @@ export function RoomDetailsPage() {
             <div>
               <FadeUpSection>
                 {/* Main image */}
-                <div className="overflow-hidden rounded-xl border border-border">
+                <div className="overflow-hidden rounded-lg border border-border">
                   <div className="relative aspect-[4/3] w-full bg-muted">
                     {primaryImage ? (
                       <img
@@ -298,7 +298,7 @@ export function RoomDetailsPage() {
             <div>
               <div className="lg:sticky lg:top-24">
                 <FadeUpSection delay={0.1}>
-                  <div className="rounded-xl border border-border bg-card p-6 shadow-card">
+                  <div className="rounded-lg border border-border bg-card p-6 shadow-card">
                     <div className="flex items-end justify-between">
                       <div>
                         <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -313,7 +313,7 @@ export function RoomDetailsPage() {
                       </div>
                       <Badge
                         className={cn(
-                          "rounded-full border-0",
+                          "rounded-md border-0",
                           "bg-emerald-50 text-emerald-700"
                         )}
                       >
@@ -369,7 +369,7 @@ export function RoomDetailsPage() {
                     <Button
                       onClick={onBook}
                       size="lg"
-                      className="mt-5 w-full rounded-full"
+                      className="mt-5 w-full rounded-md"
                     >
                       Book These Dates
                       <ArrowRight className="h-4 w-4" />
@@ -383,7 +383,7 @@ export function RoomDetailsPage() {
                     <a href={`tel:${RESORT_INFO.phoneRaw}`}>
                       <Button
                         variant="ghost"
-                        className="mt-2 w-full rounded-full text-muted-foreground"
+                        className="mt-2 w-full rounded-md text-muted-foreground"
                       >
                         Or call {RESORT_INFO.phone}
                       </Button>

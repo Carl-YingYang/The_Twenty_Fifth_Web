@@ -87,7 +87,7 @@ export function AmenitiesPage() {
                         return (
                           <div
                             key={amenity.id}
-                            className="group rounded-xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary sm:p-5"
+                            className="group rounded-lg border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary sm:p-5"
                           >
                             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-sand text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                               <Icon className="h-5 w-5" />

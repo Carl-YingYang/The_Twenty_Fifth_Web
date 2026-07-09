@@ -4,6 +4,7 @@ import * as React from "react";
 import { Users, ArrowRight, BedDouble } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import { SmartImage } from "./shared";
 import type { Room } from "@/types";
 
 interface RoomCardProps {
@@ -42,7 +43,7 @@ export function RoomCard({
   return (
     <article
       className={cn(
-        "group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-card-hover",
+        "group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-card-hover",
         selected && "border-primary ring-2 ring-primary/20",
         className
       )}
@@ -51,11 +52,12 @@ export function RoomCard({
       {/* Image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
         {imageUrl ? (
-          <img
+          <SmartImage
             src={imageUrl}
             alt={primaryImage?.altText ?? room.name}
-            className="img-zoom h-full w-full object-cover"
-            loading="lazy"
+            className="h-full w-full object-cover"
+            wrapperClassName="h-full w-full"
+            zoom
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground/40">
@@ -64,14 +66,14 @@ export function RoomCard({
         )}
 
         {/* Capacity badge */}
-        <div className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-xs font-medium text-foreground shadow-card">
+        <div className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-md bg-white/95 px-2.5 py-1 text-xs font-medium text-foreground shadow-card">
           <Users className="h-3 w-3 text-primary" />
           Sleeps {room.capacity}
         </div>
 
         {selected && (
           <div className="absolute inset-0 flex items-center justify-center bg-primary/30 backdrop-blur-[1px]">
-            <span className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-primary shadow-card">
+            <span className="rounded-md bg-white px-4 py-1.5 text-sm font-medium text-primary shadow-card">
               Selected
             </span>
           </div>
@@ -134,7 +136,7 @@ export function RoomCard({
 
 export function RoomCardSkeleton() {
   return (
-    <Card className="overflow-hidden rounded-xl border border-border bg-card">
+    <Card className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="aspect-[4/3] w-full animate-pulse bg-muted" />
       <div className="space-y-3 p-4 sm:p-5">
         <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />

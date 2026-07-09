@@ -105,7 +105,7 @@ export function GalleryPage() {
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                  "shrink-0 rounded-md border px-4 py-2 text-sm font-medium transition-colors",
                   activeCategory === cat
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card text-foreground/70 hover:border-primary/40 hover:text-foreground"
@@ -122,7 +122,7 @@ export function GalleryPage() {
               Loading gallery…
             </div>
           ) : items.length === 0 ? (
-            <Card className="rounded-xl border-dashed py-16 text-center">
+            <Card className="rounded-lg border-dashed py-16 text-center">
               <p className="text-sm text-muted-foreground">
                 No images in this category yet. Check back soon.
               </p>
@@ -134,7 +134,7 @@ export function GalleryPage() {
                   key={item.id}
                   onClick={() => openLightbox(i)}
                   className={cn(
-                    "group relative overflow-hidden rounded-xl bg-muted",
+                    "group relative overflow-hidden rounded-lg bg-muted",
                     SPAN_PATTERNS[i % SPAN_PATTERNS.length]
                   )}
                 >
@@ -179,7 +179,7 @@ export function GalleryPage() {
           </button>
 
           {/* Counter */}
-          <div className="absolute left-4 top-4 z-10 rounded-full bg-white/10 px-3 py-1.5 text-xs text-white/80">
+          <div className="absolute left-4 top-4 z-10 rounded-md bg-white/10 px-3 py-1.5 text-xs text-white/80">
             {(lightboxIndex ?? 0) + 1} / {items.length}
           </div>
 

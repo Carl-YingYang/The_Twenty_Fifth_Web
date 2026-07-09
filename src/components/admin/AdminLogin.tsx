@@ -116,7 +116,7 @@ export function AdminLogin() {
         </button>
 
         <div className="relative z-10 flex flex-col">
-          <div className="mb-5 flex size-14 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
+          <div className="mb-5 flex size-14 items-center justify-center rounded-lg bg-white/15 backdrop-blur-sm">
             <Waves className="size-7 text-white" />
           </div>
           <div className="eyebrow !text-coral">Admin Suite</div>
@@ -147,7 +147,7 @@ export function AdminLogin() {
         <div className="w-full max-w-sm sm:max-w-md">
           {/* Brand header — visible below xl since left brand panel is hidden */}
           <div className="mb-6 flex flex-col items-center text-center xl:hidden">
-            <div className="mb-3 flex size-12 items-center justify-center rounded-xl bg-[#0A3D4A]">
+            <div className="mb-3 flex size-12 items-center justify-center rounded-lg bg-[#0A3D4A]">
               <Waves className="size-6 text-white" />
             </div>
             <div className="eyebrow">Admin Suite</div>
@@ -156,7 +156,7 @@ export function AdminLogin() {
             </h1>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card sm:p-7 xl:p-8">
+          <div className="rounded-lg border border-border bg-card p-5 shadow-card sm:p-7 xl:p-8">
             {/* Form heading — always visible (hidden on xl only if brand panel shows it, but we show it always for clarity) */}
             <div className="mb-6">
               <div className="eyebrow">Sign in</div>

@@ -104,7 +104,7 @@ export function ContactPage() {
           <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12">
             {/* Form */}
             <FadeUpSection>
-              <Card className="rounded-xl border border-border bg-card p-6 shadow-card sm:p-8">
+              <Card className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
                 <h2 className="font-display text-2xl font-semibold tracking-tight">
                   Send us a message
                 </h2>
@@ -183,7 +183,7 @@ export function ContactPage() {
                     type="submit"
                     disabled={submitting}
                     size="lg"
-                    className="w-full rounded-full sm:w-auto"
+                    className="w-full rounded-md sm:w-auto"
                   >
                     {submitting ? (
                       "Sending…"
@@ -201,7 +201,7 @@ export function ContactPage() {
             {/* Info card */}
             <FadeUpSection delay={0.1}>
               <div className="space-y-6">
-                <Card className="rounded-xl border border-border bg-card p-6 shadow-card sm:p-7">
+                <Card className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-7">
                   <h3 className="font-display text-lg font-semibold">
                     Reach us directly
                   </h3>
@@ -269,7 +269,7 @@ export function ContactPage() {
                 </Card>
 
                 {/* Social buttons */}
-                <Card className="rounded-xl border border-border bg-card p-6 shadow-card sm:p-7">
+                <Card className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-7">
                   <h3 className="font-display text-lg font-semibold">
                     Find us online
                   </h3>
@@ -306,7 +306,7 @@ export function ContactPage() {
 
                   <Button
                     onClick={() => navigate("book")}
-                    className="mt-5 w-full rounded-full"
+                    className="mt-5 w-full rounded-md"
                     size="lg"
                   >
                     Book Your Stay

@@ -36,7 +36,7 @@ export function StatCard({
   return (
     <Card
       className={cn(
-        "gap-0 rounded-xl border border-border shadow-card transition-opacity",
+        "gap-0 rounded-lg border border-border shadow-card transition-opacity",
         className
       )}
     >
@@ -97,7 +97,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center",
+        "flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center",
         className
       )}
     >

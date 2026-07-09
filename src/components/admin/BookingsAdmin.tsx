@@ -243,15 +243,15 @@ export function BookingsAdmin() {
                   setPage(1);
                 }}
                 className={cn(
-                  "min-h-[36px] rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  "min-h-[36px] rounded-md border px-3.5 py-1.5 text-sm font-medium transition-colors",
                   active
-                    ? "border-primary bg-primary text-primary-foreground"
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
                     : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground"
                 )}
               >
                 {tab.label}
                 {tab.value !== "ALL" && count > 0 && (
-                  <span className={cn("ml-1.5 text-xs", active ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                  <span className={cn("ml-1.5 text-xs font-bold", active ? "text-primary-foreground" : "text-muted-foreground")}>
                     {count}
                   </span>
                 )}
@@ -284,7 +284,7 @@ export function BookingsAdmin() {
       </div>
 
       {/* Table — desktop / tablet */}
-      <Card className="hidden overflow-hidden rounded-xl border border-border shadow-card md:block">
+      <Card className="hidden overflow-hidden rounded-lg border border-border shadow-card md:block">
         <div className="overflow-x-auto">
           <Table>
           <TableHeader>
@@ -400,7 +400,7 @@ export function BookingsAdmin() {
       <div className="space-y-3 md:hidden pb-6">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            <Skeleton key={i} className="h-32 w-full rounded-lg" />
           ))
         ) : filteredReservations.length === 0 ? (
           <EmptyState
@@ -412,7 +412,7 @@ export function BookingsAdmin() {
           paginatedReservations.map((r) => (
             <Card
               key={r.id}
-              className="rounded-xl border border-border p-4 shadow-card"
+              className="rounded-lg border border-border p-4 shadow-card"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">

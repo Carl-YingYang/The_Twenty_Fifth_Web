@@ -32,7 +32,7 @@ import {
   SectionDivider,
   getAmenityIcon,
   useCountUp,
-  HERO_IMAGE,
+  SmartImage,
 } from "../shared";
 
 const STATS = [
@@ -89,51 +89,30 @@ const HERO_SLIDES = [
   "/hero-1.png",
 ];
 
-// Hero crossfade — 3 images, simple opacity fade, loops forever.
-// Pure CSS opacity transition (GPU-accelerated, very smooth).
-// Images preload on mount so the first fade is flash-free.
+// Hero crossfade — 3 images with blur-up progressive loading.
+// Each image renders as an <img> tag that starts blurred + scaled,
+// then sharpens when loaded. No empty dark box while loading.
+// Crossfade is pure CSS opacity (GPU-accelerated, very smooth).
 function HeroSlideshow() {
   const [index, setIndex] = React.useState(0);
-  const [loaded, setLoaded] = React.useState(0);
+  const [loadedCount, setLoadedCount] = React.useState(0);
 
-  // Preload all hero images so there's no white flash on first transition.
+  // Start the slideshow interval immediately — images fade in as they load.
   React.useEffect(() => {
-    let cancelled = false;
-    HERO_SLIDES.forEach((src) => {
-      const img = new window.Image();
-      img.src = src;
-      img.onload = () => {
-        if (!cancelled) setLoaded((n) => n + 1);
-      };
-      // If it fails, still count it so we don't block forever.
-      img.onerror = () => {
-        if (!cancelled) setLoaded((n) => n + 1);
-      };
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    if (loaded < HERO_SLIDES.length) return; // wait until all images ready
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % HERO_SLIDES.length);
     }, 6500);
     return () => clearInterval(id);
-  }, [loaded]);
+  }, []);
 
   return (
     <div className="absolute inset-0">
       {HERO_SLIDES.map((src, i) => (
-        <div
+        <HeroSlide
           key={src}
-          className="absolute inset-0 bg-cover bg-center transition-opacity duration-[1600ms] ease-in-out"
-          style={{
-            backgroundImage: `url('${src}')`,
-            opacity: i === index ? 1 : 0,
-          }}
-          aria-hidden={i !== index}
+          src={src}
+          active={i === index}
+          onLoad={() => setLoadedCount((n) => n + 1)}
         />
       ))}
       {/* Subtle slide indicator dots — bottom-right, positioned above the
@@ -145,12 +124,12 @@ function HeroSlideshow() {
             type="button"
             onClick={() => setIndex(i)}
             aria-label={`Show hero image ${i + 1}`}
-            className="group relative h-1.5 w-6 overflow-hidden rounded-full bg-white/30 transition-all duration-300 hover:bg-white/50 sm:w-8"
+            className="group relative h-1.5 w-6 overflow-hidden rounded-md bg-white/30 transition-all duration-300 hover:bg-white/50 sm:w-8"
           >
-            {i === index && (
+            {i === index && loadedCount > 0 && (
               <span
                 key={index}
-                className="absolute left-0 top-0 h-full rounded-full bg-white"
+                className="absolute left-0 top-0 h-full rounded-md bg-white"
                 style={{
                   animation: "hero-progress 6.5s linear forwards",
                 }}
@@ -159,6 +138,43 @@ function HeroSlideshow() {
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Single hero slide — blur-up progressive loading.
+function HeroSlide({
+  src,
+  active,
+  onLoad,
+}: {
+  src: string;
+  active: boolean;
+  onLoad: () => void;
+}) {
+  const [loaded, setLoaded] = React.useState(false);
+
+  return (
+    <div
+      className="absolute inset-0 transition-opacity duration-[1600ms] ease-in-out"
+      style={{ opacity: active ? 1 : 0 }}
+      aria-hidden={!active}
+    >
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="h-full w-full object-cover"
+        onLoad={() => {
+          setLoaded(true);
+          onLoad();
+        }}
+        style={{
+          transform: loaded ? "scale(1)" : "scale(1.05)",
+          filter: loaded ? "blur(0px)" : "blur(20px)",
+          transition: "filter 1s ease-out, transform 1s ease-out",
+        }}
+      />
     </div>
   );
 }
@@ -239,7 +255,7 @@ export function HomePage() {
       <section className="relative z-20 -mt-16 px-4 sm:-mt-20 lg:-mt-24">
         <div className="container-luxury">
           <FadeUpSection delay={0.15}>
-            <div className="rounded-xl border border-border bg-card p-4 shadow-card-hover sm:p-6">
+            <div className="rounded-lg border border-border bg-card p-4 shadow-card-hover sm:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
                 <div className="space-y-1.5">
                   <Label
@@ -300,7 +316,7 @@ export function HomePage() {
                 <Button
                   onClick={onCheckAvailability}
                   size="lg"
-                  className="col-span-1 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 sm:col-span-2 md:col-span-1 md:w-auto"
+                  className="col-span-1 w-full rounded-md bg-primary text-primary-foreground hover:bg-primary/90 sm:col-span-2 md:col-span-1 md:w-auto"
                 >
                   Check Availability
                   <ArrowRight className="h-4 w-4" />
@@ -340,20 +356,22 @@ export function HomePage() {
             </FadeUpSection>
 
             <FadeUpSection delay={0.1} className="grid grid-cols-2 gap-4">
-              <div className="aspect-[3/4] overflow-hidden rounded-xl">
-                <img
+              <div className="aspect-[3/4] overflow-hidden rounded-lg">
+                <SmartImage
                   src="https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=800&q=80"
                   alt="The Twenty-Fifth villa exterior"
-                  className="img-zoom h-full w-full object-cover"
-                  loading="lazy"
+                  className="h-full w-full object-cover"
+                  wrapperClassName="h-full w-full"
+                  zoom
                 />
               </div>
-              <div className="mt-8 aspect-[3/4] overflow-hidden rounded-xl">
-                <img
+              <div className="mt-8 aspect-[3/4] overflow-hidden rounded-lg">
+                <SmartImage
                   src="https://images.unsplash.com/photo-1575340122733-83724d2756c0?auto=format&fit=crop&w=800&q=80"
                   alt="Infinity pool overlooking the sea"
-                  className="img-zoom h-full w-full object-cover"
-                  loading="lazy"
+                  className="h-full w-full object-cover"
+                  wrapperClassName="h-full w-full"
+                  zoom
                 />
               </div>
             </FadeUpSection>
@@ -400,7 +418,7 @@ export function HomePage() {
             <Button
               variant="outline"
               onClick={() => navigate("rooms")}
-              className="rounded-full border-primary/30 text-primary hover:bg-primary hover:text-white"
+              className="rounded-md border-primary/30 text-primary hover:bg-primary hover:text-white"
             >
               See all configurations
               <ArrowRight className="h-4 w-4" />
@@ -474,13 +492,14 @@ export function HomePage() {
               <FadeUpSection
                 key={i}
                 delay={(i % 4) * 0.05}
-                className={`group relative overflow-hidden rounded-xl ${img.className}`}
+                className={`group relative overflow-hidden rounded-lg ${img.className}`}
               >
-                <img
+                <SmartImage
                   src={img.url}
                   alt={img.title}
-                  className="img-zoom h-full w-full object-cover"
-                  loading="lazy"
+                  className="h-full w-full object-cover"
+                  wrapperClassName="h-full w-full"
+                  zoom
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-70" />
                 <p className="absolute bottom-3 left-3 text-sm font-medium text-white">
@@ -494,7 +513,7 @@ export function HomePage() {
             <Button
               variant="outline"
               onClick={() => navigate("gallery")}
-              className="rounded-full border-primary/30 text-primary hover:bg-primary hover:text-white"
+              className="rounded-md border-primary/30 text-primary hover:bg-primary hover:text-white"
             >
               View Gallery
               <ArrowRight className="h-4 w-4" />
@@ -559,7 +578,7 @@ export function HomePage() {
             <Button
               onClick={() => navigate("book")}
               size="lg"
-              className="rounded-full bg-white text-coral hover:bg-white/90"
+              className="rounded-md bg-white text-coral hover:bg-white/90"
             >
               Book Your Stay
               <ArrowRight className="h-4 w-4" />
@@ -568,7 +587,7 @@ export function HomePage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full rounded-full border-coral-foreground/30 bg-transparent text-coral-foreground hover:bg-coral-foreground/10 sm:w-auto"
+                className="w-full rounded-md border-coral-foreground/30 bg-transparent text-coral-foreground hover:bg-coral-foreground/10 sm:w-auto"
               >
                 <Phone className="h-4 w-4" />
                 {RESORT_INFO.phone}
@@ -589,7 +608,7 @@ function defaultDate(daysFromNow: number): string {
 
 function RoomCardSkeletonCard() {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
       <div className="aspect-[4/3] w-full animate-pulse bg-muted" />
       <div className="space-y-3 p-5">
         <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />

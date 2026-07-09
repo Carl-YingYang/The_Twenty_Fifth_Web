@@ -166,7 +166,7 @@ export function RoomsAdmin() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-72 w-full rounded-xl" />
+            <Skeleton key={i} className="h-72 w-full rounded-lg" />
           ))}
         </div>
       ) : rooms.length === 0 ? (
@@ -349,7 +349,7 @@ function RoomCard({
   const cfg = ROOM_STATUS_CONFIG[room.status as string] ?? ROOM_STATUS_CONFIG.AVAILABLE;
 
   return (
-    <Card className="overflow-hidden rounded-xl border border-border shadow-card">
+    <Card className="overflow-hidden rounded-lg border border-border shadow-card">
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
         {image ? (
           <img
@@ -365,7 +365,7 @@ function RoomCard({
         <div className="absolute left-3 top-3">
           <RoomStatusBadge status={room.status as string} />
         </div>
-        <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-foreground backdrop-blur-sm">
+        <div className="absolute right-3 top-3 rounded-md bg-white/90 px-2.5 py-1 text-xs font-medium text-foreground backdrop-blur-sm">
           {formatCurrency(room.pricePerNight)}
           <span className="text-muted-foreground">/night</span>
         </div>
