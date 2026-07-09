@@ -2178,3 +2178,42 @@ Stage Summary:
 - `src/components/public/chatbot/ConciergeChat.tsx` — full UI redesign + responsive rewrite.
 
 **Known limitation (unchanged):** Groq key still invalid (403) → running on z-ai fallback. Replacing `GROQ_API_KEY` in `.env` with a valid key restores true Groq streaming automatically.
+
+---
+Task ID: admin-copilot-1
+Agent: main (Z.ai Code)
+Task: Reuse the AI for admin automation in a controlled way — build an admin operations copilot ("Aria") that answers questions about live resort data AND can propose automation actions, but every write action requires explicit admin approval before execution.
+
+Work Log:
+- Read existing chatbot infrastructure (ConciergeChat, /api/chat route, useChatStore, chatbot-knowledge) to understand patterns to reuse.
+- Read admin layout, auth lib, prisma schema, reservations status route, dashboard route to understand admin auth + DB mutation patterns.
+- Built `src/lib/admin-copilot-tools.ts` — a tool registry with 9 controlled-automation tools: confirm_booking, reject_booking, check_in_guest, check_out_guest, cancel_booking, mark_no_show, set_room_status, add_guest_note, create_notification. Each tool has: required args, a summarize() for the approval card, server-side validate(), and a run() handler that performs the real DB mutation + writes an AuditLog entry. Mirrors the VALID_TRANSITIONS state machine from the reservations API so illegal transitions are rejected.
+- Built `src/lib/admin-copilot-knowledge.ts` — builds Aria's system prompt with a live operations snapshot fetched fresh per request (pending count, confirmed, checked-in, today's arrivals/departures with reference numbers, occupancy, room status breakdown, revenue today) + the full tool catalog + strict instructions to emit actions as fenced ```aria-action JSON blocks. Includes 2 few-shot examples to make action emission reliable.
+- Built `src/app/api/admin/chat/route.ts` — auth-gated (requireAuth) streaming endpoint reusing the Groq→z-ai fallback pattern from /api/chat. No length/token caps (per owner policy). Lower temperature (0.4) for more deterministic operational replies.
+- Built `src/app/api/admin/chat/execute/route.ts` — the controlled gate. Auth-gated, whitelists tools via the registry, re-validates ALL args server-side (never trusts the client), runs the handler, returns the result. Every execution is audit-logged inside the handler.
+- Built `src/store/useAdminChatStore.ts` — Zustand + persist store. Extended message type with `actions?: CopilotAction[]` and a lifecycle (pending → executing → done|error | rejected). Added finalizeLast() to atomically split streamed content into clean markdown + parsed action proposals.
+- Built `src/components/admin/copilot/AdminCopilot.tsx` — responsive floating chat widget (full-screen mobile, 440px panel desktop). Deep-forest admin theme. Streams replies. Parses ```aria-action blocks out of the streamed text after completion and renders ActionCard components inline. Each ActionCard shows: tool icon, label, "Awaiting" badge, the AI's "why" explanation, arg preview (Reference/Reason/Room/Status/etc.), and Approve & run / Dismiss buttons. Status badges cycle through Awaiting→Running→Done/Failed/Dismissed with color coding. Destructive tools (reject/cancel/no-show) get an amber "Destructive" badge. On Approve → calls /api/admin/chat/execute, updates the action status, fires a Sonner toast, and invalidates TanStack Query caches (dashboard, reservations, rooms, guests, notifications, calendar) so the admin UI refreshes.
+- Injected <AdminCopilot /> into AdminLayout so it appears on every authenticated admin page.
+- Fixed create_notification tool to assign userId = acting admin (was null/broadcast, which the bell API filters out).
+- Strengthened the system prompt's action-emission section with "CRITICAL" framing + 2 concrete examples after the z-ai fallback model occasionally skipped the block.
+
+Verification (agent-browser end-to-end):
+- Logged in as admin (admin@verdararesort.com / verdara2025).
+- Confirmed Aria FAB button appears on the admin dashboard.
+- Opened copilot → welcome message + 4 quick-reply chips + input rendered.
+- Asked "What's our current occupancy and how many pending bookings?" → Aria streamed an accurate reply using live data: "Current occupancy: 40% (2/5 rooms occupied). Pending bookings: 0. All upcoming reservations are confirmed."
+- Asked Aria to "Post a team alert titled 'Linen delivery'…" → Aria proposed a create_notification action with correct args + why-explanation. Action card rendered with "Awaiting" badge + Approve/Dismiss buttons.
+- Clicked "Approve & run" → action executed (POST /api/admin/chat/execute 200), card status → "Done" with result message "Team alert 'Linen delivery' posted to the notifications bell."
+- Opened the notifications bell → "Linen delivery | Fresh linens arriving at 3 PM by the service entrance. | just now" appeared at the top.
+- Lint: 0 errors (3 pre-existing warnings, none from new files).
+- Dev log confirms: POST /api/admin/chat 200, POST /api/admin/chat/execute 200, notifications refreshed.
+
+Stage Summary:
+- Delivered a controlled AI automation layer for admins. Aria can SEE the live dashboard and PROPOSE actions, but CANNOT execute anything — every write goes through a human-in-the-loop approval card, server-side re-validation, and audit logging.
+- 9 automation tools covering the full booking lifecycle (confirm/reject/check-in/check-out/cancel/no-show), room status management, guest notes, and team alerts.
+- Fully responsive UI, admin-themed, reuses the Groq→z-ai fallback so it works immediately (Groq key is currently invalid/403; z-ai handles all requests).
+- The public concierge (Mara) and admin copilot (Aria) are completely separate: different endpoints, different system prompts, different stores, different UI instances (Mara only on public pages, Aria only on admin pages).
+
+Unresolved / Notes:
+- Groq API key in .env is invalid (403 Forbidden) → all chat traffic currently falls back to z-ai-web-dev-sdk. The z-ai model is slightly less reliable at emitting the structured ```aria-action block, which is why the system prompt was hardened with explicit examples. Replacing the Groq key would give more deterministic structured output (llama-3.3-70b follows the format very reliably).
+- The action-emission reliability with z-ai is now good (verified with the strengthened prompt) but not 100%; if a proposal is missing the admin can just ask again or perform the action manually in the normal admin UI.

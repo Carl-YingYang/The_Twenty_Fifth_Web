@@ -33,6 +33,7 @@ import type { Notification, User, View } from "@/types";
 
 import { AdminLogin } from "./AdminLogin";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { AdminCopilot } from "./copilot/AdminCopilot";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -207,6 +208,9 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
         loading={loggingOut}
         onConfirm={handleLogoutConfirm}
       />
+
+      {/* Aria — the admin operations copilot (controlled AI automation) */}
+      <AdminCopilot />
     </div>
   );
 }
