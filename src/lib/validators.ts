@@ -70,7 +70,14 @@ export const roomCreateSchema = z.object({
   imageUrls: z
     .array(
       z.object({
-        url: z.string().url(),
+        // Accept either absolute URLs (https://...) or relative paths (/uploads/...)
+        url: z
+          .string()
+          .min(1)
+          .refine(
+            (v) => v.startsWith("/") || /^https?:\/\//.test(v),
+            "Must be a valid URL or a path starting with /"
+          ),
         altText: z.string().optional().or(z.literal("")),
         isPrimary: z.boolean().optional(),
       })
@@ -108,7 +115,14 @@ export const guestUpdateSchema = z.object({
 export const galleryCreateSchema = z.object({
   title: z.string().min(1).max(120),
   category: z.enum(["RESORT", "ROOMS", "DINING", "NATURE", "EVENTS"]),
-  url: z.string().url(),
+  // Accept either absolute URLs (https://...) or relative paths (/uploads/...)
+  url: z
+    .string()
+    .min(1)
+    .refine(
+      (v) => v.startsWith("/") || /^https?:\/\//.test(v),
+      "Must be a valid URL or a path starting with /"
+    ),
   description: z.string().max(500).optional().or(z.literal("")),
 });
 

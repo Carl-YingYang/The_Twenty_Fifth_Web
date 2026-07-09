@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { AdminLayout } from "./AdminLayout";
 import { RoomStatusBadge } from "./StatusBadges";
 import { EmptyState } from "./StatCard";
+import { ImageUploader } from "./ImageUploader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -568,15 +569,7 @@ function RoomFormDialog({
     const trimmedUrl = newImageUrl.trim();
     const trimmedAlt = newImageAlt.trim();
     if (!trimmedUrl) {
-      toast.error("Image URL is required.");
-      return;
-    }
-    // Basic URL validation
-    try {
-      const u = new URL(trimmedUrl);
-      if (!/https?/.test(u.protocol)) throw new Error();
-    } catch {
-      toast.error("Please enter a valid image URL (https://...).");
+      toast.error("Please upload an image first.");
       return;
     }
     if (!trimmedAlt) {
@@ -836,14 +829,16 @@ function RoomFormDialog({
               )}
 
               {/* Add image form */}
-              <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="mt-3 space-y-3 rounded-lg border border-border bg-muted/30 p-3">
                 <div className="text-xs font-medium text-foreground">Add an image</div>
-                <Input
-                  placeholder="https://image-url.jpg (https required)"
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  className="h-9"
+
+                {/* File uploader — replaces URL input */}
+                <ImageUploader
+                  onUploaded={(uploadedUrl) => setNewImageUrl(uploadedUrl)}
+                  compact
+                  label="Upload image"
                 />
+
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-[140px_1fr]">
                   <Select
                     value={newImageCategory}
@@ -879,6 +874,7 @@ function RoomFormDialog({
                   size="sm"
                   className="h-9 shrink-0"
                   onClick={addImage}
+                  disabled={!newImageUrl || !newImageAlt}
                 >
                   <ImagePlus className="size-3.5" />
                   Add image

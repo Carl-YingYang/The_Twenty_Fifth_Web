@@ -4,15 +4,18 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { GALLERY_CATEGORIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { GalleryItem } from "@/types";
-import { FadeUpSection, SectionHeading } from "../shared";
+import { FadeUpSection, SectionHeading, SmartImage } from "../shared";
 
 interface GalleryResponse {
   gallery: GalleryItem[];
 }
+
+const PAGE_SIZE = 12;
 
 // Varying row spans for an editorial masonry feel.
 const SPAN_PATTERNS = [
@@ -29,6 +32,7 @@ const SPAN_PATTERNS = [
 export function GalleryPage() {
   const [activeCategory, setActiveCategory] = React.useState<string>("ALL");
   const [lightboxIndex, setLightboxIndex] = React.useState<number | null>(null);
+  const [page, setPage] = React.useState(1);
 
   const { data, isLoading } = useQuery({
     queryKey: ["gallery", activeCategory],
@@ -40,19 +44,30 @@ export function GalleryPage() {
 
   const items = data?.gallery ?? [];
 
+  // Pagination — resets to page 1 when category changes
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedItems = items.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+  // Offset into the full items array, used for lightbox counter
+  const pageOffset = (currentPage - 1) * PAGE_SIZE;
+
+  function handleCategoryChange(cat: string) {
+    setActiveCategory(cat);
+    setPage(1);
+    setLightboxIndex(null);
+  }
+
   const openLightbox = (i: number) => setLightboxIndex(i);
   const closeLightbox = () => setLightboxIndex(null);
-  const goNext = React.useCallback(
-    () => setLightboxIndex((i) => (i === null ? i : (i + 1) % items.length)),
-    [items.length]
-  );
-  const goPrev = React.useCallback(
-    () =>
-      setLightboxIndex((i) =>
-        i === null ? i : (i - 1 + items.length) % items.length
-      ),
-    [items.length]
-  );
+  const goNext = () =>
+    setLightboxIndex((i) => (i === null ? i : (i + 1) % items.length));
+  const goPrev = () =>
+    setLightboxIndex((i) =>
+      i === null ? i : (i - 1 + items.length) % items.length
+    );
 
   // Keyboard navigation
   React.useEffect(() => {
@@ -64,7 +79,7 @@ export function GalleryPage() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [lightboxIndex, goNext, goPrev]);
+  }, [lightboxIndex, items.length]);
 
   // Lock body scroll when lightbox open
   React.useEffect(() => {
@@ -103,7 +118,7 @@ export function GalleryPage() {
             {GALLERY_CATEGORIES.map((cat) => (
               <button
                 key={cat}
-                onClick={() => setActiveCategory(cat)}
+                onClick={() => handleCategoryChange(cat)}
                 className={cn(
                   "shrink-0 rounded-md border px-4 py-2 text-sm font-medium transition-colors",
                   activeCategory === cat
@@ -115,6 +130,16 @@ export function GalleryPage() {
               </button>
             ))}
           </div>
+
+          {/* Count + page info */}
+          {!isLoading && items.length > 0 && (
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                {items.length} photo{items.length === 1 ? "" : "s"}
+                {totalPages > 1 && ` · page ${currentPage} of ${totalPages}`}
+              </p>
+            </div>
+          )}
 
           {isLoading ? (
             <div className="flex items-center justify-center gap-3 py-20 text-muted-foreground">
@@ -128,34 +153,139 @@ export function GalleryPage() {
               </p>
             </Card>
           ) : (
-            <div className="grid auto-rows-[160px] grid-cols-2 gap-3 sm:auto-rows-[220px] sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-              {items.map((item, i) => (
-                <button
-                  key={item.id}
-                  onClick={() => openLightbox(i)}
-                  className={cn(
-                    "group relative overflow-hidden rounded-lg bg-muted",
-                    SPAN_PATTERNS[i % SPAN_PATTERNS.length]
-                  )}
-                >
-                  <img
-                    src={item.url}
-                    alt={item.title}
-                    className="img-zoom h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-60 transition-opacity duration-300 group-hover:opacity-90" />
-                  <div className="absolute bottom-0 left-0 p-3 text-left sm:p-4">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-coral opacity-95 sm:text-xs">
-                      {item.category}
-                    </p>
-                    <p className="text-xs font-medium text-white sm:text-sm">
-                      {item.title}
-                    </p>
+            <>
+              <div className="grid auto-rows-[160px] grid-cols-2 gap-3 sm:auto-rows-[220px] sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+                {paginatedItems.map((item, i) => {
+                  const absoluteIdx = pageOffset + i;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => openLightbox(absoluteIdx)}
+                      className={cn(
+                        "group relative overflow-hidden rounded-lg bg-muted",
+                        SPAN_PATTERNS[i % SPAN_PATTERNS.length]
+                      )}
+                    >
+                      <SmartImage
+                        src={item.url}
+                        alt={item.title}
+                        wrapperClassName="absolute inset-0 size-full"
+                        className="absolute inset-0 size-full img-zoom"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-60 transition-opacity duration-300 group-hover:opacity-90" />
+                      <div className="absolute bottom-0 left-0 p-3 text-left sm:p-4">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-coral opacity-95 sm:text-xs">
+                          {item.category}
+                        </p>
+                        <p className="text-xs font-medium text-white sm:text-sm">
+                          {item.title}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-10 flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setPage((p) => Math.max(1, p - 1));
+                        setLightboxIndex(null);
+                      }}
+                      disabled={currentPage === 1}
+                      className="gap-1.5"
+                    >
+                      <ChevronLeft className="size-4" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </Button>
+
+                    {/* Page numbers */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }).map((_, i) => {
+                        const pageNum = i + 1;
+                        const isCurrent = pageNum === currentPage;
+                        // Show first, last, current, and neighbors only (avoid huge pager)
+                        const show =
+                          pageNum === 1 ||
+                          pageNum === totalPages ||
+                          Math.abs(pageNum - currentPage) <= 1;
+                        if (!show) {
+                          // Show ellipsis once per gap
+                          if (pageNum === 2 && currentPage > 3) {
+                            return (
+                              <span
+                                key={pageNum}
+                                className="px-1 text-muted-foreground"
+                                aria-hidden
+                              >
+                                …
+                              </span>
+                            );
+                          }
+                          if (
+                            pageNum === totalPages - 1 &&
+                            currentPage < totalPages - 2
+                          ) {
+                            return (
+                              <span
+                                key={pageNum}
+                                className="px-1 text-muted-foreground"
+                                aria-hidden
+                              >
+                                …
+                              </span>
+                            );
+                          }
+                          return null;
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => {
+                              setPage(pageNum);
+                              setLightboxIndex(null);
+                            }}
+                            aria-current={isCurrent ? "page" : undefined}
+                            className={cn(
+                              "flex size-9 items-center justify-center rounded-md text-sm font-medium transition-colors",
+                              isCurrent
+                                ? "bg-primary text-primary-foreground"
+                                : "border border-border bg-card text-foreground hover:border-primary/40 hover:text-primary"
+                            )}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setPage((p) => Math.min(totalPages, p + 1));
+                        setLightboxIndex(null);
+                      }}
+                      disabled={currentPage === totalPages}
+                      className="gap-1.5"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="size-4" />
+                    </Button>
                   </div>
-                </button>
-              ))}
-            </div>
+                  <p className="text-xs text-muted-foreground">
+                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+                    {Math.min(currentPage * PAGE_SIZE, items.length)} of {items.length}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>

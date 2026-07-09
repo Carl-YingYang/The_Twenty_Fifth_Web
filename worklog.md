@@ -1553,3 +1553,90 @@ Stage Summary:
 - Lightbox: full-screen viewer with keyboard nav, body scroll lock, prev/next/close
 - Backward compat: existing altText works (defaults to "Other" category), no schema migration
 - Lint: 0 errors. Dev server: HTTP 200, no runtime errors.
+
+---
+Task ID: 13
+Agent: Main (Z.ai Code) — Image upload system + gallery pagination + lazy loading
+
+Task: User requested: (1) Replace URL-linking with file upload for images (more logical for non-tech users), (2) Add pagination for the photos/gallery section, (3) Always use lazy loading going forward.
+
+Work Log:
+
+**1. File Upload API Endpoint (NEW: src/app/api/upload/route.ts)**
+- POST /api/upload accepts multipart/form-data with single "file" field
+- Auth required (admin only) via requireAuth()
+- Validates: MIME type (JPG/PNG/WebP/GIF/AVIF), size (max 8 MB), non-empty
+- Saves to public/uploads/<timestamp>-<random>-<slug>.<ext>
+- Returns { url, filename, originalName, size, mimeType }
+- Logs to AuditLog (action: IMAGE_UPLOADED)
+- Created public/uploads/ directory
+
+**2. Reusable ImageUploader Component (NEW: src/components/admin/ImageUploader.tsx)**
+- Drag & drop dropzone with click-to-browse fallback
+- Client-side validation: MIME type, size (8 MB), format
+- Local preview via URL.createObjectURL (revoked after upload)
+- Loading spinner overlay during upload
+- "Clear preview" button (X) after upload
+- Keyboard accessible (Enter/Space to open picker)
+- Props: onUploaded(url), disabled, compact, label, accept, className
+- Toast notifications for errors
+- Resets input after upload so same file can be re-selected
+
+**3. Admin Gallery — Upload + Pagination (GalleryAdmin.tsx)**
+- AddImageDialog: replaced URL input with <ImageUploader>
+- Modal layout: flex flex-col (header fixed, body scrolls, footer fixed)
+- Added "Image" required field with upload dropzone
+- Shows "Uploaded: /uploads/..." confirmation text after upload
+- Added pagination (PAGE_SIZE=12): Previous/page numbers/Next buttons
+- Added photo count + page info ("18 photos · page 1 of 2")
+- Category change resets to page 1
+- All gallery images use loading="lazy"
+
+**4. Admin Rooms Modal — Upload (RoomsAdmin.tsx)**
+- Replaced URL input in "Add an image" form with <ImageUploader compact>
+- Removed URL validation from addImage() (upload handles validation)
+- Add image button disabled until both URL (uploaded) AND caption present
+- Category dropdown + caption input preserved
+- Existing image cards unchanged (horizontal scrollable row with category labels)
+
+**5. Public Gallery — Pagination + Lazy Loading (GalleryPage.tsx)**
+- Added pagination (PAGE_SIZE=12): Previous/page numbers/Next buttons
+- Smart page number display (first, last, current, neighbors + ellipsis)
+- "Showing X–Y of Z" text indicator
+- Category change resets to page 1 + closes lightbox
+- Lightbox index uses absolute position (pageOffset + relative idx)
+- Replaced raw <img> with <SmartImage> (blur-up progressive loading)
+- All images use loading="lazy"
+
+**6. Validator Updates (validators.ts)**
+- galleryCreateSchema.url: z.string().url() → refine() accepting "/" prefix or https?://
+- roomCreateSchema.imageUrls.url: same refine() update
+- Allows relative paths like "/uploads/xxx.png" (from upload endpoint)
+- Backward compatible: existing https:// URLs still work
+
+**7. Lazy Loading Audit**
+- GalleryPage: SmartImage with loading="lazy" (was already lazy, now blur-up too)
+- GalleryAdmin: added loading="lazy" to all gallery card images
+- RoomsAdmin: image cards already had loading="lazy"
+- RoomDetailsPage: SmartImage for hero (eager), thumbnails loading="lazy"
+- ImageUploader: preview uses local blob URL (instant)
+
+Verification (agent-browser + VLM):
+- ✅ Lint: 0 errors, 2 pre-existing RHF warnings
+- ✅ Dev server: HTTP 200, clean compiles
+- ✅ Upload API: POST /api/upload returns 201, file saved to public/uploads/
+- ✅ Admin Gallery Add photo: dropzone visible, file uploads, preview shows, "Uploaded: /uploads/..." text appears, Add photo button enables, POST /api/gallery returns 201
+- ✅ Admin Gallery pagination: "19 photos · page 1 of 2" with Previous/Next + page number buttons
+- ✅ Admin Rooms Edit modal: upload dropzone in "Add an image" section, category dropdown (Pool), caption input, Add image button
+- ✅ Public Gallery: "19 photos · page 1 of 2", "Showing 1–12 of 19", pagination buttons work, page 2 shows "Showing 13–19 of 19", images load with blur-up effect
+- ✅ Backward compat: existing Unsplash URL images still display (validators accept both)
+
+Stage Summary:
+- New files (2): src/app/api/upload/route.ts, src/components/admin/ImageUploader.tsx
+- Modified files (4): GalleryAdmin.tsx, RoomsAdmin.tsx, GalleryPage.tsx, validators.ts
+- Created: public/uploads/ directory for uploaded files
+- Upload flow: file → /api/upload → public/uploads/xxx.png → /uploads/xxx.png URL → saved to DB
+- Pagination: both public gallery (12/page) and admin gallery (12/page) with smart page numbers + ellipsis
+- Lazy loading: all gallery images use SmartImage (blur-up) + loading="lazy"
+- Validators: accept both absolute URLs and relative /uploads/ paths
+- Lint: 0 errors. Dev server: HTTP 200, upload + gallery POST verified working end-to-end.
