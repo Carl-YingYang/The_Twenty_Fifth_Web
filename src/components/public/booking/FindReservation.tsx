@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   XCircle,
   MessageSquare,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
   cn,
   formatCurrency,
   formatDate,
+  formatClockTime,
 } from "@/lib/utils";
 import { BOOKING_STATUS_CONFIG, RESORT_INFO } from "@/lib/constants";
 import { useViewStore } from "@/store/useViewStore";
@@ -180,7 +182,24 @@ export function FindReservation() {
             {/* Reservation result */}
             {reservation && statusConfig && (
               <FadeUpSection delay={0.05} className="mt-8">
-                <Card className="overflow-hidden rounded-lg border border-border shadow-card">
+                {/* Print-only invoice header — only visible when printing.
+                    Shows resort name + contact info at the top of the printed page. */}
+                <div data-print-only className="hidden">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1F6F50", paddingBottom: "12px", marginBottom: "20px" }}>
+                    <div>
+                      <h1 style={{ fontSize: "20pt", fontWeight: 700, color: "#1F6F50", margin: 0 }}>{RESORT_INFO.name}</h1>
+                      <p style={{ fontSize: "10pt", color: "#6b6557", margin: "4px 0 0" }}>
+                        {RESORT_INFO.addressShort} · {RESORT_INFO.phone} · {RESORT_INFO.email}
+                      </p>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <p style={{ fontSize: "9pt", color: "#6b6557", margin: 0, textTransform: "uppercase", letterSpacing: "0.1em" }}>Reservation</p>
+                      <p style={{ fontSize: "14pt", fontWeight: 700, fontFamily: "monospace", margin: "2px 0 0" }}>{reservation.referenceNo}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <Card data-invoice className="overflow-hidden rounded-lg border border-border shadow-card">
                   {/* Header */}
                   <div className="flex flex-col-reverse gap-3 bg-[#0A3D4A] p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-7">
                     <div>
@@ -192,6 +211,7 @@ export function FindReservation() {
                       </p>
                     </div>
                     <Badge
+                      data-status-badge
                       className={cn(
                         "w-fit rounded-md border-0 px-4 py-1.5 text-sm",
                         statusConfig.bg,
@@ -208,12 +228,12 @@ export function FindReservation() {
                       <DetailItem
                         icon={<CalendarIcon className="h-4 w-4" />}
                         label="Check-in"
-                        value={`${formatDate(reservation.checkIn)} · 2:00 PM`}
+                        value={`${formatDate(reservation.checkIn)} · ${formatClockTime(RESORT_INFO.checkInTime)}`}
                       />
                       <DetailItem
                         icon={<CalendarIcon className="h-4 w-4" />}
                         label="Check-out"
-                        value={`${formatDate(reservation.checkOut)} · 12:00 PM`}
+                        value={`${formatDate(reservation.checkOut)} · ${formatClockTime(RESORT_INFO.checkOutTime)}`}
                       />
                       <DetailItem
                         icon={<BedDouble className="h-4 w-4" />}
@@ -270,26 +290,35 @@ export function FindReservation() {
                         <p className="text-xs uppercase tracking-wider text-muted-foreground">
                           Special requests
                         </p>
-                        <p className="mt-1 text-sm">
+                        <p className="mt-1 text-sm whitespace-pre-line">
                           {reservation.specialRequests}
                         </p>
                       </div>
                     )}
 
                     {/* Total */}
-                    <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
-                      <span className="text-sm text-muted-foreground">
+                    <div className="mt-5 flex items-center justify-between border-t-2 border-border pt-4">
+                      <span className="text-sm font-medium text-muted-foreground">
                         Total amount
                       </span>
                       <span className="font-display text-xl font-semibold text-primary">
                         {formatCurrency(reservation.totalAmount)}
                       </span>
                     </div>
+
+                    {/* Print-only footer note */}
+                    <div data-print-only className="hidden">
+                      <p style={{ fontSize: "9pt", color: "#6b6557", marginTop: "24px", paddingTop: "12px", borderTop: "1px solid #d4cfc1" }}>
+                        This document confirms your reservation request at {RESORT_INFO.name}.
+                        Please present it on arrival. For changes, contact us at {RESORT_INFO.phone}
+                        or {RESORT_INFO.email}.
+                      </p>
+                    </div>
                   </div>
                 </Card>
 
                 {/* What happens next */}
-                <Card className="mt-6 rounded-lg border border-border bg-card p-5 shadow-card">
+                <Card data-print-hide className="mt-6 rounded-lg border border-border bg-card p-5 shadow-card">
                   <div className="flex items-start gap-3">
                     <CheckCircle2
                       className={cn("mt-0.5 h-5 w-5 shrink-0", statusConfig.text)}
@@ -304,7 +333,17 @@ export function FindReservation() {
                   </div>
                 </Card>
 
-                <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                <div data-invoice-actions className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                  <Button
+                    onClick={() => {
+                      window.print();
+                    }}
+                    variant="outline"
+                    className="w-full rounded-md sm:w-auto"
+                  >
+                    <Printer className="h-4 w-4" />
+                    Print / Save as PDF
+                  </Button>
                   <a
                     href={RESORT_INFO.social.messenger}
                     target="_blank"
@@ -317,7 +356,7 @@ export function FindReservation() {
                   </a>
                   <Button
                     onClick={() => navigate("home")}
-                    variant="outline"
+                    variant="ghost"
                     className="w-full rounded-md sm:w-auto"
                   >
                     <ArrowLeft className="h-4 w-4" />

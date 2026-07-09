@@ -211,7 +211,13 @@ export function useCountUp(target: number, duration = 1600) {
             const progress = Math.min(elapsed / duration, 1);
             // Ease-out cubic
             const eased = 1 - Math.pow(1 - progress, 3);
-            setCount(Math.round(eased * target));
+            // Preserve 1-decimal precision for fractional targets (e.g. 5.5 baths)
+            // so Math.round() doesn't bump 5.5 up to 6.
+            const value =
+              target % 1 !== 0
+                ? Math.round(eased * target * 10) / 10
+                : Math.round(eased * target);
+            setCount(value);
             if (progress < 1) requestAnimationFrame(step);
           };
           requestAnimationFrame(step);

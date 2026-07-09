@@ -20,6 +20,8 @@ import {
   Home,
   Search,
   Pencil,
+  Copy,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -981,15 +983,32 @@ function ConfirmationScreen({
           </h1>
 
           {/* Reference number */}
-          <div className="mx-auto mt-8 max-w-xl rounded-lg border border-border bg-card p-6 shadow-card">
+          <div data-invoice className="mx-auto mt-8 max-w-xl rounded-lg border border-border bg-card p-6 shadow-card">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
               Your reference number
             </p>
-            <p className="mt-2 font-display text-3xl font-semibold tracking-tight text-primary sm:text-4xl">
-              {reservation.referenceNo}
-            </p>
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <p className="font-display text-3xl font-semibold tracking-tight text-primary sm:text-4xl">
+                {reservation.referenceNo}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(reservation.referenceNo).then(
+                    () => toast.success("Reference number copied."),
+                    () => toast.error("Couldn't copy — please select and copy manually.")
+                  );
+                }}
+                className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                aria-label="Copy reference number"
+                title="Copy reference number"
+              >
+                <Copy className="size-3.5" />
+              </button>
+            </div>
             <div className="mt-4 flex justify-center">
               <Badge
+                data-status-badge
                 className={cn(
                   "rounded-md border-0 px-4 py-1.5 text-sm",
                   statusConfig.bg,
@@ -1002,6 +1021,62 @@ function ConfirmationScreen({
             <p className="mt-4 text-sm text-muted-foreground">
               {statusConfig.description}
             </p>
+
+            {/* Reservation details — printed on the invoice */}
+            <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5 text-left text-sm">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Check-in</p>
+                <p className="mt-0.5 font-medium text-foreground">
+                  {formatDate(reservation.checkIn)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Check-out</p>
+                <p className="mt-0.5 font-medium text-foreground">
+                  {formatDate(reservation.checkOut)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Stay</p>
+                <p className="mt-0.5 font-medium text-foreground">
+                  {reservation.nights} night{reservation.nights === 1 ? "" : "s"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Guests</p>
+                <p className="mt-0.5 font-medium text-foreground">
+                  {reservation.adults} adult{reservation.adults === 1 ? "" : "s"}
+                  {reservation.children > 0
+                    ? `, ${reservation.children} child${reservation.children === 1 ? "" : "ren"}`
+                    : ""}
+                </p>
+              </div>
+              {reservation.rooms?.[0]?.room && (
+                <div className="col-span-2">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Configuration</p>
+                  <p className="mt-0.5 font-medium text-foreground">
+                    {reservation.rooms[0].room.name}
+                    {reservation.rooms[0].room.type?.name && (
+                      <span className="ml-1 text-muted-foreground">· {reservation.rooms[0].room.type.name}</span>
+                    )}
+                  </p>
+                </div>
+              )}
+              <div className="col-span-2 flex items-center justify-between border-t border-border pt-3">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">Total</span>
+                <span className="font-display text-lg font-semibold text-primary">
+                  {formatCurrency(reservation.totalAmount)}
+                </span>
+              </div>
+            </div>
+
+            {/* Print-only footer note */}
+            <div data-print-only className="hidden">
+              <p style={{ fontSize: "9pt", color: "#6b6557", marginTop: "20px", paddingTop: "12px", borderTop: "1px solid #d4cfc1" }}>
+                Present this confirmation on arrival at {RESORT_INFO.name}, {RESORT_INFO.addressShort}.
+                For changes, contact us at {RESORT_INFO.phone} or {RESORT_INFO.email}.
+              </p>
+            </div>
           </div>
 
           <p className="mx-auto mt-6 max-w-md text-sm text-muted-foreground">
@@ -1054,7 +1129,15 @@ function ConfirmationScreen({
 
         {/* Action buttons */}
         <FadeUpSection delay={0.15} className="mx-auto mt-10 max-w-2xl">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:flex-row md:flex-wrap md:justify-center">
+          <div data-invoice-actions className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:flex-row md:flex-wrap md:justify-center">
+            <Button
+              onClick={() => window.print()}
+              variant="outline"
+              className="w-full rounded-md md:w-auto"
+            >
+              <Printer className="h-4 w-4" />
+              Print confirmation
+            </Button>
             <Button
               onClick={downloadIcs}
               variant="outline"

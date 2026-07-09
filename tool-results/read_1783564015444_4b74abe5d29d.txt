@@ -1,0 +1,481 @@
+  1200→### 6. Toast usage — sonner setup + patterns
+  1201→Files: `/home/z/my-project/src/app/layout.tsx` (76 lines), `/home/z/my-project/src/components/ui/sonner.tsx` (26 lines)
+  1202→
+  1203→**Sonner Toaster setup:**
+  1204→- Root layout (`src/app/layout.tsx` lines 4 + 61-71): renders `<Toaster position="top-right" toastOptions={{ style: { borderRadius: "0.625rem", border: "1px solid #E5DED0", background: "#FFFFFF", color: "#1B2A2E" } }} />`.
+  1205→- **DARK-MODE CONCERN**: The `toastOptions.style` object hardcodes light-mode colors (`#FFFFFF` background, `#1B2A2E` text, `#E5DED0` border). The `sonner.tsx` wrapper (lines 13-19) DOES set CSS custom properties (`--normal-bg`, `--normal-text`, `--normal-border` = `--popover`/`--popover-foreground`/`--border`) which would normally adapt to dark mode via the theme tokens — but the inline `style` object in layout.tsx overrides those CSS vars with hardcoded values, so toasts always render with light-mode appearance even in dark mode. **REAL BUG** (visual only, doesn't break functionality).
+  1206→- A separate `src/hooks/use-toast.ts` and `src/components/ui/toaster.tsx` / `src/components/ui/toast.tsx` exist (the older shadcn toast system) but appear unused — sonner is the active system.
+  1207→
+  1208→**Toast call inventory** (35 total calls across `src/components`):
+  1209→- `toast.success`: 16 calls
+  1210→- `toast.error`: 17 calls
+  1211→- `toast.info`: 2 calls (DashboardAdmin.tsx lines 268, 289 — delayed 800ms email-confirmation notices)
+  1212→- Notable: zero `toast.promise`, `toast.loading`, or `toast.warning` calls.
+  1213→
+  1214→**AdminLogin.tsx login toasts** (lines 43-65):
+  1215→- Success (line 54): `toast.success(\`Welcome back, ${data.user.name.split(" ")[0]}.\`)` — fires after `login(user, token)` and before `navigate("admin-dashboard")`.
+  1216→- Error (lines 56-61): `toast.error(message)` where `message` is `err instanceof ApiError ? err.message : "We couldn't sign you in. Please try again."`. Includes a `finally { setSubmitting(false); }` (lines 62-64).
+  1217→- Login button (line 226-232): `disabled={submitting}` with text `{submitting ? "Signing in…" : "Sign in"}`.
+  1218→
+  1219→**Common toast patterns observed:**
+  1220→- Booking mutation success (BookingFlow.tsx line 115): `toast.success("Booking request received!")`.
+  1221→- Booking mutation error (BookingFlow.tsx lines 117-123): `toast.error(msg)` where msg falls back to `"Something went wrong. Please try again."`.
+  1222→- DashboardAdmin.tsx (lines 266-268, 287-289): success toast then `setTimeout(() => toast.info(\`✉️ Confirmation email sent to ${email}\`), 800)` — uses emojis in toast text.
+  1223→- BookingsAdmin.tsx (lines 202, 215, 221): success + delayed info + error triplet pattern.
+  1224→- Most admin CRUD operations use single `toast.success` + `toast.error` pairs (AmenitiesAdmin, GalleryAdmin, RoomsAdmin, SettingsAdmin).
+  1225→- Public-side validation errors use `toast.error("…")` (HomePage date validation, ContactPage form validation, FindReservation).
+  1226→
+  1227→### 7. Border-radius audit
+  1228→Command: `grep -rn "rounded-full\|rounded-xl\|rounded-2xl" /home/z/my-project/src/components/public/ /home/z/my-project/src/components/admin/`
+  1229→
+  1230→**Totals:**
+  1231→- Public components: **93 occurrences** across 13 files
+  1232→- Admin components: **58 occurrences** across 13 files
+  1233→- **Combined: 151 occurrences across 26 files.**
+  1234→
+  1235→**Breakdown by radius variant:**
+  1236→| Radius    | Public | Admin | Total |
+  1237→|-----------|--------|-------|-------|
+  1238→| rounded-full | 64 | 29 | 93 |
+  1239→| rounded-xl   | 29 | 28 | 57  |
+  1240→| rounded-2xl  | 0  | 1  | 1   |
+  1241→| **Total**    | **93** | **58** | **151** |
+  1242→
+  1243→**Per-file count (public):**
+  1244→- `booking/BookingFlow.tsx`: 24 (heaviest user — many rounded-full CTAs + rounded-xl cards)
+  1245→- `home/HomePage.tsx`: 13
+  1246→- `contact/ContactPage.tsx`: 9
+  1247→- `booking/FindReservation.tsx`: 9
+  1248→- `rooms/RoomDetailsPage.tsx`: 7
+  1249→- `gallery/GalleryPage.tsx`: 7
+  1250→- `about/AboutPage.tsx`: 5
+  1251→- `faqs/FaqsPage.tsx`: 5
+  1252→- `RoomCard.tsx`: 4
+  1253→- `amenities/AmenitiesPage.tsx`: 3
+  1254→- `PublicNav.tsx`: 3
+  1255→- `PublicFooter.tsx`: 2
+  1256→- `rooms/RoomsPage.tsx`: 2
+  1257→
+  1258→**Per-file count (admin):**
+  1259→- `DashboardAdmin.tsx`: 8
+  1260→- `ReportsAdmin.tsx`: 7
+  1261→- `AdminLogin.tsx`: 5
+  1262→- `RoomsAdmin.tsx`: 5
+  1263→- `AdminLayout.tsx`: 5
+  1264→- `BookingsAdmin.tsx`: 5
+  1265→- `CalendarAdmin.tsx`: 4
+  1266→- `StatCard.tsx`: 4
+  1267→- `StatusBadges.tsx`: 4
+  1268→- `AmenitiesAdmin.tsx`: 3
+  1269→- `GalleryAdmin.tsx`: 3
+  1270→- `GuestsAdmin.tsx`: 3
+  1271→- `SettingsAdmin.tsx`: 2
+  1272→
+  1273→**Key observations:**
+  1274→- `rounded-2xl` is essentially dead in the design system — only 1 occurrence (AdminLogin.tsx:119, the brand-panel logo container with `bg-white/15 backdrop-blur-sm`).
+  1275→- The de-facto system is: `rounded-xl` for cards/containers (57 occurrences) + `rounded-full` for buttons/badges/pills (93 occurrences).
+  1276→- Public side skews heavily to `rounded-full` (64/93 = 69%) because of pill CTA buttons, hero card, and progress dots.
+  1277→- Admin side is nearly 50/50 (`rounded-full` 29, `rounded-xl` 28) — admin uses pill tab buttons + a lot of cards.
+  1278→- The base Button variant (`rounded-md`) is almost always overridden; the only unmodified buttons are in AdminLogin (login submit + autofill-credentials). This means the design system's "default" button radius is misaligned with what's actually used — would be cleaner to either change the Button base to `rounded-full` or leave the variant as is and accept the inconsistency.
+  1279→
+  1280→### Summary of bugs / inconsistencies found (research-only — no fixes applied)
+  1281→1. **BookingFlow Step1Dates lacks `checkOut > checkIn` validation** (lines 299-308). HomePage has it; BookingFlow doesn't. Leads to silent 0-night → 1-night coercion via `Math.max(nights, 1)` on line 732. **REAL BUG.**
+  1282→2. **Sonner Toaster dark-mode regression** (layout.tsx lines 61-71): hardcoded light-mode colors in `toastOptions.style` override the CSS vars set in sonner.tsx wrapper, so toasts render light in dark mode. **REAL BUG.**
+  1283→3. **HeroSlideshow has no visible loading state** (HomePage.tsx lines 95-164): preloads images but doesn't surface the `loaded` state as UI — first paint shows only the dark gradient overlay. Not strictly a bug, but a UX gap (no skeleton/blur-up placeholder).
+  1284→4. **No reusable `<Image>` component** — every consumer writes its own `<img className="img-zoom …" loading="lazy" />`. Inconsistent: BookingFlow's two thumbnails (lines 425-429, 767-771) omit both `loading="lazy"` and `img-zoom`. Minor inconsistency.
+  1285→5. **`rounded-2xl` is unused** (1 occurrence total). The design system lives on `rounded-xl` + `rounded-full`. The Button component's default `rounded-md` is overridden everywhere except AdminLogin's 2 buttons — minor design-system drift.
+  1286→6. **Double-submit on Confirm button**: not actually exploitable (button is `disabled={submitting}`), but the `onConfirm` handler (lines 250-265) lacks a defensive `if (createMutation.isPending) return;` guard. Not a bug, robustness suggestion only.
+  1287→
+  1288→### Files read (no edits)
+  1289→- `/home/z/my-project/worklog.md` (1,084 lines — prior context)
+  1290→- `/home/z/my-project/src/components/public/booking/BookingFlow.tsx` (1,209 lines, fully read)
+  1291→- `/home/z/my-project/src/components/public/home/HomePage.tsx` (605 lines, fully read)
+  1292→- `/home/z/my-project/src/components/public/shared.tsx` (256 lines, fully read)
+  1293→- `/home/z/my-project/src/components/public/RoomCard.tsx` (151 lines, fully read)
+  1294→- `/home/z/my-project/src/components/ui/button.tsx` (59 lines, fully read)
+  1295→- `/home/z/my-project/src/components/ui/card.tsx` (93 lines, fully read)
+  1296→- `/home/z/my-project/src/components/ui/sonner.tsx` (26 lines, fully read)
+  1297→- `/home/z/my-project/src/app/layout.tsx` (76 lines, fully read)
+  1298→- `/home/z/my-project/src/app/globals.css` (312 lines, fully read)
+  1299→- `/home/z/my-project/src/components/admin/BookingsAdmin.tsx` (relevant excerpts lines 80-284)
+  1300→- `/home/z/my-project/src/components/admin/AdminLogin.tsx` (272 lines, fully read)
+  1301→- `/home/z/my-project/src/store/useBookingStore.ts` (38 lines, fully read)
+  1302→- `/home/z/my-project/src/lib/utils.ts` (relevant `nightsBetween` lines 66-71)
+  1303→
+  1304→### Next actions for main agent
+  1305→- (a) Add `checkOut > checkIn` validation to BookingFlow.tsx Step1Dates `onContinueClick` (mirror HomePage.tsx lines 198-201) — toast.error + return.
+  1306→- (b) Fix Sonner Toaster dark-mode: in layout.tsx either remove the hardcoded `style` (let sonner.tsx's CSS vars handle theming) or split the style per-theme.
+  1307→- (c) Consider adding a reusable `<Image>` or `<SmartImage>` component to `shared.tsx` (with built-in `loading="lazy"`, `img-zoom`, blur-up placeholder, error fallback) and migrate BookingFlow's two thumbnails to it.
+  1308→- (d) Optionally normalize `rounded-2xl` → `rounded-xl` in AdminLogin.tsx:119 for system consistency, or decide `rounded-2xl` is deprecated.
+  1309→- (e) Optionally add `loading="lazy"` + `img-zoom` to BookingFlow thumbnails (lines 425-429, 767-771) for consistency with RoomCard.
+  1310→
+  1311→---
+  1312→Task ID: 11-b
+  1313→Agent: full-stack-developer (border radius reduction)
+  1314→Task: Reduce border radius site-wide for sharper corners
+  1315→
+  1316→Work Log:
+  1317→- Files changed: 23 source files + 1 css + 1 layout = 24 total files
+  1318→  - src/components/ui/card.tsx (rounded-xl → rounded-lg on base Card)
+  1319→  - src/app/layout.tsx (sonner toaster borderRadius 0.625rem → 0.375rem)
+  1320→  - src/app/globals.css (scrollbar-thumb border-radius 8px → 5px)
+  1321→  - src/components/public/PublicNav.tsx (1 CTA button)
+  1322→  - src/components/public/PublicFooter.tsx (1 mobile CTA button)
+  1323→  - src/components/public/RoomCard.tsx (article card, capacity badge, Selected badge, skeleton)
+  1324→  - src/components/public/home/HomePage.tsx (8 changes: hero card, story images, gallery teaser, 4 CTA buttons, skeleton)
+  1325→  - src/components/public/about/AboutPage.tsx (5 changes: 3 CTA buttons, maps iframe container + style, narrative image)
+  1326→  - src/components/public/rooms/RoomsPage.tsx (filter chips, empty state)
+  1327→  - src/components/public/rooms/RoomDetailsPage.tsx (6 changes: back button, image container, sticky booking card, status badge, 2 CTA buttons)
+  1328→  - src/components/public/amenities/AmenitiesPage.tsx (amenity card)
+  1329→  - src/components/public/gallery/GalleryPage.tsx (4 changes: filter tabs, empty Card, grid items, lightbox counter)
+  1330→  - src/components/public/faqs/FaqsPage.tsx (4 changes: 2 Cards, 2 CTA buttons)
+  1331→  - src/components/public/contact/ContactPage.tsx (5 changes: 3 Cards, 2 CTA buttons)
+  1332→  - src/components/public/booking/FindReservation.tsx (8 changes: 3 Cards, status badge, 4 CTA buttons)
+  1333→  - src/components/public/booking/BookingFlow.tsx (17 changes: 6 Cards, status badge, all step CTA buttons, confirmation action buttons)
+  1334→  - src/components/admin/AdminLogin.tsx (3 changes: brand-panel logo rounded-2xl → rounded-lg, mobile brand icon, form Card)
+  1335→  - src/components/admin/RoomsAdmin.tsx (3 changes: skeleton, Card, price badge)
+  1336→  - src/components/admin/CalendarAdmin.tsx (2 changes: segmented control container + tabs, calendar Card)
+  1337→  - src/components/admin/StatusBadges.tsx (2 status badges rounded-full → rounded-md)
+  1338→  - src/components/admin/ReportsAdmin.tsx (9 changes: segmented control + tabs, 4 chart Cards, 4 chart Tooltip borderRadius 8 → 5)
+  1339→  - src/components/admin/DashboardAdmin.tsx (6 changes: 4 Cards, 2 time-stamp badges)
+  1340→  - src/components/admin/AmenitiesAdmin.tsx (2 changes: skeleton, amenity Card)
+  1341→  - src/components/admin/BookingsAdmin.tsx (4 changes: tab buttons, table Card, skeleton, mobile Card)
+  1342→  - src/components/admin/StatCard.tsx (2 changes: StatCard, EmptyState containers)
+  1343→  - src/components/admin/GalleryAdmin.tsx (3 changes: filter tabs, skeleton, gallery Card)
+  1344→  - src/components/admin/GuestsAdmin.tsx (3 changes: table Card, skeleton, mobile Card)
+  1345→  - src/components/admin/SettingsAdmin.tsx (2 changes: TabsList, settings Card)
+  1346→  - src/components/admin/AdminLayout.tsx (1 change: brand logo icon container)
+  1347→
+  1348→- Border radius class counts before → after:
+  1349→  - rounded-full: 151 (per prior audit) → 54 remaining
+  1350→    (All 54 remaining are appropriate per task rules: UI base components like avatar/switch/slider/radio/scroll/carousel/drawer/progress [17], small icon-only circular buttons like theme toggle/social links/close/prev-next/steppers [13], small icon-only circular containers like amenity/contact icons [11], dot indicators like legend dots/status dots/slide-progress dots [10], notification count badge [1], avatar skeleton [1], decorative glow blobs [1], spinner loading indicator [1])
+  1351→  - rounded-xl: 57 (per prior audit) → 1 remaining (in ui/sidebar.tsx, a base component out of scope per task rules — only card.tsx and button.tsx were in scope for ui/)
+  1352→  - rounded-2xl: 1 (AdminLogin.tsx:119) → 0
+  1353→  - rounded-3xl: 0 → 0
+  1354→  - Hardcoded border-radius values: sonner toaster 0.625rem → 0.375rem (layout.tsx); scrollbar-thumb 8px → 5px (globals.css); 4× Recharts Tooltip borderRadius 8 → 5 (ReportsAdmin.tsx)
+  1355→
+  1356→- Lint check: `bun run lint` reports 0 errors, 2 pre-existing warnings (unrelated to my changes — they're about React Hook Form's `watch()` API in BookingsAdmin.tsx:973 and RoomsAdmin.tsx:522, which existed before this task)
+  1357→- Dev server: compiling successfully with no errors
+  1358→
+  1359→Stage Summary:
+  1360→- Site-wide border radius reduction complete. Pill-shaped CTA buttons, badges, tabs, and status indicators now use `rounded-md` (6px) instead of `rounded-full` (9999px). All cards, modals, containers, and image containers now use `rounded-lg` (10px) instead of `rounded-xl` (14px). The single `rounded-2xl` instance (AdminLogin brand logo) is now `rounded-lg`. Hardcoded border-radius values in sonner toaster, scrollbar, and Recharts tooltips were reduced by ~40%.
+  1361→- Decorative circular elements were preserved: avatars, theme toggle, social link buttons, gallery lightbox close/prev/next buttons, stepper +/- buttons, dot indicators (legend dots, status dots, slide progress dots), notification count badge, decorative icon containers (amenity/contact icons), spinner, and decorative glow blobs all retain `rounded-full` for their circular design intent.
+  1362→- Base UI components in `src/components/ui/` (other than card.tsx) were intentionally left untouched per task scope restrictions — they use radius values appropriate to their semantics (avatars/switches/sliders/radios are circular by design).
+  1363→- No functionality, layout, spacing, colors, or sizes were changed — only border radius.
+  1364→
+  1365→---
+  1366→Task ID: 11
+  1367→Agent: Main (Z.ai Code) + 2 subagents — Progressive images, hero fix, sharp corners, button contrast, booking flow fixes
+  1368→
+  1369→Task: User requested (improved prompt): (1) Account action toast messages, (2) Booking flow bug prevention, (3) Post-selection booking summary UI redesign, (4) Progressive image loading with blur-up, (5) Remove hero loading state, (6) Sharper border radius site-wide, (7) Active button text contrast fix.
+  1370→
+  1371→Work Log:
+  1372→
+  1373→**1. SmartImage component (progressive blur-up loading)** — created in shared.tsx
+  1374→- New `<SmartImage>` component: shows blurred placeholder (pulse gradient) while image loads, then crossfades to sharp image with `scale-105 blur-xl opacity-60` → `scale-100 blur-0 opacity-100` transition (700ms ease-out)
+  1375→- Props: src, alt, className, wrapperClassName, zoom (enables img-zoom hover), loading (lazy/eager)
+  1376→- Applied to: HomePage story images (2), gallery teaser (4 images), RoomCard primary image, BookingFlow "Your stay" summary image
+  1377→
+  1378→**2. Hero loading state removed** — HomePage.tsx HeroSlideshow rewritten
+  1379→- Old: Used `background-image` divs + `loaded` counter that waited for all 3 images before starting slideshow → showed empty dark box while loading
+  1380→- New: Uses `<img>` tags with per-slide blur-up loading (`HeroSlide` component). Each image starts at `blur(20px) scale(1.05)` and transitions to `blur(0px) scale(1)` on load. Slideshow starts immediately — no waiting, no empty box, no loading state.
+  1381→- Slide indicator dots only show progress bar after at least 1 image loaded
+  1382→
+  1383→**3. Border radius reduction (subagent Task 11-b)** — 24 files changed
+  1384→- `rounded-full` → `rounded-md` on 97 button/badge/pill instances (kept 54 valid circular icon buttons/avatars/dots)
+  1385→- `rounded-xl` → `rounded-lg` on 56 card/modal/container instances
+  1386→- `rounded-2xl` → `rounded-lg` (1 instance, AdminLogin)
+  1387→- Hardcoded border-radius reduced ~40%: Sonner toaster 0.625rem→0.375rem, scrollbar 8px→5px, Recharts tooltip 8→5
+  1388→
+  1389→**4. Booking flow validation + summary redesign** — BookingFlow.tsx
+  1390→- Added 3 validation checks to `onContinueClick`: (a) dates not empty, (b) checkOut > checkIn, (c) checkIn not in past — each with specific toast.error message
+  1391→- Redesigned "Your stay" summary card: was small side-by-side (thumbnail + text). Now: full-width 16/9 image with blur-up loading, clean details below (type label, name, sleeps + nights icons), price total on right with breakdown (price × nights). Responsive: stacks on mobile, side-by-side on desktop.
+  1392→
+  1393→**5. Active button text contrast fix** — BookingsAdmin.tsx + AdminLayout.tsx
+  1394→- BookingsAdmin tabs: count badge `/80` opacity → full opacity + `font-bold`. Added `shadow-sm` to active tab for stronger visual presence.
+  1395→- AdminLayout sidebar active: `bg-sidebar-accent text-white` → `bg-white/10 font-semibold text-white shadow-sm ring-1 ring-white/10` — brighter, more visible active state in both light and dark mode, with coral left indicator bar preserved.
+  1396→
+  1397→**6. Sonner toaster dark mode fix** — layout.tsx
+  1398→- Removed hardcoded `style: { background: "#FFFFFF", color: "#1B2A2E", border: "1px solid #E5DED0" }` that forced light-mode colors in dark mode
+  1399→- Replaced with `classNames: { toast: "rounded-md border border-border bg-card text-card-foreground" }` — uses CSS variables that adapt to theme
+  1400→
+  1401→Verification (agent-browser + VLM):
+  1402→- Home page: hero image showing (no empty box), no loading spinner, sharp-cornered buttons ✅
+  1403→- Booking flow step 1: date inputs sharp, summary bar clean, no visual issues ✅
+  1404→- Booking flow after room selection: redesigned "Your stay" card with large image, clean details, price total, Change button with pencil icon — "clean and professional" ✅
+  1405→- Admin tabs light mode: active tab text clear, count strong contrast, sharp corners ✅
+  1406→- Admin tabs dark mode: active tab "excellent readability", count "good contrast ~14:1", sidebar "highly visible ~10:1" ✅
+  1407→- Toast dark mode: "Signed out" toast visible, text readable, sharp corners ✅
+  1408→- Lint: 0 errors (2 pre-existing RHF warnings) ✅
+  1409→- Dev server: HTTP 200, clean compiles ✅
+  1410→
+  1411→Stage Summary:
+  1412→- Files changed (8): shared.tsx, HomePage.tsx, RoomCard.tsx, BookingFlow.tsx, BookingsAdmin.tsx, AdminLayout.tsx, layout.tsx + 24 files by subagent for border radius
+  1413→- New component: SmartImage (reusable progressive image with blur-up)
+  1414→- Hero: no more loading state, images blur in smoothly
+  1415→- Border radius: 151 → 54 `rounded-full` (only valid circular elements remain), 57 → 0 `rounded-xl`
+  1416→- Booking flow: 3 new validation checks, redesigned summary card
+  1417→- Admin: active tabs/sidebar have strong contrast in both themes
+  1418→- Toasts: dark mode fixed, sharp corners
+  1419→- Lint: 0 errors. Dev server: HTTP 200, no runtime errors.
+  1420→
+  1421→---
+  1422→Task ID: 12-PROMPT-ANALYSIS
+  1423→Agent: Main (Z.ai Code) — Prompt analysis for "sira sira" bug report
+  1424→
+  1425→Task: User reported broken UI in 2 screenshots (admin Edit Room modal + public Room Details page). Asked to improve the prompt first before coding.
+  1426→
+  1427→VLM Analysis of Screenshot 1 (Public Room Details):
+  1428→- Thumbnail grid wraps awkwardly: 4 in row 1, 1 misaligned in row 2 (caused by `sm:grid sm:grid-cols-5` when there are >5 images)
+  1429→- "Beds" stat tile text wraps to 2 lines ("4 bedrooms · 21 beds" / "· 5.5 baths")
+  1430→- Price calculation "₱45,000 × 2 nights" wraps to 2 lines
+  1431→- Hero image slightly cropped (aspect-[4/3] too tall for landscape villa photos)
+  1432→- "Book These Dates" button arrow misaligned
+  1433→
+  1434→VLM Analysis of Screenshot 2 (Admin Edit Room Modal):
+  1435→- Modal cut off at bottom: Images section partially hidden (form max-h-[70vh] + DialogContent max-h-[90vh] misalignment)
+  1436→- Image URL truncated mid-text ("...auto=...")
+  1437→- Image thumbnail too small (size-12 = 48px)
+  1438→- Description text truncates mid-word
+  1439→- Status field truncated ("Open — Availab...")
+  1440→- "No alt text" placeholder shown — images are generic, no specific purpose/label
+  1441→- Close button lacks visible hover state
+  1442→
+  1443→User's Core Complaints (translated from Taglish):
+  1444→1. "para saan or saan naka link yung image na yun?? ano general lang? dapat specific"
+  1445→   → Images are just generic URLs; need specific purpose/category (Pool, Bedroom, etc.)
+  1446→2. "wag mo ng gawing parang 2 lines pa like pwede namang gawing scrollable na one line lang"
+  1447→   → All 2-line wraps should become single-line scrollable
+  1448→3. "i need it to be logical functionable since mga non tech user ang gagamit neto"
+  1449→   → Must be intuitive for non-tech users
+  1450→
+  1451→Improved Prompt — 5 Technical Specifications:
+  1452→- Spec 1: Admin Edit Room modal — image manager redesign with category dropdown (Pool/Bedroom/Bathroom/Garden/Living/Dining/Exterior/Amenity/Other), larger 64px thumbnails, single-line scrollable URLs, alt-text required, horizontally scrollable row
+  1453→- Spec 2: Admin Edit Room modal — fix layout (DialogContent flex flex-col, body flex-1 overflow-y-auto, footer always visible), fix description/status truncation, polish close button
+  1454→- Spec 3: Public Room Details — thumbnails always single-line scrollable (remove sm:grid), add chevron arrows, add captions, image counter
+  1455→- Spec 4: Public Room Details — StatTile truncate+title, price row whitespace-nowrap, button alignment, badge shrink-0
+  1456→- Spec 5: Public Room Details — hero image aspect-[16/10], use SmartImage, caption overlay, lightbox click
+  1457→
+  1458→Stage Summary:
+  1459→- Prompt improved and broken into 5 actionable specs
+  1460→- Implementation order: Specs 1+2 (admin modal) → Specs 3+4+5 (public page) → lint → agent-browser verify → cron
+  1461→
+  1462→---
+  1463→Task ID: 12
+  1464→Agent: Main (Z.ai Code) — Fix broken UI in admin Edit Room modal + public Room Details page
+  1465→
+  1466→Task: User reported "sira sira" (broken) UI in 2 screenshots. Complaints: (1) images are generic, need specific purpose/category, (2) 2-line wrapping should be single-line scrollable, (3) must be logical/functional for non-tech users. User asked to improve prompt first before coding.
+  1467→
+  1468→Improved Prompt — 5 Technical Specifications (logged in Task 12-PROMPT-ANALYSIS):
+  1469→- Spec 1: Admin modal image manager redesign with category dropdown (Pool/Bedroom/Bathroom/Garden/Living/Dining/Exterior/Amenity/Other)
+  1470→- Spec 2: Admin modal layout fix (footer cut-off, description/status truncation)
+  1471→- Spec 3: Public room details thumbnails always single-line scrollable
+  1472→- Spec 4: Public room details stat tiles + price row no wrapping
+  1473→- Spec 5: Public room details hero image + lightbox
+  1474→
+  1475→Work Log:
+  1476→
+  1477→**1. Admin Edit Room modal — Image Manager Redesign (RoomsAdmin.tsx)**
+  1478→- Added IMAGE_CATEGORIES constant: 9 categories (Pool, Bedroom, Bathroom, Garden, Living Area, Dining, Exterior, Amenity, Other) each with lucide icon (Waves, BedDouble, Bath, Trees, Sofa, Utensils, Building2, Sparkles, Home)
+  1479→- Added parseImageAlt() / formatImageAlt() helpers — stores category in altText as "Category::Caption" for zero-migration backward compat
+  1480→- Existing images without prefix default to "Other" category (backward compatible)
+  1481→- Rewrote image list as horizontal scrollable single-row cards (not vertical list):
+  1482→  - Each card: 16:10 thumbnail (larger), Cover badge on first image, remove button (X) on hover
+  1483→  - Category icon + label as title (e.g., "Pool" with waves icon)
+  1484→  - Caption below (truncate with title attribute)
+  1485→  - URL as single-line scrollable (overflow-x-auto whitespace-nowrap, NOT truncated)
+  1486→  - Image index "#1", "#2" etc.
+  1487→- Empty state: dashed border placeholder "No images yet. Add at least one..."
+  1488→- Add image form: URL input + category dropdown (140px) + caption input (required) + Add button
+  1489→- Validation: URL required + format check (https), caption required — toast.error on failure
+  1490→
+  1491→**2. Admin Edit Room modal — Layout Fixes (RoomsAdmin.tsx)**
+  1492→- DialogContent: changed from `max-h-[90vh] overflow-hidden` to `flex max-h-[90vh] flex-col` (proper flex layout)
+  1493→- DialogHeader: added `shrink-0 items-center justify-between` (fixed at top)
+  1494→- Form: changed from `max-h-[70vh] flex-col` to `min-h-0 flex-1 flex-col` (fills available space)
+  1495→- Form body: `min-h-0 flex-1 overflow-y-auto` (scrolls within available space)
+  1496→- DialogFooter: added `shrink-0 flex-row bg-card` (always visible at bottom, no cut-off)
+  1497→- Description textarea: rows=3→4, added `min-h-[110px] resize-y leading-relaxed` + placeholder
+  1498→- Status Select: added `whitespace-nowrap` on trigger + items (no more "Availab..." truncation)
+  1499→- Room type Select: added `whitespace-nowrap` on trigger
+  1500→
+  1501→**3. Public Room Details — Thumbnails Single-Line Scrollable (RoomDetailsPage.tsx)**
+  1502→- Removed `sm:grid sm:grid-cols-5 sm:overflow-visible` (caused 4+1 wrap when >5 images)
+  1503→- Always uses `flex gap-3 overflow-x-auto no-scrollbar` on ALL breakpoints
+  1504→- Each thumbnail: `size-20 sm:size-24 shrink-0` (fixed size, never shrinks/wraps)
+  1505→- Active state: `border-primary ring-2 ring-primary/20` (stronger visual feedback)
+  1506→- Added hover caption label on each thumbnail (gradient overlay, derived from altText)
+  1507→- Added chevron left/right arrows (visible when images.length > 3) for discoverability
+  1508→- Added `thumbsRef` with auto-scrollIntoView on activeImage change (active thumb stays in view)
+  1509→- Added image counter "1 / 8" on main image (top-right, black/60 backdrop)
+  1510→- Added "Click to expand" hint on main image hover
+  1511→
+  1512→**4. Public Room Details — Stat Tiles + Price Row (RoomDetailsPage.tsx)**
+  1513→- StatTile value: added `truncate` + `title={value}` (no more 2-line wrap for "4 bedrooms · 21 beds · 5.5 baths")
+  1514→- Price row "₱45,000 × 2 nights": added `whitespace-nowrap` on label span (no wrapping)
+  1515→- Price total: added `shrink-0` so it doesn't get squeezed
+  1516→- Booking card "From"/Available row: added `gap-3 min-w-0` on left div + `shrink-0` on Badge
+  1517→- "Book These Dates" button: added `items-center gap-2` for proper arrow alignment
+  1518→
+  1519→**5. Public Room Details — Hero Image + Lightbox (RoomDetailsPage.tsx)**
+  1520→- Main image aspect: `aspect-[4/3]` → `aspect-[16/10]` (better landscape framing)
+  1521→- Replaced raw <img> with <SmartImage> (blur-up progressive loading, eager load)
+  1522→- Added caption overlay (bottom gradient, white text) — strips "Category::" prefix for clean display
+  1523→- Main image is now a <button> with `cursor-zoom-in` — opens lightbox on click
+  1524→- New <Lightbox> component (createPortal to document.body):
+  1525→  - Full-screen black/90 backdrop with backdrop-blur
+  1526→  - Close (X) button top-right
+  1527→  - Image counter top-left ("1 / 3")
+  1528→  - Prev/next chevron buttons (left/right center)
+  1529→  - Caption below image (strips category prefix)
+  1530→  - Keyboard nav: Escape (close), ArrowLeft/Right (prev/next)
+  1531→  - Body scroll lock when open
+  1532→  - Click backdrop to close (click image doesn't close)
+  1533→
+  1534→**6. Backward compat for image altText**
+  1535→- Public side: all altText displays use `.split("::").pop()?.trim() ?? altText` to strip category prefix
+  1536→- Admin side: parseImageAlt() extracts category from prefix; old images default to "Other"
+  1537→- No schema migration needed — existing altText values still work
+  1538→
+  1539→Verification (agent-browser + VLM):
+  1540→- ✅ Lint: 0 errors (1 pre-existing RHF warning in BookingsAdmin)
+  1541→- ✅ Dev server: HTTP 200, clean compiles
+  1542→- ✅ Public Room Details (Beachfront Suite): thumbnails in single horizontal row (3 images, no wrap), stat tiles all single-line (Sleeps/Size/Beds/View), image counter "1/3" visible, caption "Beachfront Suite — view 1" on main image
+  1543→- ✅ Admin Edit Room modal: footer (Cancel/Save) fully visible (no cut-off), description textarea full text visible, image manager with 2 existing image cards in horizontal row, category labels with icons ("Other" for legacy images), single-line URLs, "Add an image" form with URL + category dropdown (set to "Pool") + caption input, Cover badge in DOM (verified via eval)
+  1544→- ✅ Lightbox: opens on main image click, full-screen dark backdrop, large centered image, X close button, prev/next chevrons, image counter, keyboard nav works
+  1545→
+  1546→Stage Summary:
+  1547→- Files changed (2): src/components/admin/RoomsAdmin.tsx, src/components/public/rooms/RoomDetailsPage.tsx
+  1548→- New helpers: IMAGE_CATEGORIES, parseImageAlt, formatImageAlt, getCategoryConfig (RoomsAdmin); Lightbox component (RoomDetailsPage)
+  1549→- Admin image manager: 9 categories with icons, horizontal scrollable cards, single-line URLs, caption required, Cover badge
+  1550→- Admin modal layout: proper flex column (header fixed / body scrolls / footer fixed), no more cut-off
+  1551→- Public thumbnails: always single-line scrollable, chevron arrows, captions, image counter
+  1552→- Public hero: 16:10 landscape, SmartImage blur-up, caption overlay, click-to-open lightbox
+  1553→- Lightbox: full-screen viewer with keyboard nav, body scroll lock, prev/next/close
+  1554→- Backward compat: existing altText works (defaults to "Other" category), no schema migration
+  1555→- Lint: 0 errors. Dev server: HTTP 200, no runtime errors.
+  1556→
+  1557→---
+  1558→Task ID: 13
+  1559→Agent: Main (Z.ai Code) — Image upload system + gallery pagination + lazy loading
+  1560→
+  1561→Task: User requested: (1) Replace URL-linking with file upload for images (more logical for non-tech users), (2) Add pagination for the photos/gallery section, (3) Always use lazy loading going forward.
+  1562→
+  1563→Work Log:
+  1564→
+  1565→**1. File Upload API Endpoint (NEW: src/app/api/upload/route.ts)**
+  1566→- POST /api/upload accepts multipart/form-data with single "file" field
+  1567→- Auth required (admin only) via requireAuth()
+  1568→- Validates: MIME type (JPG/PNG/WebP/GIF/AVIF), size (max 8 MB), non-empty
+  1569→- Saves to public/uploads/<timestamp>-<random>-<slug>.<ext>
+  1570→- Returns { url, filename, originalName, size, mimeType }
+  1571→- Logs to AuditLog (action: IMAGE_UPLOADED)
+  1572→- Created public/uploads/ directory
+  1573→
+  1574→**2. Reusable ImageUploader Component (NEW: src/components/admin/ImageUploader.tsx)**
+  1575→- Drag & drop dropzone with click-to-browse fallback
+  1576→- Client-side validation: MIME type, size (8 MB), format
+  1577→- Local preview via URL.createObjectURL (revoked after upload)
+  1578→- Loading spinner overlay during upload
+  1579→- "Clear preview" button (X) after upload
+  1580→- Keyboard accessible (Enter/Space to open picker)
+  1581→- Props: onUploaded(url), disabled, compact, label, accept, className
+  1582→- Toast notifications for errors
+  1583→- Resets input after upload so same file can be re-selected
+  1584→
+  1585→**3. Admin Gallery — Upload + Pagination (GalleryAdmin.tsx)**
+  1586→- AddImageDialog: replaced URL input with <ImageUploader>
+  1587→- Modal layout: flex flex-col (header fixed, body scrolls, footer fixed)
+  1588→- Added "Image" required field with upload dropzone
+  1589→- Shows "Uploaded: /uploads/..." confirmation text after upload
+  1590→- Added pagination (PAGE_SIZE=12): Previous/page numbers/Next buttons
+  1591→- Added photo count + page info ("18 photos · page 1 of 2")
+  1592→- Category change resets to page 1
+  1593→- All gallery images use loading="lazy"
+  1594→
+  1595→**4. Admin Rooms Modal — Upload (RoomsAdmin.tsx)**
+  1596→- Replaced URL input in "Add an image" form with <ImageUploader compact>
+  1597→- Removed URL validation from addImage() (upload handles validation)
+  1598→- Add image button disabled until both URL (uploaded) AND caption present
+  1599→- Category dropdown + caption input preserved
+  1600→- Existing image cards unchanged (horizontal scrollable row with category labels)
+  1601→
+  1602→**5. Public Gallery — Pagination + Lazy Loading (GalleryPage.tsx)**
+  1603→- Added pagination (PAGE_SIZE=12): Previous/page numbers/Next buttons
+  1604→- Smart page number display (first, last, current, neighbors + ellipsis)
+  1605→- "Showing X–Y of Z" text indicator
+  1606→- Category change resets to page 1 + closes lightbox
+  1607→- Lightbox index uses absolute position (pageOffset + relative idx)
+  1608→- Replaced raw <img> with <SmartImage> (blur-up progressive loading)
+  1609→- All images use loading="lazy"
+  1610→
+  1611→**6. Validator Updates (validators.ts)**
+  1612→- galleryCreateSchema.url: z.string().url() → refine() accepting "/" prefix or https?://
+  1613→- roomCreateSchema.imageUrls.url: same refine() update
+  1614→- Allows relative paths like "/uploads/xxx.png" (from upload endpoint)
+  1615→- Backward compatible: existing https:// URLs still work
+  1616→
+  1617→**7. Lazy Loading Audit**
+  1618→- GalleryPage: SmartImage with loading="lazy" (was already lazy, now blur-up too)
+  1619→- GalleryAdmin: added loading="lazy" to all gallery card images
+  1620→- RoomsAdmin: image cards already had loading="lazy"
+  1621→- RoomDetailsPage: SmartImage for hero (eager), thumbnails loading="lazy"
+  1622→- ImageUploader: preview uses local blob URL (instant)
+  1623→
+  1624→Verification (agent-browser + VLM):
+  1625→- ✅ Lint: 0 errors, 2 pre-existing RHF warnings
+  1626→- ✅ Dev server: HTTP 200, clean compiles
+  1627→- ✅ Upload API: POST /api/upload returns 201, file saved to public/uploads/
+  1628→- ✅ Admin Gallery Add photo: dropzone visible, file uploads, preview shows, "Uploaded: /uploads/..." text appears, Add photo button enables, POST /api/gallery returns 201
+  1629→- ✅ Admin Gallery pagination: "19 photos · page 1 of 2" with Previous/Next + page number buttons
+  1630→- ✅ Admin Rooms Edit modal: upload dropzone in "Add an image" section, category dropdown (Pool), caption input, Add image button
+  1631→- ✅ Public Gallery: "19 photos · page 1 of 2", "Showing 1–12 of 19", pagination buttons work, page 2 shows "Showing 13–19 of 19", images load with blur-up effect
+  1632→- ✅ Backward compat: existing Unsplash URL images still display (validators accept both)
+  1633→
+  1634→Stage Summary:
+  1635→- New files (2): src/app/api/upload/route.ts, src/components/admin/ImageUploader.tsx
+  1636→- Modified files (4): GalleryAdmin.tsx, RoomsAdmin.tsx, GalleryPage.tsx, validators.ts
+  1637→- Created: public/uploads/ directory for uploaded files
+  1638→- Upload flow: file → /api/upload → public/uploads/xxx.png → /uploads/xxx.png URL → saved to DB
+  1639→- Pagination: both public gallery (12/page) and admin gallery (12/page) with smart page numbers + ellipsis
+  1640→- Lazy loading: all gallery images use SmartImage (blur-up) + loading="lazy"
+  1641→- Validators: accept both absolute URLs and relative /uploads/ paths
+  1642→- Lint: 0 errors. Dev server: HTTP 200, upload + gallery POST verified working end-to-end.
+  1643→
+  1644→---
+  1645→Task ID: 13-a
+  1646→Agent: main (orchestrator)
+  1647→Task: Add confirmation popup messages + toast feedback to EVERY action button across all admin modules (delete/update/create/status-change), plus important user-section actions.
+  1648→
+  1649→Work Log:
+  1650→- Ran comprehensive inventory via Explore subagent across all 12 admin files.
+  1651→- Found: 3 files already use AlertDialog for deletes (Rooms/Gallery/Amenities); 10 unguarded status mutations in BookingsAdmin; 2 in DashboardAdmin; logout + mark-all-read in AdminLayout; room status dropdown in RoomsAdmin; 3 settings saves; GuestsAdmin "new booking for guest" navigation.
+  1652→- Created reusable `/src/components/admin/ConfirmDialog.tsx` — wraps AlertDialog with tone-based icons (destructive/warning/success/info/default), loading state on confirm button, blocks dismissal while in-flight, async-safe onConfirm.
+  1653→- Improved the user's prompt into a 3-tier spec (destructive→confirm; committing→confirm+toast; create/update→loading+toast) before coding.
+  1654→
+  1655→Stage Summary:
+  1656→- Foundation component `ConfirmDialog` ready for use across all admin modules.
+  1657→- Next: wire it into BookingsAdmin, DashboardAdmin, AdminLayout, RoomsAdmin, SettingsAdmin, GuestsAdmin.
+  1658→
+  1659→---
+  1660→Task ID: 13-b
+  1661→Agent: main (orchestrator)
+  1662→Task: Wire ConfirmDialog into all admin action buttons + agent-browser QA.
+  1663→
+  1664→Work Log:
+  1665→- BookingsAdmin: added shared `pendingAction` state + `getStatusConfirm()` map; routed all 10 status buttons (Approve/Decline/Check-in/Check-out × table/mobile/details-dialog) through one ConfirmDialog; uses `mutateAsync` + `isPending` for loading; preserved existing email-notification toasts.
+  1666→- DashboardAdmin: NeedsAttention Approve/Decline now route through a ConfirmDialog with per-status tone (success/destructive) + success/email toasts on confirm.
+  1667→- AdminLayout: logout now opens a ConfirmDialog (default tone, LogOut icon) with a `loggingOut` loading state; "Mark all read" opens an info-tone ConfirmDialog + now toasts success/error.
+  1668→- RoomsAdmin: room status dropdown (AVAILABLE/OCCUPIED/MAINTENANCE/BLOCKED) routes through a ConfirmDialog with status-specific tone + description.
+  1669→- GalleryAdmin + AmenitiesAdmin: upgraded their raw AlertDialog deletes to the shared ConfirmDialog (destructive tone, trash icon, "cannot be undone" hint) for visual consistency; removed now-unused AlertDialog imports.
+  1670→- GuestsAdmin (the "Users" section): "New booking for this guest" now opens an info-tone ConfirmDialog + toasts "Starting a new booking for {name}" on confirm.
+  1671→- SettingsAdmin: verified already satisfies create/update tier (loading state on Save + success/error toast on all 3 tabs) — no change needed.
+  1672→- Lint: 0 errors (3 pre-existing warnings about RHF `watch()`, unrelated).
+  1673→- agent-browser QA verified end-to-end: room status Maintenance confirm, reservation Check-in confirm (fired mutation successfully), logout confirm, photo delete confirm — all render with correct titles/tones/buttons; Cancel dismisses without firing; no console or dev.log errors.
+  1674→
+  1675→Stage Summary:
+  1676→- Every state-changing admin action now has a confirmation popup (destructive/committing) or loading+toast (create/update), driven by one reusable `ConfirmDialog` component for a consistent look.
+  1677→- Tone-coded icons: destructive=red trash, warning=amber alert, success=green check, info=primary, default=logout.
+  1678→- Loading state on confirm buttons + dismissal blocked while a request is in-flight (safer for destructive ops).
+
+[showing lines 1200-1678 of 1680; use offset=1679 with limit to continue reading]

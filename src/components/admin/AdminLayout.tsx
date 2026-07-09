@@ -202,7 +202,7 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
         onOpenChange={setConfirmLogout}
         tone="default"
         title="Sign out of admin?"
-        description="You'll need to sign in again to continue managing Verdara Resort. Any unsaved work in open forms will be lost."
+        description="You'll need to sign in again to continue managing The Twenty-Fifth. Any unsaved work in open forms will be lost."
         confirmLabel="Sign out"
         loading={loggingOut}
         onConfirm={handleLogoutConfirm}

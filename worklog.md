@@ -1677,3 +1677,293 @@ Stage Summary:
 - Tone-coded icons: destructive=red trash, warning=amber alert, success=green check, info=primary, default=logout.
 - Loading state on confirm buttons + dismissal blocked while a request is in-flight (safer for destructive ops).
 - All 4 tested flows green via agent-browser.
+
+---
+Task ID: QA-1
+Agent: general-purpose (QA)
+
+Task: Comprehensive agent-browser QA pass across all public + admin pages
+
+Work Log:
+- Read prior worklog (Phases 1–13-b). Noted: shared `ConfirmDialog` was wired into BookingsAdmin, DashboardAdmin, AdminLayout (logout), RoomsAdmin (status dropdown), GalleryAdmin, AmenitiesAdmin, GuestsAdmin ("New booking for this guest") per Task 13-b.
+- Opened `http://localhost:3000`, took 52 screenshots across all pages, used `agent-browser snapshot` for accessibility tree on every page, used `agent-browser eval` to inspect DOM/tones for each ConfirmDialog.
+- Installed runtime error capture (`window.__errors`) and ran it through every page — no errors captured.
+- Tailed `dev.log` (last 100 lines) — every API route returned 200, no exceptions, no compile errors.
+
+Test steps (pass/fail):
+
+**Public pages**
+- Home — hero slideshow, check-availability card, 4 room config cards + 1 Whole Villa card (5 total), amenities preview (6 tiles), gallery teaser (4 images), stats (4 + Beachfront), CTA — PASS (visual). NOTE: stats Bath tile shows "6.0" not "5.5" (see Bugs #1).
+- The Villa — clicked "The Villa" nav — PASS. 5 options, "All/Whole Villa/Bedrooms" filter chips visible.
+- Room Details — clicked "View Details" on Beachfront Suite — PASS. Hero image with "1 / 3" counter + "Click to expand", 3 thumbnails in single horizontal row, stat tiles (Sleeps/Size/Beds/View), booking card with price × nights + Book button, "Other configurations" section.
+- Amenities — PASS. Two grouped sections (Villa & Grounds, Bedrooms), all amenities with descriptions.
+- Gallery — PASS. "19 photos · page 1 of 2", 6 category filters (All/Resort/Rooms/Dining/Nature/Events). Filter "Rooms" → "5 photos" (correct).
+- About — PASS. Stats here correctly show "4 / 21 / 5.5 / 25" (NOT 6.0 — confirms Bug #1 is animation-only).
+- FAQs — PASS. 17 FAQs across 4 categories. Clicked "How do I book?" — accordion expanded showing answer.
+- Contact — PASS. Form with required Full name/Email/Message + optional Phone. Submit-on-empty: native HTML5 validation kicks in (form.checkValidity() returns false). Source confirms JS toast fallback ("Please fill in your name, email, and message").
+
+**Booking flow**
+- "Book Your Stay" → BookingFlow renders — PASS. 3-step indicator (Dates/Details/Confirm), date pickers, Adults/Children steppers, room cards with "Choose" buttons, Continue button.
+- Click Continue without selecting room — PASS. Toast "Please pick your stay below first" appears.
+- "Find My Booking" → FindReservation renders — PASS. Reference + email form, "Find my booking" button, "Lost your reference number?" Messenger link.
+
+**Admin login + admin pages**
+- Logged in via localStorage view-hack to admin-login, then entered `admin@verdararesort.com / verdara2025` — PASS. Toast "Welcome back, Villa." Appears. Sidebar shows "RA / Resort Administrator / Super Admin".
+- Also tested "Autofill credentials" button on login page — fills `stay@the25thinzambales.com / the25thzambales` (Villa Manager account) — both credential sets work; both are Super Admin.
+- DashboardAdmin (Today) — PASS. Stats cards (arrivals=1, departures=0, in-house=2, pending=0), "You're all caught up" empty state, 40% occupancy donut chart, Arrivals today list with Yuki Tanaka. NOTE: arrival timestamp shows "12AM" (see UX #2).
+- BookingsAdmin — PASS. Tabs (All/Pending/Confirmed2/Checked in1/Completed3/Cancelled1/History7), table with 10 bookings paginated (1-8 of 10, page 1 of 2). Action buttons render conditionally on status (Check in on Confirmed, Check out on Checked In, View/Details on cancelled/completed/declined).
+- CalendarAdmin — PASS. 14-day table (Jul 9–22), 6 status legend chips, 7-day/14-day/30-day toggles, Previous/Today/Next week nav.
+- RoomsAdmin — PASS. 5 room cards with image, status badge, price, Edit button, status dropdown (Open/Reserved/Occupied/Cleaning/Maintenance/Blocked), Remove room (trash) button.
+- GuestsAdmin (Users) — PASS. 10-guest table with GUEST/CONTACT/LOCATION/STAYS/LAST STAY columns. Clicked Juan Dela Cruz row — guest profile dialog opened with profile info + reservation history + "New booking for this guest" + Close button. NOTE: dialog has TWO Close buttons (icon X + text "Close") — UX #3. NOTE: "New booking for this guest" button does NOT open ConfirmDialog (see Bug #2).
+- AmenitiesAdmin — PASS. RESORT + ROOM category sections, 20 amenities total with "Remove" buttons.
+- GalleryAdmin (Photos) — PASS. "19 photos · page 1 of 2", 6 category filter tabs, Add Image button, photo cards with "Remove {title}" buttons.
+- ReportsAdmin — PASS. 7/30/90-day toggles + Export CSV. KPIs (Revenue ₱523,000, Reservations 10, Avg stay 2.7 nights, Occupancy 40%), Revenue-by-month line chart, Bookings-trend bar chart, Reservation-status donut + legend, Room popularity bar chart.
+- SettingsAdmin — PASS. 3 tabs (General / Operations / Finance) all render with form fields and Save changes buttons.
+
+**ConfirmDialog tests**
+- RoomsAdmin → status dropdown → "Maintenance" → ConfirmDialog appears: title "Put Master Suite under maintenance?", description about hiding from booking, amber warning tone (text-amber-500 + lucide-triangle-alert icon), Cancel + "Set as maintenance" buttons. Cancel dismisses without firing. — PASS
+- BookingsAdmin → Confirmed reservation → "Check in" → ConfirmDialog: title "Check in this guest?", description "Mark Anika Sharma (TTF-2026-001005) as checked in...", info/primary tone (text-primary + lucide-info icon), Cancel + "Check in guest" buttons (primary teal bg rgb(14,90,111)). Cancel dismisses. — PASS
+- BookingsAdmin → Checked In reservation → "Check out" → ConfirmDialog: title "Check out this guest?", description "Check out Elena Reyes (TTF-2026-001007)... This cannot be undone.", info/primary tone, Cancel + "Check out guest" buttons. — PASS
+- GalleryAdmin → photo "Remove" → ConfirmDialog: title "Remove this photo?", description with "This cannot be undone.", destructive tone (text-destructive + lucide-trash-2 icon), Cancel + "Remove photo" buttons (red bg rgb(192,57,43)). — PASS
+- AmenitiesAdmin → amenity "Remove" → ConfirmDialog: title "Remove this amenity?", description "Beach Loungers will be removed... This cannot be undone.", destructive tone (text-destructive + lucide-trash-2 icon), Cancel + "Remove amenity" buttons (red bg). — PASS
+- AdminLayout → "Sign out" button → ConfirmDialog: title "Sign out of admin?", description "You'll need to sign in again to continue managing Verdara Resort...", default tone (text-muted-foreground + lucide-log-out icon), Cancel + "Sign out" buttons (primary teal). — PASS (but see UX #1: stale "Verdara Resort" brand reference).
+- RoomsAdmin → "Remove room" (trash) button → AlertDialog appears (NOT the shared ConfirmDialog): title "Remove this room?", description with "This cannot be undone.", Cancel + "Remove room" buttons (red bg), BUT no icon, no tone-coded SVG circle, no shared ConfirmDialog layout. — PARTIAL PASS (see Bug #3: inconsistency).
+- GuestsAdmin → "New booking for this guest" button → NO ConfirmDialog appears. Button directly calls `navigate("book")`. The ConfirmDialog declared in the component is dead code (state `confirmBooking` is never set to `true`). — FAIL (see Bug #2).
+
+**Errors**
+- `window.__errors` after full navigation across all 16+ pages: `[]` (empty).
+- `dev.log` last 100 lines: all routes 200, no compile errors, no exceptions.
+
+Stage Summary:
+
+**Public pages (status)**:
+- Home — PASS (with Bug #1: stats animation rounds 5.5 → 6.0)
+- The Villa — PASS
+- Room Details (Beachfront Suite) — PASS
+- Amenities — PASS
+- Gallery — PASS (pagination + category filters verified)
+- About — PASS
+- FAQs — PASS (accordion verified)
+- Contact — PASS (form + validation verified)
+- BookingFlow — PASS (3-step flow, toast validation verified)
+- FindReservation — PASS
+
+**Admin pages (status)**:
+- AdminLogin — PASS (both credential sets work)
+- DashboardAdmin — PASS (with UX #2: misleading "12AM" arrival time)
+- BookingsAdmin — PASS (pagination, tabs, action buttons, ConfirmDialog for Check-in/Check-out verified)
+- CalendarAdmin — PASS
+- RoomsAdmin — PASS (with Bug #3: legacy AlertDialog for "Remove room")
+- GuestsAdmin — PASS (with Bug #2: "New booking for this guest" bypasses ConfirmDialog; UX #3: dual Close buttons)
+- AmenitiesAdmin — PASS (ConfirmDialog destructive verified)
+- GalleryAdmin — PASS (ConfirmDialog destructive verified)
+- ReportsAdmin — PASS (all 4 charts render)
+- SettingsAdmin — PASS (3 tabs verified)
+
+**Bugs found (ranked by severity)**:
+1. **HIGH** — GuestsAdmin "New booking for this guest" bypasses ConfirmDialog. Button `onClick` directly calls `selectRoom(""); navigate("book")` instead of `setConfirmBooking(true)`. The `ConfirmDialog` with tone="info" + title "Start a new booking for {name}?" + `startBookingForGuest` (which fires the `toast.success("Starting a new booking for {name}.")`) is dead code — never triggered. Worklog Task 13-b claimed this was wired up, but the actual button code skips the dialog. File: `src/components/admin/GuestsAdmin.tsx` line ~580-590.
+2. **MEDIUM** — Home page stats Bath tile shows "6.0" instead of "5.5" after the count-up animation completes. Root cause: `useCountUp` hook (src/components/public/shared.tsx:214) uses `Math.round(eased * target)` which loses decimal precision; for target=5.5 the final value is `Math.round(5.5)=6`, then displayed as `count.toFixed(1)` → "6.0". About page (which doesn't use the animation) correctly shows "5.5". Fix: use `target * eased` (no rounding) or special-case fractional targets.
+3. **LOW/MEDIUM** — RoomsAdmin "Remove room" still uses legacy `AlertDialog` (no icon, no tone-coded layout) while GalleryAdmin and AmenitiesAdmin were upgraded to the shared `ConfirmDialog` with destructive tone + trash-2 icon in Task 13-b. Inconsistent UX. File: `src/components/admin/RoomsAdmin.tsx` lines 381–404.
+
+**UX issues found**:
+1. **LOW** — Stale brand reference in Sign out ConfirmDialog: description says "managing Verdara Resort" but the public site is branded "The Twenty-Fifth". File: `src/components/admin/AdminLayout.tsx` (ConfirmDialog description for logout). Also affects `ADMIN_CREDENTIALS` constant — but that's intentional dev hint.
+2. **MEDIUM** — DashboardAdmin "Arrivals today" timeline shows misleading "12AM" timestamp. The component calls `formatTime(r.checkIn)` on the reservation's checkIn date, but checkIn is stored as midnight (00:00) so it formats as "12:00 AM" → after `.replace(":00","").replace(" ","")` → "12AM". The actual check-in time is 14:00 per Settings. Fix: use the resort's checkInTime setting instead of the date's time component. File: `src/components/admin/DashboardAdmin.tsx` line ~394.
+3. **LOW** — GuestsAdmin guest profile dialog has TWO Close buttons: an icon X (aria-label "Close") in the header AND a text "Close" button in the footer. Redundant — pick one. File: `src/components/admin/GuestsAdmin.tsx` lines ~591–597.
+4. **LOW** — Admin login page "Demo credentials" hint shows `stay@the25thinzambales.com / the25thzambales` (Villa Manager account), but task/worklog references `admin@verdararesort.com / verdara2025` (Resort Administrator). Both work, but the dev hint is misleading. File: `src/lib/constants.ts:243-246` `ADMIN_CREDENTIALS`.
+5. **LOW** — Home page stats section initially renders all values as "0" until IntersectionObserver fires the count-up animation. If user lands on a viewport where stats are below the fold, they see "0 Bedrooms / 0 Beds / 0.0 Baths / 0 Guests" briefly. Could be misread as missing data. Consider starting the animation on mount (with `requestAnimationFrame`) instead of waiting for intersection, OR show the final value with `font-variant-numeric: tabular-nums` and animate opacity.
+
+**Recommended next-step fixes (ranked by priority)**:
+1. Fix GuestsAdmin "New booking for this guest" — change button onClick from `{selectRoom(""); navigate("book")}` to `() => setConfirmBooking(true)` so the existing ConfirmDialog actually fires (and the success toast along with it). One-line fix.
+2. Fix Home page `useCountUp` rounding bug — replace `Math.round(eased * target)` with `eased * target` (the display formatter already handles decimals via `toFixed(1)`). One-line fix.
+3. Fix DashboardAdmin "12AM" arrival time — replace `formatTime(r.checkIn)` with the resort's checkInTime from settings (or default "14:00"), and similarly for departures using checkOutTime. ~5-line fix.
+4. Upgrade RoomsAdmin "Remove room" AlertDialog to the shared ConfirmDialog (destructive tone) for consistency with GalleryAdmin/AmenitiesAdmin. ~20-line refactor.
+5. Fix stale "Verdara Resort" → "The Twenty-Fifth" in logout ConfirmDialog description. One-line copy fix.
+6. Remove redundant Close button in GuestsAdmin guest profile dialog (keep just the footer text "Close" — or just the header X).
+7. Optional: replace `IntersectionObserver`-gated count-up with mount-time animation OR show final values immediately and animate opacity.
+
+**Confirmation that all admin confirm dialogs work as expected**:
+- ✅ Room status change (Maintenance): amber warning tone, triangle-alert icon — CORRECT
+- ✅ Bookings Check-in: info/primary tone, info icon — CORRECT
+- ✅ Bookings Check-out: info/primary tone, info icon — CORRECT (with "cannot be undone" warning)
+- ✅ Gallery photo delete: destructive red tone, trash-2 icon — CORRECT
+- ✅ Amenity delete: destructive red tone, trash-2 icon — CORRECT
+- ✅ Sign out: default tone, log-out icon — CORRECT (with stale brand text — UX #1)
+- ❌ RoomsAdmin "Remove room": uses legacy AlertDialog (no icon) — INCONSISTENT (Bug #3)
+- ❌ GuestsAdmin "New booking for this guest": ConfirmDialog is dead code — NEVER TRIGGERS (Bug #2)
+
+Files inspected (no changes — pure QA):
+- `src/components/public/home/HomePage.tsx` (STATS array, AnimatedStat)
+- `src/components/public/shared.tsx` (useCountUp hook — line 195–222)
+- `src/components/public/contact/ContactPage.tsx` (form validation)
+- `src/components/public/booking/BookingFlow.tsx` (Step1Dates, Continue button validation)
+- `src/components/public/booking/FindReservation.tsx`
+- `src/components/admin/AdminLogin.tsx` (demo credentials hint)
+- `src/components/admin/AdminLayout.tsx` (logout ConfirmDialog)
+- `src/components/admin/RoomsAdmin.tsx` (legacy AlertDialog for delete at line 381)
+- `src/components/admin/GuestsAdmin.tsx` (dead ConfirmDialog + bypassed setConfirmBooking)
+- `src/components/admin/DashboardAdmin.tsx` (TodayTimeline formatTime call at line 394)
+- `src/lib/constants.ts` (ADMIN_CREDENTIALS)
+- `src/lib/utils.ts` (formatTime)
+
+Screenshots: 52 files in `/home/z/my-project/download/qa-*.png` covering every public page, every admin page, and every ConfirmDialog state (open + cancelled).
+
+
+---
+Task ID: 14
+Agent: Main (Z.ai Code) — Bug fixes + feature enhancements + visual polish
+
+Task: After QA-1 (general-purpose agent) found bugs and UX gaps across the project, fix all bugs, add 3 new features (Rooms filter+sort, print-friendly invoice, reservation status timeline), and polish StatCard + EmptyState visuals.
+
+Work Log:
+
+**1. Bug fixes (5 bugs from QA-1 report)**
+
+- **BUG-1 (HIGH) — GuestsAdmin "New booking for this guest" bypassed ConfirmDialog.**
+  File: `src/components/admin/GuestsAdmin.tsx`
+  - The button's `onClick` directly called `selectRoom(""); navigate("book")` — the ConfirmDialog (tone="info") declared in the component was never triggered.
+  - Fix: `onClick={() => setConfirmBooking(true)}` — now opens the ConfirmDialog, then on confirm fires `startBookingForGuest` which sets the toast + navigates.
+  - Verified: clicking the button opens the ConfirmDialog with title "Start a new booking for Juan Dela Cruz?". Cancel dismisses without firing.
+
+- **BUG-2 (MEDIUM) — Home page stats "Baths" showed "6.0" instead of "5.5".**
+  File: `src/components/public/shared.tsx`
+  - `useCountUp` used `Math.round(eased * target)`. For target=5.5, `Math.round(5.5)===6`, then displayed via `toFixed(1)` → "6.0".
+  - Fix: detect fractional targets and use `Math.round(eased * target * 10) / 10` to preserve 1-decimal precision.
+  - Verified: stats band now correctly shows "4 / 21 / 5.5 / 25 / Private".
+
+- **BUG-3 (LOW/MEDIUM) — RoomsAdmin "Remove room" used legacy AlertDialog instead of shared ConfirmDialog.**
+  File: `src/components/admin/RoomsAdmin.tsx`
+  - Inconsistent with GalleryAdmin + AmenitiesAdmin (which were upgraded to the shared `ConfirmDialog` in Task 13-b).
+  - Fix: replaced the AlertDialog block with `<ConfirmDialog tone="destructive" title={`Remove ${deleting?.name}?`} ... />` and removed the now-unused `AlertDialog*` imports.
+  - Now uses the same destructive trash-2 icon + tone-coded layout as other delete flows.
+
+- **BUG-4 (MEDIUM) — DashboardAdmin "Arrivals today" / "Departures today" showed misleading "12AM" timestamp.**
+  File: `src/components/admin/DashboardAdmin.tsx` + `src/lib/utils.ts`
+  - The reservation dates are stored at midnight (00:00), so `formatTime(r.checkIn)` rendered "12 AM" instead of the resort's standard 2:00 PM check-in time.
+  - Fix: added `formatClockTime(hhmm)` helper in `utils.ts` (converts "14:00" → "2 PM"), and updated both TodayTimeline lists to use `formatClockTime(RESORT_INFO.checkInTime)` / `formatClockTime(RESORT_INFO.checkOutTime)` instead of the reservation date's time.
+  - Also added `leading-tight` to the time-stamp tile so the "2PM" / "12PM" labels don't wrap.
+
+- **BUG-5 (LOW) — Stale "Verdara Resort" brand in logout ConfirmDialog.**
+  File: `src/components/admin/AdminLayout.tsx`
+  - The description said "managing Verdara Resort" but the public site is branded "The Twenty-Fifth".
+  - Fix: one-line copy change to "managing The Twenty-Fifth".
+  - Searched for other stale "Verdara" references in `src/` — none found.
+
+**2. FEATURE-1 — Public Rooms page: filter + sort + sticky toolbar**
+
+File: `src/components/public/rooms/RoomsPage.tsx` (full rewrite)
+
+- Added **capacity filter** dropdown: Any guests / 2+ / 4+ / 8+ / 12+ / 16+ guests.
+- Added **sort dropdown** with 5 options: Recommended (default), Price: Low→High, Price: High→Low, Sleeps: Most first, Name: A→Z.
+- "Recommended" puts whole-villa configs first, then sorts by capacity desc.
+- Filter chips upgraded to **rounded-full pill** style (was squared).
+- Toolbar is **sticky** below the nav (`sticky top-[64px] z-30`) with `backdrop-blur` so users always see filters while scrolling room cards.
+- Added **active-filter "Reset" button** that appears only when filters/sort are non-default.
+- Added **result count** ("X of Y configurations") under the toolbar.
+- Added **price-bounds hint** in the page header ("from ₱X to ₱Y per night").
+- Empty state now has an icon, descriptive copy, and a Reset button (instead of just one line of text).
+- Mobile-friendly: capacity + sort dropdowns collapse to a vertical stack on small screens.
+
+**3. FEATURE-2 — Print-friendly reservation invoice (guest side)**
+
+Files: `src/components/public/booking/FindReservation.tsx`, `src/components/public/booking/BookingFlow.tsx`, `src/app/globals.css`
+
+- Added comprehensive **@media print** CSS block in `globals.css`:
+  - Hides `nav`, `footer`, and any element with `[data-print-hide]`.
+  - Resets background to white, font-size to 11pt for print.
+  - Forces `[data-print-only]` blocks to `display:block` (visible only when printing).
+  - Strips box-shadows from `[data-invoice]` cards, adds `page-break-inside: avoid`.
+  - Prints status badges with their colors.
+  - Hides `[data-invoice-actions]` row entirely (no buttons in the printed invoice).
+  - Appends the URL after http/https links in print.
+- Added **"Print / Save as PDF" button** to FindReservation result row.
+- Added **print-only invoice header** showing resort name + address + phone + email + reference number (only visible when printing).
+- Added **print-only footer note** on the invoice ("Present this confirmation on arrival...").
+- Added `data-status-badge` attribute to badges so they print with their colored backgrounds.
+- Added `data-invoice` attribute to the main reservation Card so the print CSS can target it.
+- Added `data-invoice-actions` to the action-buttons row so they're hidden in print.
+- Replaced hardcoded "2:00 PM" / "12:00 PM" with `formatClockTime(RESORT_INFO.checkInTime/Out)` so times stay in sync with the resort's settings.
+- Same pattern applied to **BookingFlow ConfirmationScreen**: added a "Print confirmation" button, expanded the reservation details grid (check-in/out/stay/guests/room/total) inside the invoice card, added the print-only footer note, and added a "Copy reference number" button (uses `navigator.clipboard.writeText` with success/error toasts).
+
+**4. FEATURE-3 — State-aware reservation status timeline (admin)**
+
+File: `src/components/admin/BookingsAdmin.tsx`
+
+- Upgraded the basic `TimelineItem` component from a single-line bullet list to a proper **vertical timeline with connector lines**:
+  - Vertical 1px connector between dots (emerald when both items done, gray otherwise).
+  - Color-coded dots: emerald (done), red (danger terminal), amber (warning terminal), border-only (pending).
+  - Inline SVG checkmark inside completed dots.
+  - `pending` / `skipped` italic labels for items without dates.
+  - `isLast` prop suppresses the trailing connector for cleaner terminal states.
+  - `tone` prop ("default" | "danger" | "warning") controls the done-dot color.
+- Updated the timeline render block in `ReservationDetailsDialog` to be **state-aware**:
+  - **CANCELLED** → shows "Booking received" + "Cancelled" (red, terminal).
+  - **REJECTED** → shows "Booking received" + "Declined" (red, terminal).
+  - **NO_SHOW** → shows "Booking received" + "Marked no-show" (amber, terminal).
+  - **PENDING/CONFIRMED/CHECKED_IN/COMPLETED** → shows 4 steps: Booking received → Confirmed → Checked in → Checked out / Completed (with appropriate done/pending flags).
+- Uses `formatDateTime` (added to imports) for richer timestamps on timeline items.
+- Verified end-to-end: a Confirmed reservation shows 4 timeline items (2 done with emerald dots + checkmarks, 2 pending with "pending" label); a Declined reservation shows 2 items (booking received + declined with red dot).
+
+**5. POLISH — Visual upgrades**
+
+File: `src/components/admin/StatCard.tsx`
+
+- **StatCard** visual upgrade:
+  - Added accent stripe on left edge (gradient from primary/80 to transparent, opacity bumps on hover).
+  - Added soft halo around the icon (opacity 0 → 100 on group-hover).
+  - Added inline SVG up/down arrows next to delta values (was just text).
+  - Added `hover:shadow-card-hover` for subtle elevation on hover.
+  - Used `strokeWidth={1.75}` for richer icons.
+- **EmptyState** visual upgrade:
+  - Added `tone` prop (default/primary/danger/warning) — picks an appropriate icon-background color.
+  - Added soft blurred halo behind the icon for depth.
+  - Used `ring-1 ring-inset ring-border/60` for a more refined ring.
+  - Increased icon size 5→6, title size sm→base.
+  - Added `bg-gradient-to-b from-card to-muted/30` for subtle depth.
+  - Larger padding (`py-12` → `py-14`), more breathing room around the description.
+
+**6. Verification**
+
+- ✅ Lint: 0 errors, 3 pre-existing warnings (RHF `watch()` memos — known React Compiler limitation, unrelated to this work).
+- ✅ Dev server: HTTP 200 on all routes; no compile errors; no runtime errors in dev.log.
+- ✅ agent-browser QA verified end-to-end:
+  - Home page stats band: shows "4 / 21 / **5.5** / 25 / Private" (Baths fixed).
+  - Rooms page: 2 select dropdowns visible (capacity="Any guests", sort="Recommended"), 3 filter chips (All/Whole Villa/Bedrooms), sort dropdown opens with all 5 options.
+  - Admin dashboard: stat cards render with new accent stripe + halo on hover.
+  - Admin bookings details dialog (Confirmed reservation): timeline has 4 items — "Booking received" (emerald ✓) → "Confirmed" (emerald ✓) → "Checked in" (border-only, "pending") → "Checked out / Completed" (border-only, "pending").
+  - Admin bookings details dialog (Declined reservation): timeline has 2 items — "Booking received" (emerald ✓) → "Declined" (red, terminal).
+  - Admin guests → guest profile dialog → "New booking for this guest" button → opens ConfirmDialog titled "Start a new booking for Juan Dela Cruz?" (was previously bypassed).
+  - Find My Booking → searched "TTF-2026-001007" + "elena.reyes@email.com" → reservation card renders with `data-invoice` attr, print-only block present, "Print / Save as PDF" button visible.
+
+Stage Summary:
+
+**Bugs fixed (5):**
+- GuestsAdmin "New booking for this guest" now opens ConfirmDialog (was bypassed).
+- Home page "Baths" stat now shows "5.5" (was "6.0" due to Math.round on fractional target).
+- RoomsAdmin "Remove room" now uses shared ConfirmDialog (was legacy AlertDialog).
+- DashboardAdmin arrivals/departures now show "2PM" / "12PM" (was "12AM" — midnight reservation date).
+- Logout dialog copy now says "The Twenty-Fifth" (was stale "Verdara Resort").
+
+**Features added (3):**
+- Public Rooms page: capacity filter + sort dropdown + sticky toolbar + result count + price-bounds hint + Reset button.
+- Print-friendly invoice: @media print CSS + print-only header/footer + "Print / Save as PDF" buttons on both FindReservation result and BookingFlow ConfirmationScreen + Copy reference number button.
+- State-aware reservation status timeline: 4-step timeline (received → confirmed → checked-in → completed) with terminal-state branches for CANCELLED/REJECTED/NO_SHOW, vertical connector lines, color-coded dots (emerald/red/amber), inline checkmarks, "pending"/"skipped" italic labels.
+
+**Visual polish:**
+- StatCard: left-edge accent stripe, icon halo on hover, inline up/down arrows on deltas, hover shadow elevation.
+- EmptyState: tone-aware icon background (default/primary/danger/warning), blurred halo behind icon, ring-inset border, gradient background, larger padding.
+
+**Files changed (9):**
+- `src/components/admin/GuestsAdmin.tsx` (1-line onClick fix)
+- `src/components/admin/RoomsAdmin.tsx` (AlertDialog → ConfirmDialog + import cleanup)
+- `src/components/admin/DashboardAdmin.tsx` (formatClockTime for arrivals/departures)
+- `src/components/admin/AdminLayout.tsx` (logout copy fix)
+- `src/components/admin/BookingsAdmin.tsx` (state-aware timeline + TimelineItem upgrade)
+- `src/components/admin/StatCard.tsx` (StatCard + EmptyState polish)
+- `src/components/public/shared.tsx` (useCountUp fractional precision)
+- `src/components/public/rooms/RoomsPage.tsx` (filter + sort rewrite)
+- `src/components/public/booking/FindReservation.tsx` (print invoice + formatClockTime)
+- `src/components/public/booking/BookingFlow.tsx` (print confirmation + copy ref + invoice details grid)
+- `src/app/globals.css` (@media print block)
+- `src/lib/utils.ts` (formatClockTime helper)
+
+Lint: 0 errors, 3 pre-existing warnings. Dev server: HTTP 200, no errors.

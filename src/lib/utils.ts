@@ -62,6 +62,18 @@ export function formatTime(date: string | Date): string {
   }).format(d);
 }
 
+// Format a "HH:MM" 24-hour string (e.g. "14:00") into a compact label
+// like "2 PM" or "12 PM". Used for resort-standard check-in/out times
+// since reservations store dates at midnight, not actual arrival times.
+export function formatClockTime(hhmm: string): string {
+  const [hStr] = (hhmm || "").split(":");
+  const h = Number(hStr);
+  if (Number.isNaN(h)) return hhmm;
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12} ${period}`;
+}
+
 // Calculate nights between two dates
 export function nightsBetween(checkIn: string | Date, checkOut: string | Date): number {
   const start = typeof checkIn === "string" ? new Date(checkIn) : checkIn;

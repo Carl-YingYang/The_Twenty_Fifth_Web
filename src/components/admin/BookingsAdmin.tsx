@@ -69,6 +69,7 @@ import {
   formatCurrency,
   formatDate,
   formatDateShort,
+  formatDateTime,
   getInitials,
   nightsBetween,
 } from "@/lib/utils";
@@ -887,27 +888,58 @@ function ReservationDetailsDialog({
 
           {/* Status timeline */}
           <Section title="Timeline">
-            <ul className="space-y-2 text-xs">
+            <ul className="space-y-0">
               <TimelineItem
                 label="Booking received"
                 date={reservation.createdAt}
                 done
               />
-              <TimelineItem
-                label="Confirmed"
-                date={reservation.confirmedAt}
-                done={!!reservation.confirmedAt}
-              />
-              <TimelineItem
-                label="Checked in"
-                date={reservation.checkedInAt}
-                done={!!reservation.checkedInAt}
-              />
-              <TimelineItem
-                label="Checked out"
-                date={reservation.checkedOutAt}
-                done={!!reservation.checkedOutAt}
-              />
+              {s === "CANCELLED" ? (
+                <TimelineItem
+                  label="Cancelled"
+                  date={reservation.cancelledAt ?? reservation.updatedAt}
+                  done
+                  tone="danger"
+                  isLast
+                />
+              ) : s === "REJECTED" ? (
+                <TimelineItem
+                  label="Declined"
+                  date={reservation.updatedAt}
+                  done
+                  tone="danger"
+                  isLast
+                />
+              ) : s === "NO_SHOW" ? (
+                <TimelineItem
+                  label="Marked no-show"
+                  date={reservation.updatedAt}
+                  done
+                  tone="warning"
+                  isLast
+                />
+              ) : (
+                <>
+                  <TimelineItem
+                    label="Confirmed"
+                    date={reservation.confirmedAt}
+                    done={!!reservation.confirmedAt}
+                    skipped={s !== "CONFIRMED" && s !== "CHECKED_IN" && s !== "CHECKED_OUT" && s !== "COMPLETED" && !reservation.confirmedAt}
+                  />
+                  <TimelineItem
+                    label="Checked in"
+                    date={reservation.checkedInAt}
+                    done={!!reservation.checkedInAt}
+                    skipped={s === "COMPLETED" && !reservation.checkedInAt}
+                  />
+                  <TimelineItem
+                    label="Checked out / Completed"
+                    date={reservation.checkedOutAt ?? (s === "COMPLETED" ? reservation.updatedAt : null)}
+                    done={s === "COMPLETED" || !!reservation.checkedOutAt}
+                    isLast
+                  />
+                </>
+              )}
             </ul>
           </Section>
         </div>
@@ -989,30 +1021,83 @@ function TimelineItem({
   label,
   date,
   done,
+  skipped,
+  tone = "default",
+  isLast,
 }: {
   label: string;
   date: string | null;
   done: boolean;
+  skipped?: boolean;
+  tone?: "default" | "danger" | "warning";
+  isLast?: boolean;
 }) {
+  // Choose the dot color + ring based on state
+  const dotClass = skipped
+    ? "border-muted-foreground/30 bg-card text-muted-foreground/40"
+    : done
+      ? tone === "danger"
+        ? "border-red-500 bg-red-500 text-white"
+        : tone === "warning"
+          ? "border-amber-500 bg-amber-500 text-white"
+          : "border-emerald-500 bg-emerald-500 text-white"
+      : "border-border bg-card text-muted-foreground/50";
+
   return (
-    <li className="flex items-center gap-2">
+    <li className="relative flex gap-3 pb-4 last:pb-0">
+      {/* Vertical connector — hidden on last item */}
+      {!isLast && (
+        <span
+          className={cn(
+            "absolute left-[7px] top-4 h-[calc(100%-0.5rem)] w-px",
+            done ? "bg-emerald-500/40" : "bg-border"
+          )}
+          aria-hidden="true"
+        />
+      )}
+      {/* Dot */}
       <span
         className={cn(
-          "size-2 rounded-full",
-          done ? "bg-emerald-500" : "bg-muted-foreground/30"
-        )}
-      />
-      <span
-        className={cn(
-          "flex-1",
-          done ? "text-foreground" : "text-muted-foreground/70"
+          "z-10 mt-0.5 flex size-3.5 shrink-0 items-center justify-center rounded-full border-2",
+          dotClass
         )}
       >
-        {label}
+        {done && (
+          <svg viewBox="0 0 12 12" className="size-2" fill="none">
+            <path
+              d="M2.5 6.5L5 9L9.5 3.5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
       </span>
-      {date && (
-        <span className="text-muted-foreground">{formatDate(date)}</span>
-      )}
+      {/* Label + date */}
+      <div className="flex flex-1 items-baseline justify-between gap-2">
+        <span
+          className={cn(
+            "text-sm",
+            skipped
+              ? "text-muted-foreground/50 line-through"
+              : done
+                ? "font-medium text-foreground"
+                : "text-muted-foreground/70"
+          )}
+        >
+          {label}
+        </span>
+        {date ? (
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {formatDateTime(date)}
+          </span>
+        ) : (
+          <span className="shrink-0 text-xs italic text-muted-foreground/40">
+            {skipped ? "skipped" : "pending"}
+          </span>
+        )}
+      </div>
     </li>
   );
 }

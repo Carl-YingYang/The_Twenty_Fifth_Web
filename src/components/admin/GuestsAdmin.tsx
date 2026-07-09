@@ -580,10 +580,7 @@ function GuestDetailsDialog({
           <Button
             variant="outline"
             className="w-full sm:w-auto"
-            onClick={() => {
-              selectRoom("");
-              navigate("book");
-            }}
+            onClick={() => setConfirmBooking(true)}
           >
             <Plus className="size-4" />
             New booking for this guest

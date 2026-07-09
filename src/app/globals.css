@@ -310,3 +310,67 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================
+   Print styles — for guest reservation invoice
+   Hides nav/footer/sidebar, expands the invoice card to a
+   clean printable layout. Triggered by window.print() from
+   the "Print invoice" button on FindReservation.
+   ============================================================ */
+@media print {
+  /* Hide chrome elements that aren't part of the invoice */
+  nav,
+  footer,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* Reset layout so the invoice takes the full page */
+  html, body {
+    background: #ffffff !important;
+    color: #1B2A2E !important;
+    font-size: 11pt !important;
+  }
+
+  /* The main content should fill the page width */
+  main {
+    flex: none !important;
+  }
+
+  /* The print-only block (resort header on the invoice) */
+  [data-print-only] {
+    display: block !important;
+  }
+
+  /* The invoice card itself — strip shadows/borders for print */
+  [data-invoice] {
+    box-shadow: none !important;
+    border: 1px solid #d4cfc1 !important;
+    page-break-inside: avoid;
+  }
+
+  /* Status badges should print with their colors */
+  [data-invoice] [data-status-badge] {
+    border: 1px solid currentColor !important;
+    padding: 4px 10px !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Avoid page breaks inside rows */
+  [data-invoice] > * {
+    page-break-inside: avoid;
+  }
+
+  /* Make sure links show their href in print */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #6b6557;
+  }
+
+  /* Hide the action buttons row when printing */
+  [data-invoice-actions] {
+    display: none !important;
+  }
+}

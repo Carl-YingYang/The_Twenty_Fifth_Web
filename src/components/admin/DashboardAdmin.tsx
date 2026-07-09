@@ -30,7 +30,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import { cn, formatCurrency, formatDateShort, formatTime } from "@/lib/utils";
+import { cn, formatCurrency, formatDateShort, formatClockTime } from "@/lib/utils";
+import { RESORT_INFO } from "@/lib/constants";
 import { useViewStore } from "@/store/useViewStore";
 import type { DashboardStats, Reservation } from "@/types";
 
@@ -390,8 +391,8 @@ function TodayTimeline({
           <ul className="divide-y divide-border">
             {arrivals.map((r) => (
               <li key={r.id} className="flex items-center gap-3 py-3">
-                <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
-                  {formatTime(r.checkIn).replace(":00", "").replace(" ", "")}
+                <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary leading-tight">
+                  {formatClockTime(RESORT_INFO.checkInTime).replace(" ", "")}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-foreground">
@@ -435,8 +436,8 @@ function TodayTimeline({
           <ul className="divide-y divide-border">
             {departures.map((r) => (
               <li key={r.id} className="flex items-center gap-3 py-3">
-                <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-md bg-coral/10 text-xs font-semibold text-coral">
-                  {formatTime(r.checkOut).replace(":00", "").replace(" ", "")}
+                <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-md bg-coral/10 text-xs font-semibold text-coral leading-tight">
+                  {formatClockTime(RESORT_INFO.checkOutTime).replace(" ", "")}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-foreground">
