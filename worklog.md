@@ -2489,3 +2489,27 @@ Stage Summary:
 - Login API no longer 500s when the DB is read-only.
 - Browser end-to-end verification was blocked by sandbox OOM (4GB/no-swap cannot cold-compile the large admin components — BookingsAdmin alone is 1169 lines). Lint + home-route compile + patch-apply-check all pass. The fix will be fully visible on the user's laptop (more RAM).
 - Next phase: user applies the patch on their laptop, runs `bun run dev`, logs into admin, and switches between Dashboard/Bookings/Rooms tabs to confirm the sidebar + copilot no longer flash/reload.
+
+---
+Task ID: booking-availability-fix
+Agent: main (Z.ai Code)
+Task: Fix the booking bug ("Room is not available for the selected dates" at final submit) and deliver both fixes (admin reload + booking) to the user's laptop.
+
+Work Log:
+- Root-caused the booking bug: Step1Dates in BookingFlow.tsx fetched ALL rooms via /api/rooms (not the availability endpoint), so users could select rooms already booked for their dates. The availability check only ran at POST /api/reservations (final submit), so users filled in all guest details then got rejected at the end.
+- Confirmed via seed data: VILLA-01 (Whole Villa) has 3 overlapping reservations for Jul 9-22 (relative to seed run date), so booking Jul 10-30 legitimately fails — but the user wasn't told until the last step.
+- Added availability query to Step1Dates: when dates are valid, calls /api/rooms/availability and greys out booked rooms with a "Booked" badge. Booked rooms can't be selected (click blocked).
+- Added availability summary ("3 of 5 available") and empty-state message when nothing is available.
+- Added auto-clear: if the user's selected room becomes unavailable when dates change, the selection is cleared with a toast.
+- Improved Step 3 submit error handler: if a race condition causes "not available" at submit, sends user back to Step 1 with a clear message.
+- Added `booked` + `bookedReason` props to RoomCard for the unavailable state (greyscale, "Booked" badge, "Unavailable" footer).
+- Created clean delivery branch `fix/combined` from origin/main with exactly 6 changed source files (no junk). Both fixes in one commit (4fe047b).
+- Verified: `git apply --check` passes cleanly on origin/main. ESLint 0 errors.
+- Booking fix verified via direct API test is blocked by sandbox OOM (can't cold-compile the booking flow in 4GB), but logic is straightforward and lint-clean.
+
+Stage Summary:
+- Branch `fix/combined` (commit 4fe047b) has BOTH fixes, based on origin/main (user's GitHub).
+- Patch file at `/home/z/my-project/combined-fix.patch` (1498 lines, 6 files) applies cleanly on origin/main.
+- CANNOT push to GitHub — sandbox has no GitHub credentials. Need user to provide a Personal Access Token, or paste files manually.
+- Dev server restarted on fix/combined branch; home route serves HTTP 200 (preview should load).
+- Next: deliver the fix to the user's laptop via token (push) or manual file paste.

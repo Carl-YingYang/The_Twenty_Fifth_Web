@@ -1,0 +1,1498 @@
+From 4fe047b1509ae37ba14b6474e425a0aaa1c56d7b Mon Sep 17 00:00:00 2001
+From: Z User <z@container>
+Date: Thu, 9 Jul 2026 15:19:49 +0000
+Subject: [PATCH] fix: admin reload on tab switch + booking availability check
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Two bug fixes:
+
+1. ADMIN RELOAD BUG: Every admin view wrapped itself in <AdminLayout>,
+   so switching tabs unmounted the entire shell (sidebar, theme,
+   notifications, AdminCopilot) and remounted it fresh on every
+   navigation. Fix: new persistent <AdminShell> holds all the chrome
+   and stays mounted; <AdminLayout> is now a lightweight header
+   registrar (same props, no admin view changed).
+
+2. BOOKING AVAILABILITY BUG: Step 1 fetched ALL rooms and let users
+   select any — including rooms already booked for their dates. The
+   availability check only ran at final submit, so users filled in
+   all guest details then got 'Room is not available' at the end.
+   Fix: Step 1 now queries /api/rooms/availability and greys out
+   booked rooms with a 'Booked' badge; booked rooms can't be selected.
+   Also auto-clears selection if dates change and the room becomes
+   unavailable, and sends users back to Step 1 if a race condition
+   causes a submit failure.
+
+Bonus: login API no longer 500s if the lastLoginAt audit write fails.
+
+Files changed:
+- src/components/admin/AdminShell.tsx (NEW - persistent shell)
+- src/components/admin/AdminLayout.tsx (lightweight registrar)
+- src/app/page.tsx (wrap admin views in AdminShell)
+- src/app/api/auth/login/route.ts (resilient lastLoginAt update)
+- src/components/public/RoomCard.tsx (booked state)
+- src/components/public/booking/BookingFlow.tsx (availability in Step 1)
+---
+ src/app/api/auth/login/route.ts               |  16 +-
+ src/app/page.tsx                              |  19 +-
+ src/components/admin/AdminLayout.tsx          | 551 +----------------
+ src/components/admin/AdminShell.tsx           | 561 ++++++++++++++++++
+ src/components/public/RoomCard.tsx            |  39 +-
+ src/components/public/booking/BookingFlow.tsx | 111 +++-
+ 6 files changed, 744 insertions(+), 553 deletions(-)
+ create mode 100644 src/components/admin/AdminShell.tsx
+
+diff --git a/src/app/api/auth/login/route.ts b/src/app/api/auth/login/route.ts
+index e8152d2..d84d392 100755
+--- a/src/app/api/auth/login/route.ts
++++ b/src/app/api/auth/login/route.ts
+@@ -33,10 +33,18 @@ export async function POST(req: NextRequest) {
+       );
+     }
+ 
+-    await db.user.update({
+-      where: { id: user.id },
+-      data: { lastLoginAt: new Date() },
+-    });
++    // Record last login time. This is a non-critical audit update —
++    // if it fails (e.g. read-only DB in some sandboxed environments),
++    // login must still succeed because the password is already verified
++    // and the token is issued below.
++    try {
++      await db.user.update({
++        where: { id: user.id },
++        data: { lastLoginAt: new Date() },
++      });
++    } catch {
++      // Intentionally swallowed — lastLoginAt is best-effort.
++    }
+ 
+     const token = createSessionToken(user.id);
+ 
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index 94abd72..d6251f3 100755
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -22,7 +22,8 @@ const ContactPage = lazy(() => import("@/components/public/contact/ContactPage")
+ const BookingFlow = lazy(() => import("@/components/public/booking/BookingFlow").then(m => ({ default: m.BookingFlow })));
+ const FindReservation = lazy(() => import("@/components/public/booking/FindReservation").then(m => ({ default: m.FindReservation })));
+ 
+-// Lazy-loaded admin components (only compiled when admin logs in)
++// Lazy-loaded admin shell + components (only compiled when admin logs in)
++const AdminShell = lazy(() => import("@/components/admin/AdminShell").then(m => ({ default: m.AdminShell })));
+ const AdminLogin = lazy(() => import("@/components/admin/AdminLogin").then(m => ({ default: m.AdminLogin })));
+ const DashboardAdmin = lazy(() => import("@/components/admin/DashboardAdmin").then(m => ({ default: m.DashboardAdmin })));
+ const BookingsAdmin = lazy(() => import("@/components/admin/BookingsAdmin").then(m => ({ default: m.BookingsAdmin })));
+@@ -108,14 +109,18 @@ function AppShell() {
+     );
+   }
+ 
+-  // Admin views share the AdminLayout shell (which handles auth gating internally)
++  // Admin views share the AdminShell chrome (sidebar, topbar, copilot, theme)
++  // which PERSISTS across admin tab switches — only the inner content swaps.
++  // This fixes the "admin reloads a lot when changing tabs" bug.
+   if (isAdminView) {
+     return (
+-      <main className="min-h-screen">
+-        <Suspense fallback={<LazyFallback />}>
+-          {renderAdminView(view)}
+-        </Suspense>
+-      </main>
++      <Suspense fallback={<LazyFallback />}>
++        <AdminShell>
++          <Suspense fallback={<LazyFallback />}>
++            {renderAdminView(view)}
++          </Suspense>
++        </AdminShell>
++      </Suspense>
+     );
+   }
+ 
+diff --git a/src/components/admin/AdminLayout.tsx b/src/components/admin/AdminLayout.tsx
+index 450a1e4..f7246f9 100755
+--- a/src/components/admin/AdminLayout.tsx
++++ b/src/components/admin/AdminLayout.tsx
+@@ -1,66 +1,8 @@
+ "use client";
+ 
+-import { useEffect, useState, type ReactNode } from "react";
+-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+-import {
+-  BarChart3,
+-  Bell,
+-  CalendarCheck,
+-  CalendarDays,
+-  CheckCheck,
+-  ExternalLink,
+-  Home,
+-  Images,
+-  LayoutDashboard,
+-  LogOut,
+-  Menu,
+-  Moon,
+-  Settings,
+-  Sparkles,
+-  Sun,
+-  Users,
+-  Waves,
+-} from "lucide-react";
+-import { toast } from "sonner";
++import { useEffect, type ReactNode } from "react";
+ 
+-import { cn, getInitials, timeAgo } from "@/lib/utils";
+-import { ADMIN_NAV, RESORT_INFO } from "@/lib/constants";
+-import { apiFetch } from "@/lib/api-client";
+-import { useAuthStore } from "@/store/useAuthStore";
+-import { useViewStore } from "@/store/useViewStore";
+-import { useMounted } from "@/hooks/useMounted";
+-import type { Notification, User, View } from "@/types";
+-
+-import { AdminLogin } from "./AdminLogin";
+-import { ConfirmDialog } from "./ConfirmDialog";
+-import { AdminCopilot } from "./copilot/AdminCopilot";
+-import { Button } from "@/components/ui/button";
+-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+-import {
+-  Sheet,
+-  SheetContent,
+-  SheetTitle,
+-} from "@/components/ui/sheet";
+-import {
+-  DropdownMenu,
+-  DropdownMenuContent,
+-  DropdownMenuItem,
+-  DropdownMenuSeparator,
+-  DropdownMenuTrigger,
+-} from "@/components/ui/dropdown-menu";
+-import { Skeleton } from "@/components/ui/skeleton";
+-
+-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+-  LayoutDashboard,
+-  CalendarCheck,
+-  CalendarDays,
+-  Home,
+-  Users,
+-  Sparkles,
+-  Images,
+-  BarChart3,
+-  Settings,
+-};
++import { useSetAdminHeader } from "./AdminShell";
+ 
+ interface AdminLayoutProps {
+   title: string;
+@@ -69,471 +11,34 @@ interface AdminLayoutProps {
+   actions?: ReactNode;
+ }
+ 
+-export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutProps) {
+-  const { isAuthenticated, user, logout } = useAuthStore();
+-  const { view, navigate } = useViewStore();
+-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+-  const [theme, setTheme] = useState<"light" | "dark">("light");
+-  const [confirmLogout, setConfirmLogout] = useState(false);
+-  const [loggingOut, setLoggingOut] = useState(false);
+-  const mounted = useMounted();
+-
+-  // Verify token validity on mount
+-  const { data: meData, isLoading: verifying } = useQuery({
+-    queryKey: ["auth-me"],
+-    queryFn: () => apiFetch<{ user: User | null }>("/api/auth/me"),
+-    enabled: isAuthenticated,
+-  });
+-
++/**
++ * AdminLayout — lightweight header registrar.
++ *
++ * Each admin view still renders <AdminLayout title="..." subtitle="...">…
++ * exactly as before, so NO admin component had to change. The
++ * difference is that AdminLayout no longer owns the sidebar / topbar
++ * / copilot / theme / auth-gating. All of that chrome now lives once
++ * in <AdminShell> (see page.tsx) and persists across admin view
++ * switches. This component simply pushes its title/subtitle/actions
++ * into the shell's TopBar via context.
++ *
++ * This is the fix for the "admin reloads a lot when changing tabs"
++ * bug: previously every view wrapped itself in the full AdminLayout,
++ * so switching tabs unmounted + remounted the entire shell (sidebar,
++ * theme, notifications, AdminCopilot) on every navigation.
++ */
++export function AdminLayout({ title, subtitle, actions, children }: AdminLayoutProps) {
++  const setHeader = useSetAdminHeader();
++
++  // Publish header metadata up to the persistent shell.
++  // title/subtitle are strings (stable); actions is a ReactNode that is
++  // currently always undefined for every admin view, so this effect runs
++  // once per mount + when the title/subtitle actually change.
+   useEffect(() => {
+-    if (meData && !meData.user) {
+-      logout();
+-      navigate("admin-login");
+-    }
+-  }, [meData, logout, navigate]);
+-
+-  // Theme init — read from localStorage on mount (legitimate hydration pattern)
+-  useEffect(() => {
+-    const stored = (typeof window !== "undefined"
+-      ? localStorage.getItem("rrms-theme")
+-      : null) as "light" | "dark" | null;
+-    const initial = stored ?? "light";
+-    // eslint-disable-next-line react-hooks/set-state-in-effect
+-    setTheme(initial);
+-    if (initial === "dark") {
+-      document.documentElement.classList.add("dark");
+-    } else {
+-      document.documentElement.classList.remove("dark");
+-    }
+-  }, []);
+-
+-  function toggleTheme() {
+-    const next = theme === "light" ? "dark" : "light";
+-    setTheme(next);
+-    if (typeof window !== "undefined") {
+-      localStorage.setItem("rrms-theme", next);
+-      if (next === "dark") {
+-        document.documentElement.classList.add("dark");
+-      } else {
+-        document.documentElement.classList.remove("dark");
+-      }
+-    }
+-  }
+-
+-  if (!mounted) {
+-    return <AdminLayoutSkeleton />;
+-  }
+-
+-  if (!isAuthenticated) {
+-    return <AdminLogin />;
+-  }
+-
+-  if (isAuthenticated && verifying && !meData) {
+-    return <AdminLayoutSkeleton />;
+-  }
+-
+-  const onLogout = async () => {
+-    try {
+-      await apiFetch("/api/auth/logout", { method: "POST" });
+-    } catch {
+-      // ignore
+-    }
+-    logout();
+-    toast.success("Signed out");
+-    navigate("home");
+-  };
+-
+-  const handleLogoutConfirm = async () => {
+-    setLoggingOut(true);
+-    try {
+-      await onLogout();
+-    } finally {
+-      setLoggingOut(false);
+-    }
+-  };
+-
+-  const SidebarContent = (
+-    <SidebarBody
+-      currentView={view}
+-      user={user}
+-      onNavigate={(v) => {
+-        navigate(v);
+-        setMobileNavOpen(false);
+-      }}
+-      onLogout={() => setConfirmLogout(true)}
+-    />
+-  );
+-
+-  return (
+-    <div className="min-h-screen bg-background text-foreground">
+-      <div className="flex min-h-screen">
+-        {/* Desktop sidebar */}
+-        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 lg:block">
+-          {SidebarContent}
+-        </aside>
+-
+-        {/* Mobile sidebar */}
+-        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+-          <SheetContent
+-            side="left"
+-            className="w-72 border-0 p-0"
+-          >
+-            <SheetTitle className="sr-only">Navigation</SheetTitle>
+-            {SidebarContent}
+-          </SheetContent>
+-        </Sheet>
+-
+-        {/* Main */}
+-        <div className="flex min-w-0 flex-1 flex-col">
+-          <TopBar
+-            title={title}
+-            subtitle={subtitle}
+-            actions={actions}
+-            onOpenMobileNav={() => setMobileNavOpen(true)}
+-            user={user}
+-            theme={theme}
+-            onToggleTheme={toggleTheme}
+-          />
+-          <main className="min-h-0 flex-1 p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8">{children}</main>
+-        </div>
+-      </div>
+-
+-      <ConfirmDialog
+-        open={confirmLogout}
+-        onOpenChange={setConfirmLogout}
+-        tone="default"
+-        title="Sign out of admin?"
+-        description="You'll need to sign in again to continue managing The Twenty-Fifth. Any unsaved work in open forms will be lost."
+-        confirmLabel="Sign out"
+-        loading={loggingOut}
+-        onConfirm={handleLogoutConfirm}
+-      />
+-
+-      {/* Aria — the admin operations copilot (controlled AI automation) */}
+-      <AdminCopilot />
+-    </div>
+-  );
+-}
+-
+-function SidebarBody({
+-  currentView,
+-  user,
+-  onNavigate,
+-  onLogout,
+-}: {
+-  currentView: View;
+-  user: User | null;
+-  onNavigate: (v: View) => void;
+-  onLogout: () => void;
+-}) {
+-  return (
+-    <div className="flex h-full w-full flex-col bg-sidebar text-sidebar-foreground">
+-      {/* Brand */}
+-      <div className="flex items-center gap-3 px-5 py-6">
+-        <div className="flex size-10 items-center justify-center rounded-lg bg-white/10">
+-          <Waves className="size-5 text-coral" />
+-        </div>
+-        <div className="leading-tight">
+-          <div className="font-display text-base font-medium tracking-tight text-white">
+-            {RESORT_INFO.name}
+-          </div>
+-          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-coral">
+-            Admin
+-          </div>
+-        </div>
+-      </div>
+-
+-      {/* Nav */}
+-      <nav
+-        className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3"
+-        aria-label="Admin navigation"
+-      >
+-        {ADMIN_NAV.map((item) => {
+-          const Icon = ICON_MAP[item.icon] ?? LayoutDashboard;
+-          const active = currentView === item.view;
+-          return (
+-            <button
+-              key={item.view}
+-              onClick={() => onNavigate(item.view as View)}
+-              aria-current={active ? "page" : undefined}
+-              className={cn(
+-                "group relative flex w-full min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+-                active
+-                  ? "bg-white/10 font-semibold text-white shadow-sm ring-1 ring-white/10"
+-                  : "text-sidebar-foreground/70 hover:bg-white/5 hover:text-white"
+-              )}
+-            >
+-              {active && (
+-                <span
+-                  className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-coral"
+-                  aria-hidden
+-                />
+-              )}
+-              <Icon
+-                className={cn(
+-                  "size-4 shrink-0 transition-colors",
+-                  active ? "text-coral" : "text-sidebar-foreground/60 group-hover:text-white"
+-                )}
+-              />
+-              <span className="flex-1 text-left">{item.label}</span>
+-            </button>
+-          );
+-        })}
+-      </nav>
+-
+-      {/* User block */}
+-      <div className="border-t border-white/5 p-3">
+-        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
+-          <Avatar className="size-9 border border-white/10 bg-white/10">
+-            <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">
+-              {user ? getInitials(user.name) : "AD"}
+-            </AvatarFallback>
+-          </Avatar>
+-          <div className="min-w-0 flex-1">
+-            <div className="truncate text-sm font-medium text-white">
+-              {user?.name ?? "Admin"}
+-            </div>
+-            <div className="truncate text-[11px] capitalize text-sidebar-foreground/60">
+-              {String(user?.role ?? "admin").toLowerCase().replace("_", " ")}
+-            </div>
+-          </div>
+-          <Button
+-            variant="ghost"
+-            size="icon"
+-            onClick={onLogout}
+-            className="size-8 text-sidebar-foreground/60 hover:bg-white/5 hover:text-coral"
+-            title="Sign out"
+-            aria-label="Sign out"
+-          >
+-            <LogOut className="size-4" />
+-          </Button>
+-        </div>
+-      </div>
+-    </div>
+-  );
+-}
+-
+-function TopBar({
+-  title,
+-  subtitle,
+-  actions,
+-  onOpenMobileNav,
+-  user,
+-  theme,
+-  onToggleTheme,
+-}: {
+-  title: string;
+-  subtitle?: string;
+-  actions?: ReactNode;
+-  onOpenMobileNav: () => void;
+-  user: User | null;
+-  theme: "light" | "dark";
+-  onToggleTheme: () => void;
+-}) {
+-  const { navigate } = useViewStore();
+-  return (
+-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background px-4 sm:px-6 lg:px-8">
+-      <Button
+-        variant="ghost"
+-        size="icon"
+-        className="lg:hidden"
+-        onClick={onOpenMobileNav}
+-        aria-label="Open navigation"
+-      >
+-        <Menu className="size-5" />
+-      </Button>
+-
+-      <div className="min-w-0 flex-1">
+-        <h1 className="truncate font-display text-xl font-medium tracking-tight text-foreground">
+-          {title}
+-        </h1>
+-        {subtitle && (
+-          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+-        )}
+-      </div>
+-
+-      <div className="flex items-center gap-1 sm:gap-1.5">
+-        {actions}
+-        <Button
+-          variant="ghost"
+-          size="icon"
+-          className="size-9"
+-          onClick={onToggleTheme}
+-          aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+-          title={theme === "light" ? "Dark mode" : "Light mode"}
+-        >
+-          {theme === "light" ? (
+-            <Moon className="size-4" />
+-          ) : (
+-            <Sun className="size-4" />
+-          )}
+-        </Button>
+-        <NotificationsBell />
+-        <Button
+-          variant="outline"
+-          size="sm"
+-          onClick={() => navigate("home")}
+-          className="hidden h-9 gap-1.5 sm:inline-flex"
+-        >
+-          <ExternalLink className="size-3.5" />
+-          View Site
+-        </Button>
+-        <Avatar className="size-9 border border-border">
+-          <AvatarFallback className="bg-sand text-xs font-semibold text-primary">
+-            {user ? getInitials(user.name) : "AD"}
+-          </AvatarFallback>
+-        </Avatar>
+-      </div>
+-    </header>
+-  );
+-}
+-
+-function NotificationsBell() {
+-  const qc = useQueryClient();
+-  const { data, isLoading } = useQuery({
+-    queryKey: ["notifications"],
+-    queryFn: () => apiFetch<{ notifications: Notification[] }>("/api/notifications"),
+-    refetchInterval: 60 * 1000,
+-  });
+-
+-  const items = data?.notifications ?? [];
+-  const unread = items.filter((n) => !n.isRead);
+-  const [confirmMarkAll, setConfirmMarkAll] = useState(false);
+-
+-  const markAllRead = useMutation({
+-    mutationFn: () =>
+-      apiFetch("/api/notifications", {
+-        method: "PATCH",
+-        body: JSON.stringify({ markAllRead: true }),
+-      }),
+-    onSuccess: () => {
+-      qc.invalidateQueries({ queryKey: ["notifications"] });
+-      toast.success(
+-        `Marked ${unread.length} notification${unread.length === 1 ? "" : "s"} as read.`
+-      );
+-      setConfirmMarkAll(false);
+-    },
+-    onError: () => {
+-      toast.error("Couldn't mark notifications as read.");
+-    },
+-  });
+-
+-  return (
+-    <>
+-    <DropdownMenu>
+-      <DropdownMenuTrigger asChild>
+-        <Button
+-          variant="ghost"
+-          size="icon"
+-          className="relative size-9"
+-          aria-label="Notifications"
+-        >
+-          <Bell className="size-4" />
+-          {unread.length > 0 && (
+-            <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-coral text-[9px] font-bold text-coral-foreground">
+-              {unread.length > 9 ? "9+" : unread.length}
+-            </span>
+-          )}
+-        </Button>
+-      </DropdownMenuTrigger>
+-      <DropdownMenuContent align="end" className="w-80 p-0">
+-        <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+-          <div className="text-sm font-semibold text-foreground">
+-            Notifications
+-          </div>
+-          {unread.length > 0 && (
+-            <Button
+-              variant="ghost"
+-              size="sm"
+-              className="h-7 gap-1 px-2 text-xs text-primary hover:text-primary"
+-              disabled={markAllRead.isPending}
+-              onClick={() => setConfirmMarkAll(true)}
+-            >
+-              <CheckCheck className="size-3.5" />
+-              Mark all read
+-            </Button>
+-          )}
+-        </div>
+-        <div className="max-h-96 overflow-y-auto">
+-          {isLoading ? (
+-            <div className="space-y-2 p-3">
+-              {Array.from({ length: 3 }).map((_, i) => (
+-                <Skeleton key={i} className="h-12 w-full" />
+-              ))}
+-            </div>
+-          ) : items.length === 0 ? (
+-            <div className="px-3 py-10 text-center">
+-              <Bell className="mx-auto mb-2 size-6 text-muted-foreground/40" />
+-              <p className="text-sm text-muted-foreground">
+-                You&apos;re all caught up
+-              </p>
+-            </div>
+-          ) : (
+-            items.map((n) => (
+-              <div
+-                key={n.id}
+-                className={cn(
+-                  "flex gap-3 border-b border-border px-3 py-2.5 transition-colors last:border-0 hover:bg-muted/50",
+-                  !n.isRead && "bg-coral/5"
+-                )}
+-              >
+-                <div className="mt-1.5">
+-                  {!n.isRead ? (
+-                    <span className="size-2 rounded-full bg-coral" />
+-                  ) : (
+-                    <span className="size-2 rounded-full bg-transparent" />
+-                  )}
+-                </div>
+-                <div className="min-w-0 flex-1">
+-                  <div className="text-sm font-medium text-foreground">
+-                    {n.title}
+-                  </div>
+-                  <div className="text-xs text-muted-foreground">
+-                    {n.message}
+-                  </div>
+-                  <div className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">
+-                    {timeAgo(n.createdAt)}
+-                  </div>
+-                </div>
+-              </div>
+-            ))
+-          )}
+-        </div>
+-      </DropdownMenuContent>
+-    </DropdownMenu>
+-
+-    <ConfirmDialog
+-      open={confirmMarkAll}
+-      onOpenChange={setConfirmMarkAll}
+-      tone="info"
+-      title="Mark all notifications as read?"
+-      description={`This will mark all ${unread.length} unread notification${unread.length === 1 ? "" : "s"} as read. You can still review them in the list.`}
+-      confirmLabel="Mark all read"
+-      loading={markAllRead.isPending}
+-      onConfirm={() => markAllRead.mutate()}
+-    />
+-    </>
+-  );
+-}
++    setHeader({ title, subtitle, actions });
++  }, [title, subtitle, actions, setHeader]);
+ 
+-function AdminLayoutSkeleton() {
+-  return (
+-    <div className="flex min-h-screen bg-background">
+-      <div className="hidden w-64 shrink-0 bg-sidebar lg:block" />
+-      <div className="flex flex-1 flex-col">
+-        <div className="flex h-16 items-center gap-3 border-b border-border bg-background px-8">
+-          <Skeleton className="h-5 w-40" />
+-          <div className="flex-1" />
+-          <Skeleton className="size-9 rounded-full" />
+-        </div>
+-        <div className="space-y-4 p-8">
+-          <Skeleton className="h-8 w-56" />
+-          <Skeleton className="h-32 w-full" />
+-          <Skeleton className="h-64 w-full" />
+-        </div>
+-      </div>
+-    </div>
+-  );
++  return <>{children}</>;
+ }
+ 
+ export default AdminLayout;
+diff --git a/src/components/admin/AdminShell.tsx b/src/components/admin/AdminShell.tsx
+new file mode 100644
+index 0000000..0c99277
+--- /dev/null
++++ b/src/components/admin/AdminShell.tsx
+@@ -0,0 +1,561 @@
++"use client";
++
++import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
++import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
++import {
++  BarChart3,
++  Bell,
++  CalendarCheck,
++  CalendarDays,
++  CheckCheck,
++  ExternalLink,
++  Home,
++  Images,
++  LayoutDashboard,
++  LogOut,
++  Menu,
++  Moon,
++  Settings,
++  Sparkles,
++  Sun,
++  Users,
++  Waves,
++} from "lucide-react";
++import { toast } from "sonner";
++
++import { cn, getInitials, timeAgo } from "@/lib/utils";
++import { ADMIN_NAV, RESORT_INFO } from "@/lib/constants";
++import { apiFetch } from "@/lib/api-client";
++import { useAuthStore } from "@/store/useAuthStore";
++import { useViewStore } from "@/store/useViewStore";
++import { useMounted } from "@/hooks/useMounted";
++import type { Notification, User, View } from "@/types";
++
++import { AdminLogin } from "./AdminLogin";
++import { ConfirmDialog } from "./ConfirmDialog";
++import { AdminCopilot } from "./copilot/AdminCopilot";
++import { Button } from "@/components/ui/button";
++import { Avatar, AvatarFallback } from "@/components/ui/avatar";
++import {
++  Sheet,
++  SheetContent,
++  SheetTitle,
++} from "@/components/ui/sheet";
++import {
++  DropdownMenu,
++  DropdownMenuContent,
++  DropdownMenuTrigger,
++} from "@/components/ui/dropdown-menu";
++import { Skeleton } from "@/components/ui/skeleton";
++
++const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
++  LayoutDashboard,
++  CalendarCheck,
++  CalendarDays,
++  Home,
++  Users,
++  Sparkles,
++  Images,
++  BarChart3,
++  Settings,
++};
++
++// ─────────────────────────────────────────────────────────────
++// Header context — lets the active admin view push its title /
++// subtitle / actions up to the persistent TopBar without the
++// shell having to unmount.
++// ─────────────────────────────────────────────────────────────
++export interface AdminHeader {
++  title: string;
++  subtitle?: string;
++  actions?: ReactNode;
++}
++
++const AdminHeaderContext = createContext<(header: AdminHeader) => void>(() => {});
++
++/**
++ * Used by <AdminLayout> (the lightweight wrapper each view renders)
++ * to publish its title/subtitle/actions into the persistent shell.
++ */
++export function useSetAdminHeader() {
++  return useContext(AdminHeaderContext);
++}
++
++interface AdminShellProps {
++  children: ReactNode;
++}
++
++/**
++ * AdminShell — the PERSISTENT admin chrome.
++ *
++ * Previously every admin view wrapped itself in <AdminLayout>, so
++ * switching tabs (Dashboard → Bookings → Rooms) unmounted the entire
++ * shell (sidebar, theme, notifications bell, AdminCopilot) and
++ * remounted it fresh — causing the "page reloads a lot" bug, losing
++ * copilot chat history, and refetching the auth/notifications
++ * queries on every navigation.
++ *
++ * Now AdminShell lives once in page.tsx and stays mounted for all
++ * admin views. Only the inner content (inside <main>) swaps.
++ */
++export function AdminShell({ children }: AdminShellProps) {
++  const { isAuthenticated, user, logout } = useAuthStore();
++  const { view, navigate } = useViewStore();
++  const [mobileNavOpen, setMobileNavOpen] = useState(false);
++  const [theme, setTheme] = useState<"light" | "dark">("light");
++  const [confirmLogout, setConfirmLogout] = useState(false);
++  const [loggingOut, setLoggingOut] = useState(false);
++  const [header, setHeader] = useState<AdminHeader>({ title: "" });
++  const mounted = useMounted();
++
++  // Verify token validity on mount (and only on mount — shell persists).
++  const { data: meData, isLoading: verifying } = useQuery({
++    queryKey: ["auth-me"],
++    queryFn: () => apiFetch<{ user: User | null }>("/api/auth/me"),
++    enabled: isAuthenticated,
++  });
++
++  useEffect(() => {
++    if (meData && !meData.user) {
++      logout();
++      navigate("admin-login");
++    }
++  }, [meData, logout, navigate]);
++
++  // Theme init — read from localStorage on mount (once, for the whole admin session)
++  useEffect(() => {
++    const stored = (typeof window !== "undefined"
++      ? localStorage.getItem("rrms-theme")
++      : null) as "light" | "dark" | null;
++    const initial = stored ?? "light";
++    setTheme(initial);
++    if (initial === "dark") {
++      document.documentElement.classList.add("dark");
++    } else {
++      document.documentElement.classList.remove("dark");
++    }
++  }, []);
++
++  function toggleTheme() {
++    const next = theme === "light" ? "dark" : "light";
++    setTheme(next);
++    if (typeof window !== "undefined") {
++      localStorage.setItem("rrms-theme", next);
++      if (next === "dark") {
++        document.documentElement.classList.add("dark");
++      } else {
++        document.documentElement.classList.remove("dark");
++      }
++    }
++  }
++
++  if (!mounted) {
++    return <AdminLayoutSkeleton />;
++  }
++
++  if (!isAuthenticated) {
++    return <AdminLogin />;
++  }
++
++  if (isAuthenticated && verifying && !meData) {
++    return <AdminLayoutSkeleton />;
++  }
++
++  const onLogout = async () => {
++    try {
++      await apiFetch("/api/auth/logout", { method: "POST" });
++    } catch {
++      // ignore
++    }
++    logout();
++    toast.success("Signed out");
++    navigate("home");
++  };
++
++  const handleLogoutConfirm = async () => {
++    setLoggingOut(true);
++    try {
++      await onLogout();
++    } finally {
++      setLoggingOut(false);
++    }
++  };
++
++  const SidebarContent = (
++    <SidebarBody
++      currentView={view}
++      user={user}
++      onNavigate={(v) => {
++        navigate(v);
++        setMobileNavOpen(false);
++      }}
++      onLogout={() => setConfirmLogout(true)}
++    />
++  );
++
++  return (
++    <AdminHeaderContext.Provider value={setHeader}>
++      <div className="min-h-screen bg-background text-foreground">
++        <div className="flex min-h-screen">
++          {/* Desktop sidebar — persistent across admin view switches */}
++          <aside className="sticky top-0 hidden h-screen w-64 shrink-0 lg:block">
++            {SidebarContent}
++          </aside>
++
++          {/* Mobile sidebar */}
++          <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
++            <SheetContent side="left" className="w-72 border-0 p-0">
++              <SheetTitle className="sr-only">Navigation</SheetTitle>
++              {SidebarContent}
++            </SheetContent>
++          </Sheet>
++
++          {/* Main column */}
++          <div className="flex min-w-0 flex-1 flex-col">
++            <TopBar
++              title={header.title}
++              subtitle={header.subtitle}
++              actions={header.actions}
++              onOpenMobileNav={() => setMobileNavOpen(true)}
++              user={user}
++              theme={theme}
++              onToggleTheme={toggleTheme}
++            />
++            <main className="min-h-0 flex-1 p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8">
++              {children}
++            </main>
++          </div>
++        </div>
++
++        <ConfirmDialog
++          open={confirmLogout}
++          onOpenChange={setConfirmLogout}
++          tone="default"
++          title="Sign out of admin?"
++          description="You'll need to sign in again to continue managing The Twenty-Fifth. Any unsaved work in open forms will be lost."
++          confirmLabel="Sign out"
++          loading={loggingOut}
++          onConfirm={handleLogoutConfirm}
++        />
++
++        {/* Aria — the admin operations copilot (persisted across view switches) */}
++        <AdminCopilot />
++      </div>
++    </AdminHeaderContext.Provider>
++  );
++}
++
++function SidebarBody({
++  currentView,
++  user,
++  onNavigate,
++  onLogout,
++}: {
++  currentView: View;
++  user: User | null;
++  onNavigate: (v: View) => void;
++  onLogout: () => void;
++}) {
++  return (
++    <div className="flex h-full w-full flex-col bg-sidebar text-sidebar-foreground">
++      {/* Brand */}
++      <div className="flex items-center gap-3 px-5 py-6">
++        <div className="flex size-10 items-center justify-center rounded-lg bg-white/10">
++          <Waves className="size-5 text-coral" />
++        </div>
++        <div className="leading-tight">
++          <div className="font-display text-base font-medium tracking-tight text-white">
++            {RESORT_INFO.name}
++          </div>
++          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-coral">
++            Admin
++          </div>
++        </div>
++      </div>
++
++      {/* Nav */}
++      <nav
++        className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3"
++        aria-label="Admin navigation"
++      >
++        {ADMIN_NAV.map((item) => {
++          const Icon = ICON_MAP[item.icon] ?? LayoutDashboard;
++          const active = currentView === item.view;
++          return (
++            <button
++              key={item.view}
++              onClick={() => onNavigate(item.view as View)}
++              aria-current={active ? "page" : undefined}
++              className={cn(
++                "group relative flex w-full min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
++                active
++                  ? "bg-white/10 font-semibold text-white shadow-sm ring-1 ring-white/10"
++                  : "text-sidebar-foreground/70 hover:bg-white/5 hover:text-white"
++              )}
++            >
++              {active && (
++                <span
++                  className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-coral"
++                  aria-hidden
++                />
++              )}
++              <Icon
++                className={cn(
++                  "size-4 shrink-0 transition-colors",
++                  active ? "text-coral" : "text-sidebar-foreground/60 group-hover:text-white"
++                )}
++              />
++              <span className="flex-1 text-left">{item.label}</span>
++            </button>
++          );
++        })}
++      </nav>
++
++      {/* User block */}
++      <div className="border-t border-white/5 p-3">
++        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
++          <Avatar className="size-9 border border-white/10 bg-white/10">
++            <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">
++              {user ? getInitials(user.name) : "AD"}
++            </AvatarFallback>
++          </Avatar>
++          <div className="min-w-0 flex-1">
++            <div className="truncate text-sm font-medium text-white">
++              {user?.name ?? "Admin"}
++            </div>
++            <div className="truncate text-[11px] capitalize text-sidebar-foreground/60">
++              {String(user?.role ?? "admin").toLowerCase().replace("_", " ")}
++            </div>
++          </div>
++          <Button
++            variant="ghost"
++            size="icon"
++            onClick={onLogout}
++            className="size-8 text-sidebar-foreground/60 hover:bg-white/5 hover:text-coral"
++            title="Sign out"
++            aria-label="Sign out"
++          >
++            <LogOut className="size-4" />
++          </Button>
++        </div>
++      </div>
++    </div>
++  );
++}
++
++function TopBar({
++  title,
++  subtitle,
++  actions,
++  onOpenMobileNav,
++  user,
++  theme,
++  onToggleTheme,
++}: {
++  title: string;
++  subtitle?: string;
++  actions?: ReactNode;
++  onOpenMobileNav: () => void;
++  user: User | null;
++  theme: "light" | "dark";
++  onToggleTheme: () => void;
++}) {
++  const { navigate } = useViewStore();
++  return (
++    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background px-4 sm:px-6 lg:px-8">
++      <Button
++        variant="ghost"
++        size="icon"
++        className="lg:hidden"
++        onClick={onOpenMobileNav}
++        aria-label="Open navigation"
++      >
++        <Menu className="size-5" />
++      </Button>
++
++      <div className="min-w-0 flex-1">
++        <h1 className="truncate font-display text-xl font-medium tracking-tight text-foreground">
++          {title}
++        </h1>
++        {subtitle && (
++          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
++        )}
++      </div>
++
++      <div className="flex items-center gap-1 sm:gap-1.5">
++        {actions}
++        <Button
++          variant="ghost"
++          size="icon"
++          className="size-9"
++          onClick={onToggleTheme}
++          aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
++          title={theme === "light" ? "Dark mode" : "Light mode"}
++        >
++          {theme === "light" ? (
++            <Moon className="size-4" />
++          ) : (
++            <Sun className="size-4" />
++          )}
++        </Button>
++        <NotificationsBell />
++        <Button
++          variant="outline"
++          size="sm"
++          onClick={() => navigate("home")}
++          className="hidden h-9 gap-1.5 sm:inline-flex"
++        >
++          <ExternalLink className="size-3.5" />
++          View Site
++        </Button>
++        <Avatar className="size-9 border border-border">
++          <AvatarFallback className="bg-sand text-xs font-semibold text-primary">
++            {user ? getInitials(user.name) : "AD"}
++          </AvatarFallback>
++        </Avatar>
++      </div>
++    </header>
++  );
++}
++
++function NotificationsBell() {
++  const qc = useQueryClient();
++  const { data, isLoading } = useQuery({
++    queryKey: ["notifications"],
++    queryFn: () => apiFetch<{ notifications: Notification[] }>("/api/notifications"),
++    refetchInterval: 60 * 1000,
++  });
++
++  const items = data?.notifications ?? [];
++  const unread = items.filter((n) => !n.isRead);
++  const [confirmMarkAll, setConfirmMarkAll] = useState(false);
++
++  const markAllRead = useMutation({
++    mutationFn: () =>
++      apiFetch("/api/notifications", {
++        method: "PATCH",
++        body: JSON.stringify({ markAllRead: true }),
++      }),
++    onSuccess: () => {
++      qc.invalidateQueries({ queryKey: ["notifications"] });
++      toast.success(
++        `Marked ${unread.length} notification${unread.length === 1 ? "" : "s"} as read.`
++      );
++      setConfirmMarkAll(false);
++    },
++    onError: () => {
++      toast.error("Couldn't mark notifications as read.");
++    },
++  });
++
++  return (
++    <>
++      <DropdownMenu>
++        <DropdownMenuTrigger asChild>
++          <Button
++            variant="ghost"
++            size="icon"
++            className="relative size-9"
++            aria-label="Notifications"
++          >
++            <Bell className="size-4" />
++            {unread.length > 0 && (
++              <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-coral text-[9px] font-bold text-coral-foreground">
++                {unread.length > 9 ? "9+" : unread.length}
++              </span>
++            )}
++          </Button>
++        </DropdownMenuTrigger>
++        <DropdownMenuContent align="end" className="w-80 p-0">
++          <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
++            <div className="text-sm font-semibold text-foreground">Notifications</div>
++            {unread.length > 0 && (
++              <Button
++                variant="ghost"
++                size="sm"
++                className="h-7 gap-1 px-2 text-xs text-primary hover:text-primary"
++                disabled={markAllRead.isPending}
++                onClick={() => setConfirmMarkAll(true)}
++              >
++                <CheckCheck className="size-3.5" />
++                Mark all read
++              </Button>
++            )}
++          </div>
++          <div className="max-h-96 overflow-y-auto">
++            {isLoading ? (
++              <div className="space-y-2 p-3">
++                {Array.from({ length: 3 }).map((_, i) => (
++                  <Skeleton key={i} className="h-12 w-full" />
++                ))}
++              </div>
++            ) : items.length === 0 ? (
++              <div className="px-3 py-10 text-center">
++                <Bell className="mx-auto mb-2 size-6 text-muted-foreground/40" />
++                <p className="text-sm text-muted-foreground">You&apos;re all caught up</p>
++              </div>
++            ) : (
++              items.map((n) => (
++                <div
++                  key={n.id}
++                  className={cn(
++                    "flex gap-3 border-b border-border px-3 py-2.5 transition-colors last:border-0 hover:bg-muted/50",
++                    !n.isRead && "bg-coral/5"
++                  )}
++                >
++                  <div className="mt-1.5">
++                    {!n.isRead ? (
++                      <span className="size-2 rounded-full bg-coral" />
++                    ) : (
++                      <span className="size-2 rounded-full bg-transparent" />
++                    )}
++                  </div>
++                  <div className="min-w-0 flex-1">
++                    <div className="text-sm font-medium text-foreground">{n.title}</div>
++                    <div className="text-xs text-muted-foreground">{n.message}</div>
++                    <div className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">
++                      {timeAgo(n.createdAt)}
++                    </div>
++                  </div>
++                </div>
++              ))
++            )}
++          </div>
++        </DropdownMenuContent>
++      </DropdownMenu>
++
++      <ConfirmDialog
++        open={confirmMarkAll}
++        onOpenChange={setConfirmMarkAll}
++        tone="info"
++        title="Mark all notifications as read?"
++        description={`This will mark all ${unread.length} unread notification${unread.length === 1 ? "" : "s"} as read. You can still review them in the list.`}
++        confirmLabel="Mark all read"
++        loading={markAllRead.isPending}
++        onConfirm={() => markAllRead.mutate()}
++      />
++    </>
++  );
++}
++
++function AdminLayoutSkeleton() {
++  return (
++    <div className="flex min-h-screen bg-background">
++      <div className="hidden w-64 shrink-0 bg-sidebar lg:block" />
++      <div className="flex flex-1 flex-col">
++        <div className="flex h-16 items-center gap-3 border-b border-border bg-background px-8">
++          <Skeleton className="h-5 w-40" />
++          <div className="flex-1" />
++          <Skeleton className="size-9 rounded-full" />
++        </div>
++        <div className="space-y-4 p-8">
++          <Skeleton className="h-8 w-56" />
++          <Skeleton className="h-32 w-full" />
++          <Skeleton className="h-64 w-full" />
++        </div>
++      </div>
++    </div>
++  );
++}
++
++export default AdminShell;
+diff --git a/src/components/public/RoomCard.tsx b/src/components/public/RoomCard.tsx
+index 7bbc9d5..6a9880a 100755
+--- a/src/components/public/RoomCard.tsx
++++ b/src/components/public/RoomCard.tsx
+@@ -1,7 +1,7 @@
+ "use client";
+ 
+ import * as React from "react";
+-import { Users, ArrowRight, BedDouble } from "lucide-react";
++import { Users, ArrowRight, BedDouble, Ban } from "lucide-react";
+ import { cn, formatCurrency } from "@/lib/utils";
+ import { Card } from "@/components/ui/card";
+ import { SmartImage } from "./shared";
+@@ -13,6 +13,11 @@ interface RoomCardProps {
+   onDetails?: (room: Room) => void;
+   onBook?: (room: Room) => void;
+   selected?: boolean;
++  /** When true (and onSelect is provided) the card is shown as unavailable
++   *  for the currently-selected dates and clicks are blocked. */
++  booked?: boolean;
++  /** Optional reason line shown under the "Booked" badge (e.g. "3 nights unavailable"). */
++  bookedReason?: string;
+   className?: string;
+   compact?: boolean;
+ }
+@@ -23,14 +28,18 @@ export function RoomCard({
+   onDetails,
+   onBook,
+   selected = false,
++  booked = false,
++  bookedReason,
+   className,
+   compact = false,
+ }: RoomCardProps) {
+   const primaryImage = room.images?.find((i) => i.isPrimary) ?? room.images?.[0];
+   const imageUrl = primaryImage?.url;
+   const typeLabel = room.type?.name ?? "The Villa";
++  const disabled = booked && !!onSelect; // only block selection, not details/book flows
+ 
+   const handleClick = () => {
++    if (disabled) return;
+     if (onSelect) {
+       onSelect(room);
+     } else if (onBook) {
+@@ -42,9 +51,14 @@ export function RoomCard({
+ 
+   return (
+     <article
++      data-disabled={disabled || undefined}
++      aria-label={disabled ? `${room.name} — booked for selected dates` : undefined}
+       className={cn(
+-        "group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-card-hover",
+-        selected && "border-primary ring-2 ring-primary/20",
++        "group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card transition-all duration-300",
++        // Interactive affordance only when selectable
++        !disabled && "cursor-pointer hover:-translate-y-1 hover:border-primary hover:shadow-card-hover",
++        selected && !disabled && "border-primary ring-2 ring-primary/20",
++        disabled && "cursor-not-allowed opacity-70 grayscale",
+         className
+       )}
+       onClick={handleClick}
+@@ -71,7 +85,15 @@ export function RoomCard({
+           Sleeps {room.capacity}
+         </div>
+ 
+-        {selected && (
++        {/* Booked badge (only in selection context) */}
++        {disabled && (
++          <div className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-coral px-2.5 py-1 text-xs font-semibold text-coral-foreground shadow-card">
++            <Ban className="h-3 w-3" />
++            Booked
++          </div>
++        )}
++
++        {selected && !disabled && (
+           <div className="absolute inset-0 flex items-center justify-center bg-primary/30 backdrop-blur-[1px]">
+             <span className="rounded-md bg-white px-4 py-1.5 text-sm font-medium text-primary shadow-card">
+               Selected
+@@ -91,6 +113,9 @@ export function RoomCard({
+             {room.description}
+           </p>
+         )}
++        {disabled && bookedReason && (
++          <p className="mt-2 text-xs font-medium text-coral">{bookedReason}</p>
++        )}
+ 
+         {/* Footer */}
+         <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-4">
+@@ -105,7 +130,11 @@ export function RoomCard({
+               </span>
+             </div>
+           </div>
+-          {onDetails ? (
++          {disabled ? (
++            <span className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-muted-foreground">
++              Unavailable
++            </span>
++          ) : onDetails ? (
+             <button
+               type="button"
+               onClick={(e) => {
+diff --git a/src/components/public/booking/BookingFlow.tsx b/src/components/public/booking/BookingFlow.tsx
+index 7489665..d414309 100755
+--- a/src/components/public/booking/BookingFlow.tsx
++++ b/src/components/public/booking/BookingFlow.tsx
+@@ -122,7 +122,14 @@ export function BookingFlow() {
+         err instanceof ApiError
+           ? err.message
+           : "Something went wrong. Please try again.";
+-      toast.error(msg);
++      // If the room was booked by someone else between step 1 and submit,
++      // send the user back to step 1 so they can pick fresh dates/room.
++      if (msg.toLowerCase().includes("not available")) {
++        toast.error("This stay was just booked by another guest. Please pick different dates.");
++        setStep(1);
++      } else {
++        toast.error(msg);
++      }
+     },
+   });
+ 
+@@ -299,6 +306,49 @@ function Step1Dates({
+   const checkOut = booking.checkOut || defaultDate(3);
+   const nights = nightsBetween(checkIn, checkOut);
+ 
++  // ============ Availability check ============
++  // Query the availability endpoint whenever the user has valid dates so
++  // we can grey out rooms that are already booked for those dates — instead
++  // of letting them pick an unavailable room and fail at the final step.
++  const datesValid =
++    !!checkIn && !!checkOut && new Date(checkOut) > new Date(checkIn) && new Date(checkIn) >= new Date(defaultDate(0));
++
++  interface AvailabilityResponse {
++    available: Room[];
++    unavailable: Room[];
++  }
++  const { data: availData, isLoading: availLoading } = useQuery({
++    queryKey: ["availability", checkIn, checkOut, booking.adults, booking.children],
++    queryFn: () =>
++      apiFetch<AvailabilityResponse>(
++        `/api/rooms/availability?checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(
++          checkOut
++        )}&adults=${booking.adults}&children=${booking.children}`
++      ),
++    enabled: datesValid,
++    staleTime: 30 * 1000,
++  });
++
++  // Build a set of available room IDs for quick lookup.
++  const availableIds = React.useMemo(
++    () => new Set((availData?.available ?? []).map((r) => r.id)),
++    [availData]
++  );
++  const hasAvailability = availData !== undefined;
++
++  // If the user already selected a room but it became unavailable (dates
++  // changed, or availability just loaded), clear the selection with a toast
++  // so they can't proceed with an unbookable room.
++  React.useEffect(() => {
++    if (hasAvailability && booking.selectedRoomId && !availableIds.has(booking.selectedRoomId)) {
++      const room = rooms.find((r) => r.id === booking.selectedRoomId);
++      if (room) {
++        toast.error(`${room.name} isn't available for those dates. Please pick another stay.`);
++        selectRoom("");
++      }
++    }
++  }, [hasAvailability, availableIds, booking.selectedRoomId, rooms, selectRoom]);
++
+   const onContinueClick = () => {
+     // Validate dates — prevent accidental invalid submissions
+     if (!checkIn || !checkOut) {
+@@ -488,27 +538,60 @@ function Step1Dates({
+         </FadeUpSection>
+       ) : (
+         <FadeUpSection delay={0.1} className="mt-8">
+-          <h2 className="font-display text-2xl font-semibold tracking-tight">
+-            Choose your stay
+-          </h2>
++          <div className="flex flex-wrap items-baseline justify-between gap-2">
++            <h2 className="font-display text-2xl font-semibold tracking-tight">
++              Choose your stay
++            </h2>
++            {/* Availability summary — shown once the availability query resolves */}
++            {hasAvailability && (
++              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
++                {availLoading
++                  ? "Checking availability…"
++                  : availableIds.size === rooms.length
++                    ? "All stays available"
++                    : `${availableIds.size} of ${rooms.length} available`}
++              </span>
++            )}
++          </div>
+           <p className="mt-1 text-sm text-muted-foreground">
+             Pick the whole villa for a group celebration, or a single bedroom
+-            for a quieter escape.
++            for a quieter escape. Stays already booked for your dates are marked{" "}
++            <span className="font-medium text-coral">Booked</span>.
+           </p>
+           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+-            {roomsLoading
++            {roomsLoading || (availLoading && !hasAvailability)
+               ? Array.from({ length: 5 }).map((_, i) => (
+                   <RoomCardSkeleton key={i} />
+                 ))
+-              : rooms.map((room) => (
+-                  <RoomCard
+-                    key={room.id}
+-                    room={room}
+-                    selected={room.id === booking.selectedRoomId}
+-                    onSelect={(r) => selectRoom(r.id)}
+-                  />
+-                ))}
++              : rooms.map((room) => {
++                  const isAvailable = !hasAvailability || availableIds.has(room.id);
++                  return (
++                    <RoomCard
++                      key={room.id}
++                      room={room}
++                      selected={room.id === booking.selectedRoomId}
++                      booked={!isAvailable}
++                      bookedReason={
++                        !isAvailable
++                          ? "Already reserved for these dates"
++                          : undefined
++                      }
++                      onSelect={(r) => selectRoom(r.id)}
++                    />
++                  );
++                })}
+           </div>
++          {hasAvailability && availableIds.size === 0 && (
++            <div className="mt-6 rounded-lg border border-coral/30 bg-coral/5 p-5 text-center">
++              <p className="font-display text-lg font-semibold text-foreground">
++                Nothing available for those dates
++              </p>
++              <p className="mt-1 text-sm text-muted-foreground">
++                Try different check-in / check-out dates above — the villa and
++                rooms get booked up quickly in peak season.
++              </p>
++            </div>
++          )}
+         </FadeUpSection>
+       )}
+ 
+-- 
+2.47.3
+
