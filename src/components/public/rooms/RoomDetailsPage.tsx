@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -8,9 +9,12 @@ import {
   BedDouble,
   Calendar as CalendarIcon,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
   Maximize,
   Users,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,7 +25,7 @@ import { useViewStore } from "@/store/useViewStore";
 import { useBookingStore } from "@/store/useBookingStore";
 import { RESORT_INFO } from "@/lib/constants";
 import type { Room } from "@/types";
-import { FadeUpSection, getAmenityIcon } from "../shared";
+import { FadeUpSection, getAmenityIcon, SmartImage } from "../shared";
 import { RoomCard } from "../RoomCard";
 
 interface RoomResponse {
@@ -58,11 +62,41 @@ export function RoomDetailsPage() {
   }, [allRoomsData, roomId]);
 
   const [activeImage, setActiveImage] = React.useState(0);
+  const [lightboxOpen, setLightboxOpen] = React.useState(false);
+  const thumbsRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     // Reset image when room changes.
     setActiveImage(0);
   }, [roomId]);
+
+  // Keep active thumbnail in view when navigating via arrows
+  React.useEffect(() => {
+    const el = thumbsRef.current?.querySelector<HTMLElement>(
+      `[data-thumb-idx="${activeImage}"]`
+    );
+    el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [activeImage]);
+
+  // Lightbox keyboard nav — declared before early returns to satisfy rules-of-hooks
+  // Uses `room?.images?.length` so it works even before room is loaded
+  React.useEffect(() => {
+    if (!lightboxOpen) return;
+    const total = Math.max(room?.images?.length ?? 0, 1);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+      if (e.key === "ArrowRight")
+        setActiveImage((i) => (i + 1) % total);
+      if (e.key === "ArrowLeft")
+        setActiveImage((i) => (i - 1 + total) % total);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [lightboxOpen, room?.images?.length]);
 
   if (isLoading) {
     return (
@@ -171,45 +205,124 @@ export function RoomDetailsPage() {
             {/* Gallery + Description */}
             <div>
               <FadeUpSection>
-                {/* Main image */}
-                <div className="overflow-hidden rounded-lg border border-border">
-                  <div className="relative aspect-[4/3] w-full bg-muted">
+                {/* Main image — 16:10 landscape, click opens lightbox */}
+                <div className="group relative overflow-hidden rounded-lg border border-border">
+                  <div className="relative aspect-[16/10] w-full">
                     {primaryImage ? (
-                      <img
-                        src={primaryImage.url}
-                        alt={primaryImage.altText ?? room.name}
-                        className="h-full w-full object-cover"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setLightboxOpen(true)}
+                        className="absolute inset-0 size-full cursor-zoom-in"
+                        aria-label="Open image fullscreen"
+                      >
+                        <SmartImage
+                          src={primaryImage.url}
+                          alt={
+                            primaryImage.altText?.split("::").pop()?.trim() ??
+                            primaryImage.altText ??
+                            room.name
+                          }
+                          wrapperClassName="absolute inset-0 size-full"
+                          className="absolute inset-0 size-full"
+                          loading="eager"
+                        />
+                      </button>
                     ) : (
-                      <div className="flex h-full items-center justify-center">
+                      <div className="flex h-full items-center justify-center bg-muted">
                         <BedDouble className="h-12 w-12 text-muted-foreground/40" />
                       </div>
                     )}
                   </div>
+
+                  {/* Caption overlay (bottom gradient) — non-tech users need context */}
+                  {primaryImage?.altText && (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-4 pt-10">
+                      <p className="text-sm font-medium text-white drop-shadow-sm">
+                        {primaryImage.altText.split("::").pop()?.trim() ?? primaryImage.altText}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Image counter top-right */}
+                  {images.length > 1 && (
+                    <div className="pointer-events-none absolute right-3 top-3 rounded-md bg-black/60 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                      {activeImage + 1} / {images.length}
+                    </div>
+                  )}
+
+                  {/* Click-to-expand hint */}
+                  {images.length > 0 && (
+                    <div className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-1 rounded-md bg-black/60 px-2 py-1 text-[11px] text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
+                      <Maximize className="size-3" />
+                      Click to expand
+                    </div>
+                  )}
                 </div>
 
-                {/* Thumbnails */}
+                {/* Thumbnails — ALWAYS single-line scrollable, never wraps to 2 lines */}
                 {images.length > 1 && (
-                  <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
-                    {images.map((img, i) => (
-                      <button
-                        key={img.id}
-                        onClick={() => setActiveImage(i)}
-                        className={cn(
-                          "relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all sm:w-auto",
-                          activeImage === i
-                            ? "border-primary"
-                            : "border-transparent opacity-70 hover:opacity-100"
-                        )}
-                      >
-                        <img
-                          src={img.url}
-                          alt={img.altText ?? `View ${i + 1}`}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      </button>
-                    ))}
+                  <div className="relative mt-3">
+                    <div
+                      ref={thumbsRef}
+                      className="no-scrollbar flex gap-3 overflow-x-auto pb-2"
+                    >
+                      {images.map((img, i) => {
+                        const caption = img.altText?.split("::").pop()?.trim() ?? img.altText ?? `View ${i + 1}`;
+                        return (
+                          <button
+                            key={img.id}
+                            data-thumb-idx={i}
+                            onClick={() => setActiveImage(i)}
+                            title={caption}
+                            className={cn(
+                              "group/thumb relative size-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all sm:size-24",
+                              activeImage === i
+                                ? "border-primary ring-2 ring-primary/20"
+                                : "border-transparent opacity-70 hover:opacity-100"
+                            )}
+                          >
+                            <img
+                              src={img.url}
+                              alt={img.altText ?? `View ${i + 1}`}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                            {/* Caption label — visible on hover, derived from altText */}
+                            <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-1.5 pb-1 pt-3 text-left text-[10px] font-medium text-white opacity-0 transition group-hover/thumb:opacity-100">
+                              {caption}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Chevron arrows — discoverable for non-tech users */}
+                    {images.length > 3 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveImage((i) =>
+                              (i - 1 + images.length) % images.length
+                            )
+                          }
+                          className="absolute left-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-md ring-1 ring-border transition hover:bg-white hover:scale-105"
+                          aria-label="Previous image"
+                        >
+                          <ChevronLeft className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveImage((i) => (i + 1) % images.length)
+                          }
+                          className="absolute right-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-foreground shadow-md ring-1 ring-border transition hover:bg-white hover:scale-105"
+                          aria-label="Next image"
+                        >
+                          <ChevronRight className="size-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </FadeUpSection>
@@ -299,8 +412,8 @@ export function RoomDetailsPage() {
               <div className="lg:sticky lg:top-24">
                 <FadeUpSection delay={0.1}>
                   <div className="rounded-lg border border-border bg-card p-6 shadow-card">
-                    <div className="flex items-end justify-between">
-                      <div>
+                    <div className="flex items-end justify-between gap-3">
+                      <div className="min-w-0">
                         <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
                           From
                         </div>
@@ -313,7 +426,7 @@ export function RoomDetailsPage() {
                       </div>
                       <Badge
                         className={cn(
-                          "rounded-md border-0",
+                          "shrink-0 rounded-md border-0",
                           "bg-emerald-50 text-emerald-700"
                         )}
                       >
@@ -343,13 +456,13 @@ export function RoomDetailsPage() {
 
                     {/* Price preview */}
                     <div className="mt-4 space-y-2 rounded-lg border border-border p-4 text-sm">
-                      <div className="flex items-center justify-between text-muted-foreground">
-                        <span>
+                      <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                        <span className="whitespace-nowrap">
                           {formatCurrency(room.pricePerNight)} ×{" "}
                           {Math.max(nights, 1)} night
                           {nights === 1 ? "" : "s"}
                         </span>
-                        <span className="font-medium text-foreground">
+                        <span className="shrink-0 font-medium text-foreground">
                           {formatCurrency(totalPrice)}
                         </span>
                       </div>
@@ -369,7 +482,7 @@ export function RoomDetailsPage() {
                     <Button
                       onClick={onBook}
                       size="lg"
-                      className="mt-5 w-full rounded-md"
+                      className="mt-5 w-full items-center gap-2 rounded-md"
                     >
                       Book These Dates
                       <ArrowRight className="h-4 w-4" />
@@ -425,6 +538,16 @@ export function RoomDetailsPage() {
           )}
         </div>
       </section>
+
+      {/* Lightbox — full-screen image viewer */}
+      {lightboxOpen && images.length > 0 && (
+        <Lightbox
+          images={images}
+          activeIdx={activeImage}
+          setActiveIdx={setActiveImage}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -444,7 +567,12 @@ function StatTile({
         <span className="text-primary">{icon}</span>
         {label}
       </div>
-      <div className="mt-1.5 text-sm font-medium">{value}</div>
+      <div
+        className="mt-1.5 truncate text-sm font-medium"
+        title={value}
+      >
+        {value}
+      </div>
     </div>
   );
 }
@@ -471,4 +599,103 @@ function formatTimeLabel(hhmm: string): string {
   const ampm = hour >= 12 ? "PM" : "AM";
   const h12 = hour % 12 || 12;
   return `${h12}:${m} ${ampm}`;
+}
+
+// ============================================================
+// Lightbox — full-screen image viewer with prev/next + keyboard nav
+// ============================================================
+function Lightbox({
+  images,
+  activeIdx,
+  setActiveIdx,
+  onClose,
+}: {
+  images: Room["images"];
+  activeIdx: number;
+  setActiveIdx: (updater: (i: number) => number) => void;
+  onClose: () => void;
+}) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  const current = images[activeIdx];
+  if (!current) return null;
+  const caption =
+    current.altText?.split("::").pop()?.trim() ??
+    current.altText ??
+    `View ${activeIdx + 1}`;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image viewer"
+    >
+      {/* Close button */}
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+        aria-label="Close"
+      >
+        <X className="size-5" />
+      </button>
+
+      {/* Counter */}
+      <div className="absolute left-4 top-4 rounded-md bg-white/10 px-3 py-1.5 text-sm font-medium text-white">
+        {activeIdx + 1} / {images.length}
+      </div>
+
+      {/* Prev */}
+      {images.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveIdx((i) => (i - 1 + images.length) % images.length);
+          }}
+          className="absolute left-4 top-1/2 flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+          aria-label="Previous image"
+        >
+          <ChevronLeft className="size-6" />
+        </button>
+      )}
+
+      {/* Image */}
+      <figure
+        className="relative max-h-[85vh] max-w-[90vw]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img
+          src={current.url}
+          alt={current.altText ?? caption}
+          className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
+        />
+        {caption && (
+          <figcaption className="mt-3 text-center text-sm text-white/80">
+            {caption}
+          </figcaption>
+        )}
+      </figure>
+
+      {/* Next */}
+      {images.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveIdx((i) => (i + 1) % images.length);
+          }}
+          className="absolute right-4 top-1/2 flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+          aria-label="Next image"
+        >
+          <ChevronRight className="size-6" />
+        </button>
+      )}
+    </div>,
+    document.body
+  );
 }

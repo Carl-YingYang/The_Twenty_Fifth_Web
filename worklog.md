@@ -1417,3 +1417,139 @@ Stage Summary:
 - Admin: active tabs/sidebar have strong contrast in both themes
 - Toasts: dark mode fixed, sharp corners
 - Lint: 0 errors. Dev server: HTTP 200, no runtime errors.
+
+---
+Task ID: 12-PROMPT-ANALYSIS
+Agent: Main (Z.ai Code) — Prompt analysis for "sira sira" bug report
+
+Task: User reported broken UI in 2 screenshots (admin Edit Room modal + public Room Details page). Asked to improve the prompt first before coding.
+
+VLM Analysis of Screenshot 1 (Public Room Details):
+- Thumbnail grid wraps awkwardly: 4 in row 1, 1 misaligned in row 2 (caused by `sm:grid sm:grid-cols-5` when there are >5 images)
+- "Beds" stat tile text wraps to 2 lines ("4 bedrooms · 21 beds" / "· 5.5 baths")
+- Price calculation "₱45,000 × 2 nights" wraps to 2 lines
+- Hero image slightly cropped (aspect-[4/3] too tall for landscape villa photos)
+- "Book These Dates" button arrow misaligned
+
+VLM Analysis of Screenshot 2 (Admin Edit Room Modal):
+- Modal cut off at bottom: Images section partially hidden (form max-h-[70vh] + DialogContent max-h-[90vh] misalignment)
+- Image URL truncated mid-text ("...auto=...")
+- Image thumbnail too small (size-12 = 48px)
+- Description text truncates mid-word
+- Status field truncated ("Open — Availab...")
+- "No alt text" placeholder shown — images are generic, no specific purpose/label
+- Close button lacks visible hover state
+
+User's Core Complaints (translated from Taglish):
+1. "para saan or saan naka link yung image na yun?? ano general lang? dapat specific"
+   → Images are just generic URLs; need specific purpose/category (Pool, Bedroom, etc.)
+2. "wag mo ng gawing parang 2 lines pa like pwede namang gawing scrollable na one line lang"
+   → All 2-line wraps should become single-line scrollable
+3. "i need it to be logical functionable since mga non tech user ang gagamit neto"
+   → Must be intuitive for non-tech users
+
+Improved Prompt — 5 Technical Specifications:
+- Spec 1: Admin Edit Room modal — image manager redesign with category dropdown (Pool/Bedroom/Bathroom/Garden/Living/Dining/Exterior/Amenity/Other), larger 64px thumbnails, single-line scrollable URLs, alt-text required, horizontally scrollable row
+- Spec 2: Admin Edit Room modal — fix layout (DialogContent flex flex-col, body flex-1 overflow-y-auto, footer always visible), fix description/status truncation, polish close button
+- Spec 3: Public Room Details — thumbnails always single-line scrollable (remove sm:grid), add chevron arrows, add captions, image counter
+- Spec 4: Public Room Details — StatTile truncate+title, price row whitespace-nowrap, button alignment, badge shrink-0
+- Spec 5: Public Room Details — hero image aspect-[16/10], use SmartImage, caption overlay, lightbox click
+
+Stage Summary:
+- Prompt improved and broken into 5 actionable specs
+- Implementation order: Specs 1+2 (admin modal) → Specs 3+4+5 (public page) → lint → agent-browser verify → cron
+
+---
+Task ID: 12
+Agent: Main (Z.ai Code) — Fix broken UI in admin Edit Room modal + public Room Details page
+
+Task: User reported "sira sira" (broken) UI in 2 screenshots. Complaints: (1) images are generic, need specific purpose/category, (2) 2-line wrapping should be single-line scrollable, (3) must be logical/functional for non-tech users. User asked to improve prompt first before coding.
+
+Improved Prompt — 5 Technical Specifications (logged in Task 12-PROMPT-ANALYSIS):
+- Spec 1: Admin modal image manager redesign with category dropdown (Pool/Bedroom/Bathroom/Garden/Living/Dining/Exterior/Amenity/Other)
+- Spec 2: Admin modal layout fix (footer cut-off, description/status truncation)
+- Spec 3: Public room details thumbnails always single-line scrollable
+- Spec 4: Public room details stat tiles + price row no wrapping
+- Spec 5: Public room details hero image + lightbox
+
+Work Log:
+
+**1. Admin Edit Room modal — Image Manager Redesign (RoomsAdmin.tsx)**
+- Added IMAGE_CATEGORIES constant: 9 categories (Pool, Bedroom, Bathroom, Garden, Living Area, Dining, Exterior, Amenity, Other) each with lucide icon (Waves, BedDouble, Bath, Trees, Sofa, Utensils, Building2, Sparkles, Home)
+- Added parseImageAlt() / formatImageAlt() helpers — stores category in altText as "Category::Caption" for zero-migration backward compat
+- Existing images without prefix default to "Other" category (backward compatible)
+- Rewrote image list as horizontal scrollable single-row cards (not vertical list):
+  - Each card: 16:10 thumbnail (larger), Cover badge on first image, remove button (X) on hover
+  - Category icon + label as title (e.g., "Pool" with waves icon)
+  - Caption below (truncate with title attribute)
+  - URL as single-line scrollable (overflow-x-auto whitespace-nowrap, NOT truncated)
+  - Image index "#1", "#2" etc.
+- Empty state: dashed border placeholder "No images yet. Add at least one..."
+- Add image form: URL input + category dropdown (140px) + caption input (required) + Add button
+- Validation: URL required + format check (https), caption required — toast.error on failure
+
+**2. Admin Edit Room modal — Layout Fixes (RoomsAdmin.tsx)**
+- DialogContent: changed from `max-h-[90vh] overflow-hidden` to `flex max-h-[90vh] flex-col` (proper flex layout)
+- DialogHeader: added `shrink-0 items-center justify-between` (fixed at top)
+- Form: changed from `max-h-[70vh] flex-col` to `min-h-0 flex-1 flex-col` (fills available space)
+- Form body: `min-h-0 flex-1 overflow-y-auto` (scrolls within available space)
+- DialogFooter: added `shrink-0 flex-row bg-card` (always visible at bottom, no cut-off)
+- Description textarea: rows=3→4, added `min-h-[110px] resize-y leading-relaxed` + placeholder
+- Status Select: added `whitespace-nowrap` on trigger + items (no more "Availab..." truncation)
+- Room type Select: added `whitespace-nowrap` on trigger
+
+**3. Public Room Details — Thumbnails Single-Line Scrollable (RoomDetailsPage.tsx)**
+- Removed `sm:grid sm:grid-cols-5 sm:overflow-visible` (caused 4+1 wrap when >5 images)
+- Always uses `flex gap-3 overflow-x-auto no-scrollbar` on ALL breakpoints
+- Each thumbnail: `size-20 sm:size-24 shrink-0` (fixed size, never shrinks/wraps)
+- Active state: `border-primary ring-2 ring-primary/20` (stronger visual feedback)
+- Added hover caption label on each thumbnail (gradient overlay, derived from altText)
+- Added chevron left/right arrows (visible when images.length > 3) for discoverability
+- Added `thumbsRef` with auto-scrollIntoView on activeImage change (active thumb stays in view)
+- Added image counter "1 / 8" on main image (top-right, black/60 backdrop)
+- Added "Click to expand" hint on main image hover
+
+**4. Public Room Details — Stat Tiles + Price Row (RoomDetailsPage.tsx)**
+- StatTile value: added `truncate` + `title={value}` (no more 2-line wrap for "4 bedrooms · 21 beds · 5.5 baths")
+- Price row "₱45,000 × 2 nights": added `whitespace-nowrap` on label span (no wrapping)
+- Price total: added `shrink-0` so it doesn't get squeezed
+- Booking card "From"/Available row: added `gap-3 min-w-0` on left div + `shrink-0` on Badge
+- "Book These Dates" button: added `items-center gap-2` for proper arrow alignment
+
+**5. Public Room Details — Hero Image + Lightbox (RoomDetailsPage.tsx)**
+- Main image aspect: `aspect-[4/3]` → `aspect-[16/10]` (better landscape framing)
+- Replaced raw <img> with <SmartImage> (blur-up progressive loading, eager load)
+- Added caption overlay (bottom gradient, white text) — strips "Category::" prefix for clean display
+- Main image is now a <button> with `cursor-zoom-in` — opens lightbox on click
+- New <Lightbox> component (createPortal to document.body):
+  - Full-screen black/90 backdrop with backdrop-blur
+  - Close (X) button top-right
+  - Image counter top-left ("1 / 3")
+  - Prev/next chevron buttons (left/right center)
+  - Caption below image (strips category prefix)
+  - Keyboard nav: Escape (close), ArrowLeft/Right (prev/next)
+  - Body scroll lock when open
+  - Click backdrop to close (click image doesn't close)
+
+**6. Backward compat for image altText**
+- Public side: all altText displays use `.split("::").pop()?.trim() ?? altText` to strip category prefix
+- Admin side: parseImageAlt() extracts category from prefix; old images default to "Other"
+- No schema migration needed — existing altText values still work
+
+Verification (agent-browser + VLM):
+- ✅ Lint: 0 errors (1 pre-existing RHF warning in BookingsAdmin)
+- ✅ Dev server: HTTP 200, clean compiles
+- ✅ Public Room Details (Beachfront Suite): thumbnails in single horizontal row (3 images, no wrap), stat tiles all single-line (Sleeps/Size/Beds/View), image counter "1/3" visible, caption "Beachfront Suite — view 1" on main image
+- ✅ Admin Edit Room modal: footer (Cancel/Save) fully visible (no cut-off), description textarea full text visible, image manager with 2 existing image cards in horizontal row, category labels with icons ("Other" for legacy images), single-line URLs, "Add an image" form with URL + category dropdown (set to "Pool") + caption input, Cover badge in DOM (verified via eval)
+- ✅ Lightbox: opens on main image click, full-screen dark backdrop, large centered image, X close button, prev/next chevrons, image counter, keyboard nav works
+
+Stage Summary:
+- Files changed (2): src/components/admin/RoomsAdmin.tsx, src/components/public/rooms/RoomDetailsPage.tsx
+- New helpers: IMAGE_CATEGORIES, parseImageAlt, formatImageAlt, getCategoryConfig (RoomsAdmin); Lightbox component (RoomDetailsPage)
+- Admin image manager: 9 categories with icons, horizontal scrollable cards, single-line URLs, caption required, Cover badge
+- Admin modal layout: proper flex column (header fixed / body scrolls / footer fixed), no more cut-off
+- Public thumbnails: always single-line scrollable, chevron arrows, captions, image counter
+- Public hero: 16:10 landscape, SmartImage blur-up, caption overlay, click-to-open lightbox
+- Lightbox: full-screen viewer with keyboard nav, body scroll lock, prev/next/close
+- Backward compat: existing altText works (defaults to "Other" category), no schema migration
+- Lint: 0 errors. Dev server: HTTP 200, no runtime errors.

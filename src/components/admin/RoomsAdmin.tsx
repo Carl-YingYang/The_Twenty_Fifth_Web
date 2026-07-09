@@ -5,13 +5,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  Bath,
   BedDouble,
+  Building2,
   Home,
   ImagePlus,
   Pencil,
   Plus,
+  Sparkles,
+  Sofa,
+  Trees,
   Trash2,
   Users,
+  Utensils,
+  Waves,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -474,6 +481,39 @@ interface RoomFormValues {
   imageUrls: { url: string; altText: string }[];
 }
 
+// Image category system — stored in altText as "Category::Caption" for zero-migration compat
+const IMAGE_CATEGORIES = [
+  { value: "Pool", label: "Pool", icon: Waves },
+  { value: "Bedroom", label: "Bedroom", icon: BedDouble },
+  { value: "Bathroom", label: "Bathroom", icon: Bath },
+  { value: "Garden", label: "Garden", icon: Trees },
+  { value: "Living Area", label: "Living Area", icon: Sofa },
+  { value: "Dining", label: "Dining", icon: Utensils },
+  { value: "Exterior", label: "Exterior", icon: Building2 },
+  { value: "Amenity", label: "Amenity", icon: Sparkles },
+  { value: "Other", label: "Other", icon: Home },
+] as const;
+
+type ImageCategory = (typeof IMAGE_CATEGORIES)[number]["value"];
+
+function parseImageAlt(altText: string): { category: ImageCategory; caption: string } {
+  if (!altText) return { category: "Other", caption: "" };
+  const sepIdx = altText.indexOf("::");
+  if (sepIdx === -1) return { category: "Other", caption: altText };
+  const cat = altText.slice(0, sepIdx) as ImageCategory;
+  const cap = altText.slice(sepIdx + 2);
+  const valid = IMAGE_CATEGORIES.some((c) => c.value === cat);
+  return { category: valid ? cat : "Other", caption: cap };
+}
+
+function formatImageAlt(category: ImageCategory, caption: string): string {
+  return `${category}::${caption.trim()}`;
+}
+
+function getCategoryConfig(value: ImageCategory) {
+  return IMAGE_CATEGORIES.find((c) => c.value === value) ?? IMAGE_CATEGORIES[IMAGE_CATEGORIES.length - 1];
+}
+
 function RoomFormDialog({
   room,
   open,
@@ -518,19 +558,38 @@ function RoomFormDialog({
 
   const [newImageUrl, setNewImageUrl] = useState("");
   const [newImageAlt, setNewImageAlt] = useState("");
+  const [newImageCategory, setNewImageCategory] = useState<ImageCategory>("Pool");
 
   const imageUrls = watch("imageUrls");
   const status = watch("status");
   const typeId = watch("typeId");
 
   function addImage() {
-    if (!newImageUrl) return;
+    const trimmedUrl = newImageUrl.trim();
+    const trimmedAlt = newImageAlt.trim();
+    if (!trimmedUrl) {
+      toast.error("Image URL is required.");
+      return;
+    }
+    // Basic URL validation
+    try {
+      const u = new URL(trimmedUrl);
+      if (!/https?/.test(u.protocol)) throw new Error();
+    } catch {
+      toast.error("Please enter a valid image URL (https://...).");
+      return;
+    }
+    if (!trimmedAlt) {
+      toast.error("Caption is required — describe what's in the image so guests know what they're looking at.");
+      return;
+    }
     setValue("imageUrls", [
       ...imageUrls,
-      { url: newImageUrl, altText: newImageAlt },
+      { url: trimmedUrl, altText: formatImageAlt(newImageCategory, trimmedAlt) },
     ]);
     setNewImageUrl("");
     setNewImageAlt("");
+    setNewImageCategory("Pool");
   }
 
   function removeImage(idx: number) {
@@ -585,23 +644,25 @@ function RoomFormDialog({
         }
       }}
     >
-      <DialogContent className="max-h-[90vh] max-w-2xl gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
-          <DialogTitle className="font-display text-xl font-medium tracking-tight">
-            {room ? "Edit room" : "Add room"}
-          </DialogTitle>
-          <DialogDescription>
-            {room
-              ? `Update ${room.name}`
-              : "Add a new space to the villa."}
-          </DialogDescription>
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="flex shrink-0 items-center justify-between border-b border-border px-4 py-5 sm:px-6">
+          <div className="min-w-0">
+            <DialogTitle className="font-display text-xl font-medium tracking-tight">
+              {room ? "Edit room" : "Add room"}
+            </DialogTitle>
+            <DialogDescription>
+              {room
+                ? `Update ${room.name}`
+                : "Add a new space to the villa."}
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
         <form
           onSubmit={handleSubmit((v) => mutation.mutate(v))}
-          className="flex max-h-[70vh] flex-col"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Room name" error={errors.name?.message}>
                 <Input {...register("name", { required: true })} className="h-10" />
@@ -614,7 +675,9 @@ function RoomFormDialog({
             <Field label="Description" error={errors.description?.message}>
               <Textarea
                 {...register("description", { required: true })}
-                rows={3}
+                rows={4}
+                className="min-h-[110px] resize-y leading-relaxed"
+                placeholder="Describe the room — what makes it special, what guests will love..."
               />
             </Field>
 
@@ -666,12 +729,12 @@ function RoomFormDialog({
                   value={status}
                   onValueChange={(v) => setValue("status", v as RoomStatus)}
                 >
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className="h-10 w-full whitespace-nowrap">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {ROOM_STATUS_VALUES.map((s) => (
-                      <SelectItem key={s} value={s}>
+                      <SelectItem key={s} value={s} className="whitespace-nowrap">
                         {ROOM_STATUS_CONFIG[s].label} — {ROOM_STATUS_CONFIG[s].friendly}
                       </SelectItem>
                     ))}
@@ -680,78 +743,151 @@ function RoomFormDialog({
               </Field>
             </div>
 
-            {/* Images */}
+            {/* Images — structured manager with category + caption */}
             <div>
-              <Label className="text-xs font-medium text-foreground">
-                Images
-              </Label>
-              <div className="mt-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium text-foreground">
+                  Images
+                </Label>
                 {imageUrls.length > 0 && (
-                  <ul className="max-h-48 space-y-2 overflow-y-auto pr-1">
-                    {imageUrls.map((img, idx) => (
-                      <li
+                  <span className="text-xs text-muted-foreground">
+                    {imageUrls.length} image{imageUrls.length === 1 ? "" : "s"} · first image is the cover
+                  </span>
+                )}
+              </div>
+
+              {/* Existing images — horizontal scrollable single row */}
+              {imageUrls.length > 0 && (
+                <div className="no-scrollbar mt-2 flex gap-3 overflow-x-auto pb-2">
+                  {imageUrls.map((img, idx) => {
+                    const { category, caption } = parseImageAlt(img.altText);
+                    const cfg = getCategoryConfig(category);
+                    const Icon = cfg.icon;
+                    return (
+                      <div
                         key={idx}
-                        className="flex items-center gap-2 rounded-lg border border-border bg-card p-2"
+                        className="group relative w-56 shrink-0 overflow-hidden rounded-lg border border-border bg-card"
                       >
-                        <div className="size-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                        {/* Larger thumbnail 16:10 */}
+                        <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">
                           <img
                             src={img.url}
-                            alt={img.altText || `Room image ${idx + 1}`}
-                            className="size-full object-cover"
+                            alt={caption || `Room image ${idx + 1}`}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
                           />
+                          {/* Cover badge */}
+                          {idx === 0 && (
+                            <span className="absolute left-1.5 top-1.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+                              Cover
+                            </span>
+                          )}
+                          {/* Remove button */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1.5 top-1.5 size-7 shrink-0 rounded-md bg-black/50 text-white opacity-0 transition hover:bg-red-600 hover:text-white group-hover:opacity-100"
+                            onClick={() => removeImage(idx)}
+                            aria-label={`Remove ${cfg.label} image`}
+                          >
+                            <X className="size-3.5" />
+                          </Button>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-xs text-foreground" title={img.url}>
+                        {/* Category + caption */}
+                        <div className="space-y-1 p-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+                              <Icon className="size-3" />
+                            </span>
+                            <span className="truncate text-xs font-semibold text-foreground">
+                              {cfg.label}
+                            </span>
+                            <span className="ml-auto text-[10px] text-muted-foreground">
+                              #{idx + 1}
+                            </span>
+                          </div>
+                          <div
+                            className="truncate text-xs text-muted-foreground"
+                            title={caption || "No caption"}
+                          >
+                            {caption || (
+                              <span className="italic text-muted-foreground/70">No caption</span>
+                            )}
+                          </div>
+                          {/* URL — single-line scrollable, NOT truncated */}
+                          <div
+                            className="no-scrollbar mt-0.5 overflow-x-auto whitespace-nowrap text-[10px] text-muted-foreground/70"
+                            title={img.url}
+                          >
                             {img.url}
                           </div>
-                          <div className="truncate text-xs text-muted-foreground" title={img.altText}>
-                            {img.altText || "No alt text"}
-                          </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 shrink-0 hover:bg-red-50 hover:text-red-700"
-                          onClick={() => removeImage(idx)}
-                          aria-label="Remove image"
-                        >
-                          <X className="size-3.5" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div className="flex flex-col gap-2 sm:flex-row">
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {imageUrls.length === 0 && (
+                <p className="mt-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-4 text-center text-xs text-muted-foreground">
+                  No images yet. Add at least one — the first image becomes the cover photo.
+                </p>
+              )}
+
+              {/* Add image form */}
+              <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                <div className="text-xs font-medium text-foreground">Add an image</div>
+                <Input
+                  placeholder="https://image-url.jpg (https required)"
+                  value={newImageUrl}
+                  onChange={(e) => setNewImageUrl(e.target.value)}
+                  className="h-9"
+                />
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[140px_1fr]">
+                  <Select
+                    value={newImageCategory}
+                    onValueChange={(v) => setNewImageCategory(v as ImageCategory)}
+                  >
+                    <SelectTrigger className="h-9 w-full whitespace-nowrap">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {IMAGE_CATEGORIES.map((c) => {
+                        const Icon = c.icon;
+                        return (
+                          <SelectItem key={c.value} value={c.value} className="whitespace-nowrap">
+                            <span className="flex items-center gap-2">
+                              <Icon className="size-3.5" />
+                              {c.label}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                   <Input
-                    placeholder="https://image-url.jpg"
-                    value={newImageUrl}
-                    onChange={(e) => setNewImageUrl(e.target.value)}
-                    className="h-9"
-                  />
-                  <Input
-                    placeholder="Alt text (describe the image)"
+                    placeholder="Caption (required) — e.g., Pool view at sunset"
                     value={newImageAlt}
                     onChange={(e) => setNewImageAlt(e.target.value)}
-                    className="h-9 sm:w-48"
+                    className="h-9"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 shrink-0"
-                    onClick={addImage}
-                    disabled={!newImageUrl}
-                  >
-                    <ImagePlus className="size-3.5" />
-                    Add
-                  </Button>
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 shrink-0"
+                  onClick={addImage}
+                >
+                  <ImagePlus className="size-3.5" />
+                  Add image
+                </Button>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="border-t border-border px-4 py-4 sm:px-6">
+          <DialogFooter className="flex shrink-0 flex-row gap-2 border-t border-border bg-card px-4 py-4 sm:px-6">
             <Button
               type="button"
               variant="outline"
