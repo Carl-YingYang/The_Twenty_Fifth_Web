@@ -2061,3 +2061,120 @@ Stage Summary:
 **Files changed (8) + created (4):**
 - Created: `src/lib/faqs.ts`, `src/lib/chatbot-knowledge.ts`, `src/app/api/chat/route.ts`, `src/store/useChatStore.ts`, `src/components/public/chatbot/ConciergeChat.tsx`
 - Modified: `.env` (added GROQ_API_KEY + GROQ_MODEL), `src/components/public/faqs/FaqsPage.tsx` (use shared FAQs), `src/app/page.tsx` (render ConciergeChat in public shell), `src/app/globals.css` (.chat-markdown styles).
+
+---
+Task ID: 16
+Agent: Main (Z.ai Code) — Concierge chatbot UI redesign + guardrails removal
+
+Task: User feedback: the chatbot UI is "not very great" — make it compatible for every layout (responsive), make the UI cleaner and sharper, and remove the guardrails/limiters.
+
+Work Log:
+
+**1. Diagnosed UI issues (VLM analysis of user screenshot)**
+- Analyzed the user's screenshot with the VLM skill. Concrete problems found:
+  - Heavy dark-teal header (poor contrast, not "clean")
+  - Two action chips per assistant message ("Start booking" + "What's included?") — cluttered
+  - Always-visible quick-reply row at the bottom — visual noise
+  - Redundant footer note ("Mara can help with booking — for confirmed reservations, use Find My Booking") under the input — clutter
+  - Per-message avatars on every bubble — repetitive
+  - Trash/clear button in header — unnecessary for a guest concierge
+  - Panel proportions felt large/intrusive
+
+**2. Removed guardrails & limiters (src/app/api/chat/route.ts)**
+Per the owner's request, removed ALL conversation-limiting caps so Mara can hold long, natural conversations without being cut off:
+- Removed `MAX_MESSAGES` (20) history cap → now sends the FULL conversation history to the model.
+- Removed `MAX_USER_CHARS` (1200) slicing → user messages are no longer truncated.
+- Removed `MAX_TOKENS` (600) → no longer sent in the Groq request body, so replies aren't length-capped (model uses its own default).
+- Kept ONLY structural validation: JSON parse, messages-array check, role sanitization (user/assistant only; client-sent system roles dropped), and "last message must be from user" sanity check.
+- Groq primary + z-ai fallback, streaming, and graceful error handling all preserved unchanged.
+
+**3. Full UI redesign (src/components/public/chatbot/ConciergeChat.tsx)**
+
+*Header — clean & sharp:*
+- Switched from dark-teal `bg-primary/95` to clean white `bg-card` with a 1px bottom border.
+- Small 36px teal avatar (ConciergeBell) with an emerald online dot.
+- "Mara" in semibold + "· Online" in emerald + "Concierge · replies in seconds" subtitle.
+- Removed the trash/clear button entirely (conversations persist; clear not needed for guests).
+- Single X close button (rounded-lg, muted, hover-bg).
+
+*Messages — de-cluttered:*
+- Removed per-message avatars entirely (the header avatar represents Mara; modern chat widgets like iMessage/WhatsApp don't repeat avatars per bubble). This alone removed significant visual noise.
+- Sharper bubble corners: `rounded-2xl` with one `rounded-bl-md` (assistant) / `rounded-br-md` (user) tail — cleaner tail effect.
+- Tighter spacing (`space-y-2.5`), max-width 88%/85%.
+- Subtle section-tint background (`bg-section/40`) for the messages area.
+- Streaming cursor (`▋`) only on the in-flight paragraph.
+
+*Action chips — minimal:*
+- Removed the "What's included?" secondary chip from every message.
+- Now only ONE "Start booking" CTA, shown solely on the latest assistant reply (and the welcome message). Rendered as a clean `rounded-lg` button below the bubble, not inside it.
+- Error bubbles keep "Message us" + "Call" fallback buttons.
+
+*Quick replies — contextual:*
+- Removed the always-visible quick-reply row from the bottom of the panel.
+- Quick replies now show ONLY on the welcome screen (when no messages yet), as a clean wrap of 4 icon-prefixed chips.
+- Reduced from 6 to 4 suggestions (How do I book / Room options & prices / Check-in times / Whole villa price).
+
+*Input — minimal:*
+- Single clean row: textarea (rounded-xl, 40px min-height) + square send button (rounded-xl, 40px).
+- Removed the footer "Find My Booking" note entirely (it's already in the nav; Mara can mention it in replies if needed).
+- Focus ring is now a subtle `ring-primary/15` + border tint.
+- iOS safe-area padding via `env(safe-area-inset-bottom)` on the panel.
+
+*FAB — less busy:*
+- Removed the animated `ping` pulse ring (was distracting).
+- Kept the small static emerald online dot (top-right).
+- Cleaner shadow (`shadow-lg shadow-primary/25`).
+- Hover tooltip simplified to "Chat with Mara".
+
+**4. Responsive across every layout**
+Rewrote the panel's responsive classes for correct behavior at all breakpoints:
+- **Mobile (<640px)**: full-screen sheet — `inset-x-0 bottom-0 top-0`, no border radius, covers the whole viewport. A subtle backdrop (`bg-foreground/20 backdrop-blur-[2px]`, `sm:hidden`) dims the page behind and dismisses on tap.
+- **Tablet (≥640px)**: floating panel — `380px` wide, `min(620px, calc(100dvh-2.5rem))` tall, `20px` from bottom/right, `rounded-xl` (14px), no backdrop.
+- **Desktop (≥1024px)**: `400px` wide, `24px` from bottom/right.
+- Verified via agent-browser `set viewport` at 375×812 (mobile), 768×1024 (tablet), and 1280×800 (desktop) — all three render with correct dimensions, positioning, and border-radius. Backdrop correctly `display:none` at ≥640px.
+
+**5. globals.css — chat-markdown styles**
+- Existing `.chat-markdown` styles retained (word-break, paragraph spacing, bold, inline code, inverted link color on teal user bubbles). No changes needed — already clean.
+
+**6. Verification**
+- Lint: 0 errors, 3 pre-existing warnings (RHF `watch()` — unrelated).
+- Dev log: clean compile; `/api/chat` returns 200 via z-ai fallback (Groq key still invalid/403, fallback works as designed).
+- agent-browser QA (5 screenshots in `/home/z/my-project/download/qa-chat-redesign-*.png`):
+  1. Desktop welcome: clean white header (`rgb(255,255,255)`), no trash button, 1 close button, welcome message renders, 4 quick-reply chips with icons, 1 "Start booking" button.
+  2. Desktop reply: sent "Can I host a birthday party for 15 people?" → Mara streamed on-brand reply; exactly 1 "Start booking" CTA on the latest message only (not on historical messages).
+  3. Mobile (375×812): full-screen sheet (375×812, top=0, left=0, borderRadius=0px), backdrop visible.
+  4. Tablet (768×1024): floating panel (380×620, 20px from right/bottom, 14px radius), backdrop `display:none`.
+  5. Desktop conversation: sent "What rooms do you have and how much is the whole villa?" → Mara streamed a detailed reply quoting live DB room data (Beachfront Suite ₱15,000, Garden Suite ₱9,500, Master Suite ₱12,000…).
+  6. Welcome "Start booking" CTA → navigates to `book` view + closes chat.
+  7. ESC closes the panel.
+
+Stage Summary:
+
+**UI redesign delivered:**
+- Clean white header (was heavy dark-teal).
+- No per-message avatars (was repetitive on every bubble).
+- Single "Start booking" CTA on latest message only (was two chips on every message).
+- Quick replies only on welcome screen (was always-visible bottom row).
+- Removed footer "Find My Booking" note.
+- Removed trash/clear button from header.
+- Sharper bubble corners, tighter spacing, minimal input.
+- FAB de-cluttered (removed pulse ring).
+
+**Responsive across every layout:**
+- Mobile (<640px): full-screen sheet + tap-to-dismiss backdrop + safe-area padding.
+- Tablet (≥640px): 380×620 floating panel, 14px radius, no backdrop.
+- Desktop (≥1024px): 400px floating panel, 24px margins.
+- Verified at 375px, 768px, and 1280px viewports.
+
+**Guardrails removed:**
+- No more conversation-history cap (was 20 messages).
+- No more per-message character cap (was 1200 chars).
+- No more reply token cap (was 600 tokens).
+- Mara can now hold long, unrestricted conversations.
+- Only structural validation remains (valid JSON, sane roles, last-message-is-user).
+
+**Files changed (2):**
+- `src/app/api/chat/route.ts` — removed MAX_MESSAGES / MAX_USER_CHARS / MAX_TOKENS caps; kept structural validation.
+- `src/components/public/chatbot/ConciergeChat.tsx` — full UI redesign + responsive rewrite.
+
+**Known limitation (unchanged):** Groq key still invalid (403) → running on z-ai fallback. Replacing `GROQ_API_KEY` in `.env` with a valid key restores true Groq streaming automatically.

@@ -12,6 +12,12 @@ import { buildConciergeSystemPrompt } from "@/lib/chatbot-knowledge";
 //
 // Replies are streamed back to the client as a simplified SSE
 // { content } event stream.
+//
+// NOTE: Per the owner's request, conversation length / message
+// size / reply token caps have been removed so Mara can carry
+// long, natural conversations without being cut off. Only basic
+// structural validation remains (valid JSON, messages array,
+// sane roles, last message from user).
 // ============================================================
 
 export const runtime = "nodejs";
@@ -19,11 +25,6 @@ export const dynamic = "force-dynamic";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_MODEL = "llama-3.3-70b-versatile";
-
-// Guardrails
-const MAX_MESSAGES = 20; // conversation history cap (incl. system)
-const MAX_USER_CHARS = 1200; // single user message length cap
-const MAX_TOKENS = 600; // reply length cap
 
 // If Groq returns an auth error, skip it for this long before retrying,
 // so we don't pay the failed-request latency on every message.
@@ -82,7 +83,7 @@ function chunkText(text: string): string[] {
 }
 
 export async function POST(req: NextRequest) {
-  // Parse + validate body
+  // Parse + validate body (structural only — no length limits).
   let body: { messages?: unknown };
   try {
     body = await req.json();
@@ -96,6 +97,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Sanitize the conversation history sent by the client.
+  // We accept any user/assistant turn without truncation so Mara can
+  // hold long conversations. System roles from the client are dropped
+  // (we inject our own system prompt server-side).
   const allowedRoles = new Set(["user", "assistant"]);
   const cleaned: ChatMessage[] = [];
   for (const m of rawMessages) {
@@ -111,26 +115,17 @@ export async function POST(req: NextRequest) {
     const content = (m as { content: string }).content;
     if (!allowedRoles.has(role)) continue;
     if (!content.trim()) continue;
-    if (content.length > MAX_USER_CHARS * 2) continue; // drop absurd payloads
     cleaned.push({ role: role as "user" | "assistant", content });
   }
 
-  // Keep only the most recent turns to bound token usage.
-  const recent = cleaned.slice(-(MAX_MESSAGES - 1));
-  if (recent.length === 0) {
+  if (cleaned.length === 0) {
     return jsonError("No valid messages provided.", 400);
   }
 
-  // The last message must be from the user.
-  if (recent[recent.length - 1].role !== "user") {
+  // The last message must be from the user (structural sanity check).
+  if (cleaned[cleaned.length - 1].role !== "user") {
     return jsonError("Last message must be from the user.", 400);
   }
-
-  // Cap the last user message length.
-  recent[recent.length - 1] = {
-    ...recent[recent.length - 1],
-    content: recent[recent.length - 1].content.slice(0, MAX_USER_CHARS),
-  };
 
   // Build the system prompt (with live room data).
   let systemPrompt: string;
@@ -143,9 +138,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Send the full conversation history — no artificial cap.
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt },
-    ...recent,
+    ...cleaned,
   ];
 
   const groqKey = process.env.GROQ_API_KEY;
@@ -165,7 +161,6 @@ export async function POST(req: NextRequest) {
           model: groqModel,
           messages,
           temperature: 0.6,
-          max_tokens: MAX_TOKENS,
           top_p: 0.9,
           stream: true,
         }),
