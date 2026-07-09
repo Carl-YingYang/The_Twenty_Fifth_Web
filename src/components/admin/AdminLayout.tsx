@@ -32,6 +32,7 @@ import { useMounted } from "@/hooks/useMounted";
 import type { Notification, User, View } from "@/types";
 
 import { AdminLogin } from "./AdminLogin";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -72,6 +73,8 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
   const { view, navigate } = useViewStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const mounted = useMounted();
 
   // Verify token validity on mount
@@ -139,6 +142,15 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
     navigate("home");
   };
 
+  const handleLogoutConfirm = async () => {
+    setLoggingOut(true);
+    try {
+      await onLogout();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   const SidebarContent = (
     <SidebarBody
       currentView={view}
@@ -147,7 +159,7 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
         navigate(v);
         setMobileNavOpen(false);
       }}
-      onLogout={onLogout}
+      onLogout={() => setConfirmLogout(true)}
     />
   );
 
@@ -184,6 +196,17 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
           <main className="min-h-0 flex-1 p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8">{children}</main>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmLogout}
+        onOpenChange={setConfirmLogout}
+        tone="default"
+        title="Sign out of admin?"
+        description="You'll need to sign in again to continue managing Verdara Resort. Any unsaved work in open forms will be lost."
+        confirmLabel="Sign out"
+        loading={loggingOut}
+        onConfirm={handleLogoutConfirm}
+      />
     </div>
   );
 }
@@ -371,6 +394,7 @@ function NotificationsBell() {
 
   const items = data?.notifications ?? [];
   const unread = items.filter((n) => !n.isRead);
+  const [confirmMarkAll, setConfirmMarkAll] = useState(false);
 
   const markAllRead = useMutation({
     mutationFn: () =>
@@ -380,10 +404,18 @@ function NotificationsBell() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success(
+        `Marked ${unread.length} notification${unread.length === 1 ? "" : "s"} as read.`
+      );
+      setConfirmMarkAll(false);
+    },
+    onError: () => {
+      toast.error("Couldn't mark notifications as read.");
     },
   });
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -411,7 +443,7 @@ function NotificationsBell() {
               size="sm"
               className="h-7 gap-1 px-2 text-xs text-primary hover:text-primary"
               disabled={markAllRead.isPending}
-              onClick={() => markAllRead.mutate()}
+              onClick={() => setConfirmMarkAll(true)}
             >
               <CheckCheck className="size-3.5" />
               Mark all read
@@ -465,6 +497,18 @@ function NotificationsBell() {
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
+
+    <ConfirmDialog
+      open={confirmMarkAll}
+      onOpenChange={setConfirmMarkAll}
+      tone="info"
+      title="Mark all notifications as read?"
+      description={`This will mark all ${unread.length} unread notification${unread.length === 1 ? "" : "s"} as read. You can still review them in the list.`}
+      confirmLabel="Mark all read"
+      loading={markAllRead.isPending}
+      onConfirm={() => markAllRead.mutate()}
+    />
+    </>
   );
 }
 

@@ -6,6 +6,7 @@ import { ImagePlus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminLayout } from "./AdminLayout";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { EmptyState } from "./StatCard";
 import { ImageUploader } from "./ImageUploader";
 import { Button } from "@/components/ui/button";
@@ -22,16 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -257,29 +248,17 @@ export function GalleryAdmin() {
         />
       )}
 
-      <AlertDialog
+      <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove this photo?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleting?.title} will be removed from the gallery.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={() => deleting && deleteMutation.mutate(deleting.id)}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? "Removing…" : "Remove"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        tone="destructive"
+        title="Remove this photo?"
+        description={`${deleting?.title ?? "This photo"} will be removed from the gallery and no longer appear on the website.`}
+        confirmLabel="Remove photo"
+        hint="This cannot be undone."
+        loading={deleteMutation.isPending}
+        onConfirm={() => deleting && deleteMutation.mutate(deleting.id)}
+      />
     </AdminLayout>
   );
 }

@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 
 import { AdminLayout } from "./AdminLayout";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { BookingStatusBadge } from "./StatusBadges";
 import { EmptyState } from "./StatCard";
 import { Button } from "@/components/ui/button";
@@ -471,10 +472,20 @@ function GuestDetailsDialog({
 }) {
   const navigate = useViewStore((s) => s.navigate);
   const { selectRoom } = useBookingStore();
+  const [confirmBooking, setConfirmBooking] = useState(false);
 
   const reservations = guest.reservations ?? [];
 
+  const startBookingForGuest = () => {
+    const name = `${guest.firstName} ${guest.lastName}`.trim();
+    selectRoom("");
+    navigate("book");
+    toast.success(`Starting a new booking for ${name}.`);
+    setConfirmBooking(false);
+  };
+
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl gap-0 p-0">
         <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
@@ -587,6 +598,18 @@ function GuestDetailsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      open={confirmBooking}
+      onOpenChange={setConfirmBooking}
+      tone="info"
+      title={`Start a new booking for ${guest.firstName} ${guest.lastName}?`}
+      description="You'll leave the admin panel and open the booking flow. The guest's details will be referenced for this reservation."
+      confirmLabel="Start booking"
+      loading={false}
+      onConfirm={startBookingForGuest}
+    />
+    </>
   );
 }
 

@@ -1,0 +1,1196 @@
+     1→     1→     1→"use client";
+     2→     2→     2→
+     3→     3→     3→import { useEffect, useMemo, useState } from "react";
+     4→     4→     4→import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+     5→     5→     5→import { useForm } from "react-hook-form";
+     6→     6→     6→import { zodResolver } from "@hookform/resolvers/zod";
+     7→     7→     7→import {
+     8→     8→     8→  CalendarPlus,
+     9→     9→     9→  Check,
+    10→    10→    10→  ChevronsLeft,
+    11→    11→    11→  ChevronsRight,
+    12→    12→    12→  Eye,
+    13→    13→    13→  LogIn,
+    14→    14→    14→  LogOut,
+    15→    15→    15→  Plus,
+    16→    16→    16→  Search,
+    17→    17→    17→  UserX,
+    18→    18→    18→  X,
+    19→    19→    19→} from "lucide-react";
+    20→    20→    20→import { toast } from "sonner";
+    21→    21→    21→
+    22→    22→    22→import { AdminLayout } from "./AdminLayout";
+    23→    23→    23→import { BookingStatusBadge } from "./StatusBadges";
+    24→    24→    24→import { EmptyState } from "./StatCard";
+    25→    25→    25→import { Button } from "@/components/ui/button";
+    26→    26→    26→import { Card } from "@/components/ui/card";
+    27→    27→    27→import { Input } from "@/components/ui/input";
+    28→    28→    28→import { Label } from "@/components/ui/label";
+    29→    29→    29→import { Skeleton } from "@/components/ui/skeleton";
+    30→    30→    30→import { Textarea } from "@/components/ui/textarea";
+    31→    31→    31→import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+    32→    32→    32→import {
+    33→    33→    33→  Dialog,
+    34→    34→    34→  DialogContent,
+    35→    35→    35→  DialogDescription,
+    36→    36→    36→  DialogFooter,
+    37→    37→    37→  DialogHeader,
+    38→    38→    38→  DialogTitle,
+    39→    39→    39→} from "@/components/ui/dialog";
+    40→    40→    40→import {
+    41→    41→    41→  Table,
+    42→    42→    42→  TableBody,
+    43→    43→    43→  TableCell,
+    44→    44→    44→  TableHead,
+    45→    45→    45→  TableHeader,
+    46→    46→    46→  TableRow,
+    47→    47→    47→} from "@/components/ui/table";
+    48→    48→    48→import {
+    49→    49→    49→  Select,
+    50→    50→    50→  SelectContent,
+    51→    51→    51→  SelectItem,
+    52→    52→    52→  SelectTrigger,
+    53→    53→    53→  SelectValue,
+    54→    54→    54→} from "@/components/ui/select";
+    55→    55→    55→import {
+    56→    56→    56→  Pagination,
+    57→    57→    57→  PaginationContent,
+    58→    58→    58→  PaginationEllipsis,
+    59→    59→    59→  PaginationItem,
+    60→    60→    60→  PaginationLink,
+    61→    61→    61→  PaginationNext,
+    62→    62→    62→  PaginationPrevious,
+    63→    63→    63→} from "@/components/ui/pagination";
+    64→    64→    64→
+    65→    65→    65→import { apiFetch, ApiError } from "@/lib/api-client";
+    66→    66→    66→import {
+    67→    67→    67→  cn,
+    68→    68→    68→  formatCurrency,
+    69→    69→    69→  formatDate,
+    70→    70→    70→  formatDateShort,
+    71→    71→    71→  getInitials,
+    72→    72→    72→  nightsBetween,
+    73→    73→    73→} from "@/lib/utils";
+    74→    74→    74→import {
+    75→    75→    75→  reservationCreateSchema,
+    76→    76→    76→  type ReservationCreateInput,
+    77→    77→    77→} from "@/lib/validators";
+    78→    78→    78→import type { Reservation, Room, BookingStatus } from "@/types";
+    79→    79→    79→
+    80→    80→    80→const HISTORY_STATUSES: BookingStatus[] = [
+    81→    81→    81→  "COMPLETED",
+    82→    82→    82→  "CANCELLED",
+    83→    83→    83→  "REJECTED",
+    84→    84→    84→  "NO_SHOW",
+    85→    85→    85→];
+    86→    86→    86→
+    87→    87→    87→const PAGE_SIZE = 8;
+    88→    88→    88→
+    89→    89→    89→const STATUS_TABS: { value: string; label: string }[] = [
+    90→    90→    90→  { value: "ALL", label: "All" },
+    91→    91→    91→  { value: "PENDING", label: "Pending" },
+    92→    92→    92→  { value: "CONFIRMED", label: "Confirmed" },
+    93→    93→    93→  { value: "CHECKED_IN", label: "Checked in" },
+    94→    94→    94→  { value: "COMPLETED", label: "Completed" },
+    95→    95→    95→  { value: "CANCELLED", label: "Cancelled" },
+    96→    96→    96→  { value: "HISTORY", label: "History" },
+    97→    97→    97→];
+    98→    98→    98→
+    99→    99→    99→/** Count reservations visible under a given tab (History aggregates 4 statuses). */
+   100→   100→   100→function countForTab(tab: string, reservations: Reservation[]): number {
+   101→   101→   101→  if (tab === "ALL") return reservations.length;
+   102→   102→   102→  if (tab === "HISTORY") {
+   103→   103→   103→    return reservations.filter((r) =>
+   104→   104→   104→      HISTORY_STATUSES.includes(r.status as BookingStatus)
+   105→   105→   105→    ).length;
+   106→   106→   106→  }
+   107→   107→   107→  return reservations.filter((r) => r.status === tab).length;
+   108→   108→   108→}
+   109→   109→   109→
+   110→   110→   110→/** Build a compact page range with ellipses for large page counts. */
+   111→   111→   111→function getPageRange(
+   112→   112→   112→  current: number,
+   113→   113→   113→  total: number
+   114→   114→   114→): (number | "ellipsis")[] {
+   115→   115→   115→  if (total <= 7) {
+   116→   116→   116→    return Array.from({ length: total }, (_, i) => i + 1);
+   117→   117→   117→  }
+   118→   118→   118→  if (current <= 4) {
+   119→   119→   119→    return [1, 2, 3, 4, 5, "ellipsis", total];
+   120→   120→   120→  }
+   121→   121→   121→  if (current >= total - 3) {
+   122→   122→   122→    return [1, "ellipsis", total - 4, total - 3, total - 2, total - 1, total];
+   123→   123→   123→  }
+   124→   124→   124→  return [1, "ellipsis", current - 1, current, current + 1, "ellipsis", total];
+   125→   125→   125→}
+   126→   126→   126→
+   127→   127→   127→export function BookingsAdmin() {
+   128→   128→   128→  const qc = useQueryClient();
+   129→   129→   129→  const [status, setStatus] = useState<string>("ALL");
+   130→   130→   130→  const [search, setSearch] = useState("");
+   131→   131→   131→  const [debouncedSearch, setDebouncedSearch] = useState("");
+   132→   132→   132→  const [page, setPage] = useState(1);
+   133→   133→   133→  const [detailsId, setDetailsId] = useState<string | null>(null);
+   134→   134→   134→  const [creating, setCreating] = useState(false);
+   135→   135→   135→
+   136→   136→   136→  useEffect(() => {
+   137→   137→   137→    const t = setTimeout(() => setDebouncedSearch(search), 300);
+   138→   138→   138→    return () => clearTimeout(t);
+   139→   139→   139→  }, [search]);
+   140→   140→   140→
+   141→   141→   141→  // Fetch all reservations (server-side search only); status filtering and
+   142→   142→   142→  // pagination are handled client-side so the History tab can aggregate
+   143→   143→   143→  // multiple statuses and every tab count stays accurate.
+   144→   144→   144→  const queryParams = new URLSearchParams();
+   145→   145→   145→  if (debouncedSearch) queryParams.set("search", debouncedSearch);
+   146→   146→   146→
+   147→   147→   147→  const { data, isLoading } = useQuery({
+   148→   148→   148→    queryKey: ["admin-reservations", debouncedSearch],
+   149→   149→   149→    queryFn: () =>
+   150→   150→   150→      apiFetch<{ reservations: Reservation[] }>(
+   151→   151→   151→        `/api/reservations?${queryParams.toString()}`
+   152→   152→   152→      ),
+   153→   153→   153→  });
+   154→   154→   154→
+   155→   155→   155→  const allReservations = data?.reservations ?? [];
+   156→   156→   156→
+   157→   157→   157→  // Client-side status filtering (supports the aggregated History tab).
+   158→   158→   158→  const filteredReservations = useMemo(() => {
+   159→   159→   159→    if (status === "ALL") return allReservations;
+   160→   160→   160→    if (status === "HISTORY") {
+   161→   161→   161→      return allReservations.filter((r) =>
+   162→   162→   162→        HISTORY_STATUSES.includes(r.status as BookingStatus)
+   163→   163→   163→      );
+   164→   164→   164→    }
+   165→   165→   165→    return allReservations.filter((r) => r.status === status);
+   166→   166→   166→  }, [allReservations, status]);
+   167→   167→   167→
+   168→   168→   168→  // Client-side pagination.
+   169→   169→   169→  const totalPages = Math.max(
+   170→   170→   170→    1,
+   171→   171→   171→    Math.ceil(filteredReservations.length / PAGE_SIZE)
+   172→   172→   172→  );
+   173→   173→   173→  const safePage = Math.min(Math.max(1, page), totalPages);
+   174→   174→   174→  const startIdx = (safePage - 1) * PAGE_SIZE;
+   175→   175→   175→  const endIdx = Math.min(startIdx + PAGE_SIZE, filteredReservations.length);
+   176→   176→   176→  const paginatedReservations = filteredReservations.slice(startIdx, endIdx);
+   177→   177→   177→  const goToPage = (p: number) =>
+   178→   178→   178→    setPage(Math.min(Math.max(1, p), totalPages));
+   179→   179→   179→
+   180→   180→   180→  const statusMutation = useMutation({
+   181→   181→   181→    mutationFn: ({
+   182→   182→   182→      id,
+   183→   183→   183→      status,
+   184→   184→   184→      rejectedReason,
+   185→   185→   185→    }: {
+   186→   186→   186→      id: string;
+   187→   187→   187→      status: BookingStatus;
+   188→   188→   188→      rejectedReason?: string;
+   189→   189→   189→    }) =>
+   190→   190→   190→      apiFetch<{ reservation: Reservation }>(
+   191→   191→   191→        `/api/reservations/${id}/status`,
+   192→   192→   192→        {
+   193→   193→   193→          method: "PATCH",
+   194→   194→   194→          body: JSON.stringify({ status, rejectedReason }),
+   195→   195→   195→        }
+   196→   196→   196→      ),
+   197→   197→   197→    onSuccess: (data) => {
+   198→   198→   198→      qc.invalidateQueries({ queryKey: ["admin-reservations"] });
+   199→   199→   199→      qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+   200→   200→   200→      qc.invalidateQueries({ queryKey: ["admin-calendar"] });
+   201→   201→   201→      qc.invalidateQueries({ queryKey: ["admin-rooms"] });
+   202→   202→   202→      toast.success(`Reservation ${data.reservation.referenceNo} updated.`);
+   203→   203→   203→      // Email notification simulation
+   204→   204→   204→      const guestEmail = data.reservation.guest?.email;
+   205→   205→   205→      if (guestEmail) {
+   206→   206→   206→        const emailMap: Record<string, string> = {
+   207→   207→   207→          CONFIRMED: `✉️ Confirmation email sent to ${guestEmail}`,
+   208→   208→   208→          CHECKED_IN: `✉️ Check-in confirmation sent to ${guestEmail}`,
+   209→   209→   209→          COMPLETED: `✉️ Thank-you email sent to ${guestEmail}`,
+   210→   210→   210→          CANCELLED: `✉️ Cancellation notice sent to ${guestEmail}`,
+   211→   211→   211→          REJECTED: `✉️ Cancellation notice sent to ${guestEmail}`,
+   212→   212→   212→          NO_SHOW: `✉️ No-show notice sent to ${guestEmail}`,
+   213→   213→   213→        };
+   214→   214→   214→        const msg = emailMap[data.reservation.status];
+   215→   215→   215→        if (msg) setTimeout(() => toast.info(msg), 800);
+   216→   216→   216→      }
+   217→   217→   217→    },
+   218→   218→   218→    onError: (err) => {
+   219→   219→   219→      const message =
+   220→   220→   220→        err instanceof ApiError ? err.message : "Couldn't update reservation.";
+   221→   221→   221→      toast.error(message);
+   222→   222→   222→    },
+   223→   223→   223→  });
+   224→   224→   224→
+   225→   225→   225→  const selected = allReservations.find((r) => r.id === detailsId) ?? null;
+   226→   226→   226→
+   227→   227→   227→  return (
+   228→   228→   228→    <AdminLayout
+   229→   229→   229→      title="Reservations"
+   230→   230→   230→      subtitle="Review and manage all guest bookings"
+   231→   231→   231→    >
+   232→   232→   232→      {/* Filter bar */}
+   233→   233→   233→      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+   234→   234→   234→        <div className="flex flex-wrap items-center gap-1.5">
+   235→   235→   235→          {STATUS_TABS.map((tab) => {
+   236→   236→   236→            const active = status === tab.value;
+   237→   237→   237→            const count = countForTab(tab.value, allReservations);
+   238→   238→   238→            return (
+   239→   239→   239→              <button
+   240→   240→   240→                key={tab.value}
+   241→   241→   241→                onClick={() => {
+   242→   242→   242→                  setStatus(tab.value);
+   243→   243→   243→                  setPage(1);
+   244→   244→   244→                }}
+   245→   245→   245→                className={cn(
+   246→   246→   246→                  "min-h-[36px] rounded-md border px-3.5 py-1.5 text-sm font-medium transition-colors",
+   247→   247→   247→                  active
+   248→   248→   248→                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+   249→   249→   249→                    : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground"
+   250→   250→   250→                )}
+   251→   251→   251→              >
+   252→   252→   252→                {tab.label}
+   253→   253→   253→                {tab.value !== "ALL" && count > 0 && (
+   254→   254→   254→                  <span className={cn("ml-1.5 text-xs font-bold", active ? "text-primary-foreground" : "text-muted-foreground")}>
+   255→   255→   255→                    {count}
+   256→   256→   256→                  </span>
+   257→   257→   257→                )}
+   258→   258→   258→              </button>
+   259→   259→   259→            );
+   260→   260→   260→          })}
+   261→   261→   261→        </div>
+   262→   262→   262→        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+   263→   263→   263→          <div className="relative flex-1 sm:w-56 sm:flex-none lg:w-64">
+   264→   264→   264→            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+   265→   265→   265→            <Input
+   266→   266→   266→              value={search}
+   267→   267→   267→              onChange={(e) => {
+   268→   268→   268→                setSearch(e.target.value);
+   269→   269→   269→                setPage(1);
+   270→   270→   270→              }}
+   271→   271→   271→              placeholder="Search by name or ref"
+   272→   272→   272→              className="h-9 pl-9"
+   273→   273→   273→            />
+   274→   274→   274→          </div>
+   275→   275→   275→          <Button
+   276→   276→   276→            onClick={() => setCreating(true)}
+   277→   277→   277→            className="h-9 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+   278→   278→   278→          >
+   279→   279→   279→            <Plus className="size-4" />
+   280→   280→   280→            <span className="hidden sm:inline">New Reservation</span>
+   281→   281→   281→            <span className="sm:hidden">New</span>
+   282→   282→   282→          </Button>
+   283→   283→   283→        </div>
+   284→   284→   284→      </div>
+   285→   285→   285→
+   286→   286→   286→      {/* Table — desktop / tablet */}
+   287→   287→   287→      <Card className="hidden overflow-hidden rounded-lg border border-border shadow-card md:block">
+   288→   288→   288→        <div className="overflow-x-auto">
+   289→   289→   289→          <Table>
+   290→   290→   290→          <TableHeader>
+   291→   291→   291→            <TableRow className="bg-muted/40 hover:bg-muted/40">
+   292→   292→   292→              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   293→   293→   293→                Reference
+   294→   294→   294→              </TableHead>
+   295→   295→   295→              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   296→   296→   296→                Guest
+   297→   297→   297→              </TableHead>
+   298→   298→   298→              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   299→   299→   299→                Dates
+   300→   300→   300→              </TableHead>
+   301→   301→   301→              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   302→   302→   302→                Room
+   303→   303→   303→              </TableHead>
+   304→   304→   304→              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   305→   305→   305→                Nights
+   306→   306→   306→              </TableHead>
+   307→   307→   307→              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   308→   308→   308→                Total
+   309→   309→   309→              </TableHead>
+   310→   310→   310→              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   311→   311→   311→                Status
+   312→   312→   312→              </TableHead>
+   313→   313→   313→              <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   314→   314→   314→                Actions
+   315→   315→   315→              </TableHead>
+   316→   316→   316→            </TableRow>
+   317→   317→   317→          </TableHeader>
+   318→   318→   318→          <TableBody>
+   319→   319→   319→            {isLoading ? (
+   320→   320→   320→              Array.from({ length: 5 }).map((_, i) => (
+   321→   321→   321→                <TableRow key={i}>
+   322→   322→   322→                  <TableCell colSpan={8}>
+   323→   323→   323→                    <Skeleton className="h-8 w-full" />
+   324→   324→   324→                  </TableCell>
+   325→   325→   325→                </TableRow>
+   326→   326→   326→              ))
+   327→   327→   327→            ) : filteredReservations.length === 0 ? (
+   328→   328→   328→              <TableRow className="hover:bg-transparent">
+   329→   329→   329→                <TableCell colSpan={8} className="py-12">
+   330→   330→   330→                  <EmptyState
+   331→   331→   331→                    icon={CalendarPlus}
+   332→   332→   332→                    title="No reservations found"
+   333→   333→   333→                    description="Try adjusting your filters, or create a new reservation."
+   334→   334→   334→                  />
+   335→   335→   335→                </TableCell>
+   336→   336→   336→              </TableRow>
+   337→   337→   337→            ) : (
+   338→   338→   338→              paginatedReservations.map((r) => (
+   339→   339→   339→                <TableRow key={r.id} className="group">
+   340→   340→   340→                  <TableCell className="font-mono text-xs text-muted-foreground">
+   341→   341→   341→                    {r.referenceNo}
+   342→   342→   342→                  </TableCell>
+   343→   343→   343→                  <TableCell>
+   344→   344→   344→                    <div className="flex items-center gap-2">
+   345→   345→   345→                      <Avatar className="size-7 border border-border">
+   346→   346→   346→                        <AvatarFallback className="bg-sand text-[10px] font-semibold text-primary">
+   347→   347→   347→                          {r.guest
+   348→   348→   348→                            ? getInitials(
+   349→   349→   349→                                `${r.guest.firstName} ${r.guest.lastName}`
+   350→   350→   350→                              )
+   351→   351→   351→                            : "??"}
+   352→   352→   352→                        </AvatarFallback>
+   353→   353→   353→                      </Avatar>
+   354→   354→   354→                      <div className="min-w-0">
+   355→   355→   355→                        <div className="truncate text-sm font-medium text-foreground">
+   356→   356→   356→                          {r.guest?.firstName} {r.guest?.lastName}
+   357→   357→   357→                        </div>
+   358→   358→   358→                        <div className="truncate text-xs text-muted-foreground">
+   359→   359→   359→                          {r.guest?.email}
+   360→   360→   360→                        </div>
+   361→   361→   361→                      </div>
+   362→   362→   362→                    </div>
+   363→   363→   363→                  </TableCell>
+   364→   364→   364→                  <TableCell className="text-sm text-foreground">
+   365→   365→   365→                    {formatDateShort(r.checkIn)}
+   366→   366→   366→                    <span className="mx-1 text-muted-foreground">→</span>
+   367→   367→   367→                    {formatDateShort(r.checkOut)}
+   368→   368→   368→                  </TableCell>
+   369→   369→   369→                  <TableCell className="text-sm text-foreground">
+   370→   370→   370→                    {r.rooms?.[0]?.room?.name ?? "—"}
+   371→   371→   371→                  </TableCell>
+   372→   372→   372→                  <TableCell className="text-sm text-foreground">
+   373→   373→   373→                    {r.nights}
+   374→   374→   374→                  </TableCell>
+   375→   375→   375→                  <TableCell className="text-sm font-medium text-foreground">
+   376→   376→   376→                    {formatCurrency(r.totalAmount)}
+   377→   377→   377→                  </TableCell>
+   378→   378→   378→                  <TableCell>
+   379→   379→   379→                    <BookingStatusBadge status={r.status} />
+   380→   380→   380→                  </TableCell>
+   381→   381→   381→                  <TableCell className="text-right">
+   382→   382→   382→                    <RowActions
+   383→   383→   383→                      reservation={r}
+   384→   384→   384→                      onView={() => setDetailsId(r.id)}
+   385→   385→   385→                      onMutate={(s) =>
+   386→   386→   386→                        statusMutation.mutate({ id: r.id, status: s })
+   387→   387→   387→                      }
+   388→   388→   388→                      pending={statusMutation.isPending}
+   389→   389→   389→                    />
+   390→   390→   390→                  </TableCell>
+   391→   391→   391→                </TableRow>
+   392→   392→   392→              ))
+   393→   393→   393→            )}
+   394→   394→   394→          </TableBody>
+   395→   395→   395→        </Table>
+   396→   396→   396→        </div>
+   397→   397→   397→      </Card>
+   398→   398→   398→
+   399→   399→   399→      {/* Card list — mobile */}
+   400→   400→   400→      <div className="space-y-3 md:hidden pb-6">
+   401→   401→   401→        {isLoading ? (
+   402→   402→   402→          Array.from({ length: 3 }).map((_, i) => (
+   403→   403→   403→            <Skeleton key={i} className="h-32 w-full rounded-lg" />
+   404→   404→   404→          ))
+   405→   405→   405→        ) : filteredReservations.length === 0 ? (
+   406→   406→   406→          <EmptyState
+   407→   407→   407→            icon={CalendarPlus}
+   408→   408→   408→            title="No reservations found"
+   409→   409→   409→            description="Try adjusting your filters, or create a new reservation."
+   410→   410→   410→          />
+   411→   411→   411→        ) : (
+   412→   412→   412→          paginatedReservations.map((r) => (
+   413→   413→   413→            <Card
+   414→   414→   414→              key={r.id}
+   415→   415→   415→              className="rounded-lg border border-border p-4 shadow-card"
+   416→   416→   416→            >
+   417→   417→   417→              <div className="flex items-start justify-between gap-2">
+   418→   418→   418→                <div className="min-w-0">
+   419→   419→   419→                  <div className="truncate text-sm font-medium text-foreground">
+   420→   420→   420→                    {r.guest?.firstName} {r.guest?.lastName}
+   421→   421→   421→                  </div>
+   422→   422→   422→                  <div className="font-mono text-xs text-muted-foreground">
+   423→   423→   423→                    {r.referenceNo}
+   424→   424→   424→                  </div>
+   425→   425→   425→                </div>
+   426→   426→   426→                <BookingStatusBadge status={r.status} />
+   427→   427→   427→              </div>
+   428→   428→   428→              <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-xs">
+   429→   429→   429→                <dt className="text-muted-foreground">Dates</dt>
+   430→   430→   430→                <dd className="text-right text-foreground">
+   431→   431→   431→                  {formatDateShort(r.checkIn)} → {formatDateShort(r.checkOut)}
+   432→   432→   432→                </dd>
+   433→   433→   433→                <dt className="text-muted-foreground">Room</dt>
+   434→   434→   434→                <dd className="text-right text-foreground">
+   435→   435→   435→                  {r.rooms?.[0]?.room?.name ?? "—"}
+   436→   436→   436→                </dd>
+   437→   437→   437→                <dt className="text-muted-foreground">Nights</dt>
+   438→   438→   438→                <dd className="text-right text-foreground">{r.nights}</dd>
+   439→   439→   439→                <dt className="text-muted-foreground">Total</dt>
+   440→   440→   440→                <dd className="text-right font-medium text-foreground">
+   441→   441→   441→                  {formatCurrency(r.totalAmount)}
+   442→   442→   442→                </dd>
+   443→   443→   443→              </dl>
+   444→   444→   444→              <div className="mt-3 border-t border-border pt-3">
+   445→   445→   445→                <RowActions
+   446→   446→   446→                  reservation={r}
+   447→   447→   447→                  onView={() => setDetailsId(r.id)}
+   448→   448→   448→                  onMutate={(s) =>
+   449→   449→   449→                    statusMutation.mutate({ id: r.id, status: s })
+   450→   450→   450→                  }
+   451→   451→   451→                  pending={statusMutation.isPending}
+   452→   452→   452→                  fullWidth
+   453→   453→   453→                />
+   454→   454→   454→              </div>
+   455→   455→   455→            </Card>
+   456→   456→   456→          ))
+   457→   457→   457→        )}
+   458→   458→   458→      </div>
+   459→   459→   459→
+   460→   460→   460→      {/* Pagination + summary (shared across desktop table and mobile cards) */}
+   461→   461→   461→      {!isLoading && filteredReservations.length > 0 && (
+   462→   462→   462→        <div className="mt-4 flex flex-col items-center gap-3 pb-2">
+   463→   463→   463→          <p className="text-xs text-muted-foreground">
+   464→   464→   464→            Showing {startIdx + 1}–{endIdx} of {filteredReservations.length}{" "}
+   465→   465→   465→            bookings
+   466→   466→   466→          </p>
+   467→   467→   467→          {totalPages > 1 && (
+   468→   468→   468→            <Pagination>
+   469→   469→   469→              <PaginationContent className="flex-wrap">
+   470→   470→   470→                <PaginationItem>
+   471→   471→   471→                  <PaginationLink
+   472→   472→   472→                    href="#"
+   473→   473→   473→                    aria-label="Go to first page"
+   474→   474→   474→                    onClick={(e) => {
+   475→   475→   475→                      e.preventDefault();
+   476→   476→   476→                      goToPage(1);
+   477→   477→   477→                    }}
+   478→   478→   478→                    className={cn(
+   479→   479→   479→                      "cursor-pointer",
+   480→   480→   480→                      safePage === 1 && "pointer-events-none opacity-50"
+   481→   481→   481→                    )}
+   482→   482→   482→                  >
+   483→   483→   483→                    <ChevronsLeft className="size-4" />
+   484→   484→   484→                  </PaginationLink>
+   485→   485→   485→                </PaginationItem>
+   486→   486→   486→                <PaginationItem>
+   487→   487→   487→                  <PaginationPrevious
+   488→   488→   488→                    href="#"
+   489→   489→   489→                    onClick={(e) => {
+   490→   490→   490→                      e.preventDefault();
+   491→   491→   491→                      goToPage(safePage - 1);
+   492→   492→   492→                    }}
+   493→   493→   493→                    className={cn(
+   494→   494→   494→                      "cursor-pointer",
+   495→   495→   495→                      safePage === 1 && "pointer-events-none opacity-50"
+   496→   496→   496→                    )}
+   497→   497→   497→                  />
+   498→   498→   498→                </PaginationItem>
+   499→   499→   499→                {getPageRange(safePage, totalPages).map((p, i) =>
+   500→   500→   500→                  p === "ellipsis" ? (
+   501→   501→   501→                    <PaginationItem key={`ellipsis-${i}`}>
+   502→   502→   502→                      <PaginationEllipsis />
+   503→   503→   503→                    </PaginationItem>
+   504→   504→   504→                  ) : (
+   505→   505→   505→                    <PaginationItem key={p}>
+   506→   506→   506→                      <PaginationLink
+   507→   507→   507→                        href="#"
+   508→   508→   508→                        isActive={p === safePage}
+   509→   509→   509→                        onClick={(e) => {
+   510→   510→   510→                          e.preventDefault();
+   511→   511→   511→                          goToPage(p);
+   512→   512→   512→                        }}
+   513→   513→   513→                        className="cursor-pointer"
+   514→   514→   514→                      >
+   515→   515→   515→                        {p}
+   516→   516→   516→                      </PaginationLink>
+   517→   517→   517→                    </PaginationItem>
+   518→   518→   518→                  )
+   519→   519→   519→                )}
+   520→   520→   520→                <PaginationItem>
+   521→   521→   521→                  <PaginationNext
+   522→   522→   522→                    href="#"
+   523→   523→   523→                    onClick={(e) => {
+   524→   524→   524→                      e.preventDefault();
+   525→   525→   525→                      goToPage(safePage + 1);
+   526→   526→   526→                    }}
+   527→   527→   527→                    className={cn(
+   528→   528→   528→                      "cursor-pointer",
+   529→   529→   529→                      safePage === totalPages &&
+   530→   530→   530→                        "pointer-events-none opacity-50"
+   531→   531→   531→                    )}
+   532→   532→   532→                  />
+   533→   533→   533→                </PaginationItem>
+   534→   534→   534→                <PaginationItem>
+   535→   535→   535→                  <PaginationLink
+   536→   536→   536→                    href="#"
+   537→   537→   537→                    aria-label="Go to last page"
+   538→   538→   538→                    onClick={(e) => {
+   539→   539→   539→                      e.preventDefault();
+   540→   540→   540→                      goToPage(totalPages);
+   541→   541→   541→                    }}
+   542→   542→   542→                    className={cn(
+   543→   543→   543→                      "cursor-pointer",
+   544→   544→   544→                      safePage === totalPages &&
+   545→   545→   545→                        "pointer-events-none opacity-50"
+   546→   546→   546→                    )}
+   547→   547→   547→                  >
+   548→   548→   548→                    <ChevronsRight className="size-4" />
+   549→   549→   549→                  </PaginationLink>
+   550→   550→   550→                </PaginationItem>
+   551→   551→   551→              </PaginationContent>
+   552→   552→   552→            </Pagination>
+   553→   553→   553→          )}
+   554→   554→   554→        </div>
+   555→   555→   555→      )}
+   556→   556→   556→
+   557→   557→   557→      {/* Details dialog */}
+   558→   558→   558→      {selected && (
+   559→   559→   559→        <ReservationDetailsDialog
+   560→   560→   560→          reservation={selected}
+   561→   561→   561→          open={!!selected}
+   562→   562→   562→          onClose={() => setDetailsId(null)}
+   563→   563→   563→          onMutate={(s) => {
+   564→   564→   564→            statusMutation.mutate({ id: selected.id, status: s });
+   565→   565→   565→            setDetailsId(null);
+   566→   566→   566→          }}
+   567→   567→   567→          pending={statusMutation.isPending}
+   568→   568→   568→        />
+   569→   569→   569→      )}
+   570→   570→   570→
+   571→   571→   571→      {/* Create dialog */}
+   572→   572→   572→      <CreateReservationDialog
+   573→   573→   573→        open={creating}
+   574→   574→   574→        onClose={() => setCreating(false)}
+   575→   575→   575→        onCreated={() => {
+   576→   576→   576→          setCreating(false);
+   577→   577→   577→          qc.invalidateQueries({ queryKey: ["admin-reservations"] });
+   578→   578→   578→          qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+   579→   579→   579→        }}
+   580→   580→   580→      />
+   581→   581→   581→    </AdminLayout>
+   582→   582→   582→  );
+   583→   583→   583→}
+   584→   584→   584→
+   585→   585→   585→function RowActions({
+   586→   586→   586→  reservation,
+   587→   587→   587→  onView,
+   588→   588→   588→  onMutate,
+   589→   589→   589→  pending,
+   590→   590→   590→  fullWidth,
+   591→   591→   591→}: {
+   592→   592→   592→  reservation: Reservation;
+   593→   593→   593→  onView: () => void;
+   594→   594→   594→  onMutate: (status: BookingStatus) => void;
+   595→   595→   595→  pending: boolean;
+   596→   596→   596→  fullWidth?: boolean;
+   597→   597→   597→}) {
+   598→   598→   598→  const s = reservation.status as BookingStatus;
+   599→   599→   599→  return (
+   600→   600→   600→    <div
+   601→   601→   601→      className={cn(
+   602→   602→   602→        "flex items-center justify-end gap-1.5",
+   603→   603→   603→        fullWidth && "w-full"
+   604→   604→   604→      )}
+   605→   605→   605→    >
+   606→   606→   606→      {s === "PENDING" && (
+   607→   607→   607→        <>
+   608→   608→   608→          <Button
+   609→   609→   609→            size="sm"
+   610→   610→   610→            className="h-8 bg-emerald-600 text-white hover:bg-emerald-700"
+   611→   611→   611→            disabled={pending}
+   612→   612→   612→            onClick={() => onMutate("CONFIRMED")}
+   613→   613→   613→          >
+   614→   614→   614→            <Check className="size-3.5" />
+   615→   615→   615→            Approve
+   616→   616→   616→          </Button>
+   617→   617→   617→          <Button
+   618→   618→   618→            size="sm"
+   619→   619→   619→            variant="outline"
+   620→   620→   620→            className="h-8 border-red-300 text-red-700 hover:bg-red-50"
+   621→   621→   621→            disabled={pending}
+   622→   622→   622→            onClick={() => onMutate("REJECTED")}
+   623→   623→   623→          >
+   624→   624→   624→            <X className="size-3.5" />
+   625→   625→   625→            Decline
+   626→   626→   626→          </Button>
+   627→   627→   627→        </>
+   628→   628→   628→      )}
+   629→   629→   629→      {s === "CONFIRMED" && (
+   630→   630→   630→        <Button
+   631→   631→   631→          size="sm"
+   632→   632→   632→          className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
+   633→   633→   633→          disabled={pending}
+   634→   634→   634→          onClick={() => onMutate("CHECKED_IN")}
+   635→   635→   635→        >
+   636→   636→   636→          <LogIn className="size-3.5" />
+   637→   637→   637→          Check in
+   638→   638→   638→        </Button>
+   639→   639→   639→      )}
+   640→   640→   640→      {s === "CHECKED_IN" && (
+   641→   641→   641→        <Button
+   642→   642→   642→          size="sm"
+   643→   643→   643→          className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
+   644→   644→   644→          disabled={pending}
+   645→   645→   645→          onClick={() => onMutate("COMPLETED")}
+   646→   646→   646→        >
+   647→   647→   647→          <LogOut className="size-3.5" />
+   648→   648→   648→          Check out
+   649→   649→   649→        </Button>
+   650→   650→   650→      )}
+   651→   651→   651→      {(s === "COMPLETED" ||
+   652→   652→   652→        s === "CANCELLED" ||
+   653→   653→   653→        s === "REJECTED" ||
+   654→   654→   654→        s === "NO_SHOW") && (
+   655→   655→   655→        <Button
+   656→   656→   656→          size="sm"
+   657→   657→   657→          variant="ghost"
+   658→   658→   658→          className="h-8 text-foreground hover:bg-muted"
+   659→   659→   659→          onClick={onView}
+   660→   660→   660→        >
+   661→   661→   661→          <Eye className="size-3.5" />
+   662→   662→   662→          View
+   663→   663→   663→        </Button>
+   664→   664→   664→      )}
+   665→   665→   665→      <Button
+   666→   666→   666→        size="sm"
+   667→   667→   667→        variant="ghost"
+   668→   668→   668→        className={cn("h-8 text-foreground hover:bg-muted", fullWidth && "flex-1")}
+   669→   669→   669→        onClick={onView}
+   670→   670→   670→      >
+   671→   671→   671→        <Eye className="size-3.5" />
+   672→   672→   672→        Details
+   673→   673→   673→      </Button>
+   674→   674→   674→    </div>
+   675→   675→   675→  );
+   676→   676→   676→}
+   677→   677→   677→
+   678→   678→   678→function ReservationDetailsDialog({
+   679→   679→   679→  reservation,
+   680→   680→   680→  open,
+   681→   681→   681→  onClose,
+   682→   682→   682→  onMutate,
+   683→   683→   683→  pending,
+   684→   684→   684→}: {
+   685→   685→   685→  reservation: Reservation;
+   686→   686→   686→  open: boolean;
+   687→   687→   687→  onClose: () => void;
+   688→   688→   688→  onMutate: (status: BookingStatus) => void;
+   689→   689→   689→  pending: boolean;
+   690→   690→   690→}) {
+   691→   691→   691→  const s = reservation.status as BookingStatus;
+   692→   692→   692→  return (
+   693→   693→   693→    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+   694→   694→   694→      <DialogContent className="max-w-2xl gap-0 p-0">
+   695→   695→   695→        <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
+   696→   696→   696→          <DialogTitle className="font-display text-xl font-medium tracking-tight">
+   697→   697→   697→            Reservation details
+   698→   698→   698→          </DialogTitle>
+   699→   699→   699→          <DialogDescription className="text-xs break-all">
+   700→   700→   700→            Reference{" "}
+   701→   701→   701→            <span className="font-mono text-foreground">
+   702→   702→   702→              {reservation.referenceNo}
+   703→   703→   703→            </span>
+   704→   704→   704→          </DialogDescription>
+   705→   705→   705→        </DialogHeader>
+   706→   706→   706→
+   707→   707→   707→        <div className="max-h-[60vh] overflow-y-auto px-4 py-5 sm:px-6">
+   708→   708→   708→          {/* Status & timeline */}
+   709→   709→   709→          <div className="mb-5 flex flex-wrap items-center gap-2">
+   710→   710→   710→            <BookingStatusBadge status={reservation.status} friendly />
+   711→   711→   711→            <span className="text-xs text-muted-foreground">
+   712→   712→   712→              Created {formatDate(reservation.createdAt)}
+   713→   713→   713→            </span>
+   714→   714→   714→          </div>
+   715→   715→   715→
+   716→   716→   716→          {/* Guest */}
+   717→   717→   717→          <Section title="Guest">
+   718→   718→   718→            <div className="flex items-center gap-3">
+   719→   719→   719→              <Avatar className="size-10 border border-border">
+   720→   720→   720→                <AvatarFallback className="bg-sand text-xs font-semibold text-primary">
+   721→   721→   721→                  {reservation.guest
+   722→   722→   722→                    ? getInitials(
+   723→   723→   723→                        `${reservation.guest.firstName} ${reservation.guest.lastName}`
+   724→   724→   724→                      )
+   725→   725→   725→                    : "??"}
+   726→   726→   726→                </AvatarFallback>
+   727→   727→   727→              </Avatar>
+   728→   728→   728→              <div className="min-w-0">
+   729→   729→   729→                <div className="text-sm font-medium text-foreground">
+   730→   730→   730→                  {reservation.guest?.firstName} {reservation.guest?.lastName}
+   731→   731→   731→                </div>
+   732→   732→   732→                <div className="truncate text-xs text-muted-foreground">
+   733→   733→   733→                  {reservation.guest?.email} · {reservation.guest?.phone}
+   734→   734→   734→                </div>
+   735→   735→   735→              </div>
+   736→   736→   736→            </div>
+   737→   737→   737→          </Section>
+   738→   738→   738→
+   739→   739→   739→          {/* Stay */}
+   740→   740→   740→          <Section title="Stay">
+   741→   741→   741→            <dl className="grid grid-cols-2 gap-y-2 text-sm">
+   742→   742→   742→              <dt className="text-muted-foreground">Check in</dt>
+   743→   743→   743→              <dd className="text-right text-foreground">
+   744→   744→   744→                {formatDate(reservation.checkIn)}
+   745→   745→   745→              </dd>
+   746→   746→   746→              <dt className="text-muted-foreground">Check out</dt>
+   747→   747→   747→              <dd className="text-right text-foreground">
+   748→   748→   748→                {formatDate(reservation.checkOut)}
+   749→   749→   749→              </dd>
+   750→   750→   750→              <dt className="text-muted-foreground">Nights</dt>
+   751→   751→   751→              <dd className="text-right text-foreground">
+   752→   752→   752→                {reservation.nights}
+   753→   753→   753→              </dd>
+   754→   754→   754→              <dt className="text-muted-foreground">Guests</dt>
+   755→   755→   755→              <dd className="text-right text-foreground">
+   756→   756→   756→                {reservation.adults} adults
+   757→   757→   757→                {reservation.children > 0 &&
+   758→   758→   758→                  `, ${reservation.children} children`}
+   759→   759→   759→              </dd>
+   760→   760→   760→              <dt className="text-muted-foreground">Room</dt>
+   761→   761→   761→              <dd className="text-right text-foreground">
+   762→   762→   762→                {reservation.rooms?.[0]?.room?.name ?? "—"}
+   763→   763→   763→              </dd>
+   764→   764→   764→            </dl>
+   765→   765→   765→          </Section>
+   766→   766→   766→
+   767→   767→   767→          {/* Price */}
+   768→   768→   768→          <Section title="Price breakdown">
+   769→   769→   769→            <dl className="space-y-1.5 text-sm">
+   770→   770→   770→              <div className="flex justify-between">
+   771→   771→   771→                <dt className="text-muted-foreground">
+   772→   772→   772→                  {reservation.rooms?.[0]?.pricePerNight != null
+   773→   773→   773→                    ? formatCurrency(reservation.rooms[0].pricePerNight)
+   774→   774→   774→                    : "—"}{" "}
+   775→   775→   775→                  × {reservation.nights} nights
+   776→   776→   776→                </dt>
+   777→   777→   777→                <dd className="text-foreground">
+   778→   778→   778→                  {formatCurrency(reservation.totalAmount)}
+   779→   779→   779→                </dd>
+   780→   780→   780→              </div>
+   781→   781→   781→              <div className="flex justify-between border-t border-border pt-1.5 text-base font-medium">
+   782→   782→   782→                <dt>Total</dt>
+   783→   783→   783→                <dd>{formatCurrency(reservation.totalAmount)}</dd>
+   784→   784→   784→              </div>
+   785→   785→   785→            </dl>
+   786→   786→   786→          </Section>
+   787→   787→   787→
+   788→   788→   788→          {reservation.specialRequests && (
+   789→   789→   789→            <Section title="Special requests">
+   790→   790→   790→              <p className="rounded-lg bg-muted/50 p-3 text-sm text-foreground">
+   791→   791→   791→                {reservation.specialRequests}
+   792→   792→   792→              </p>
+   793→   793→   793→            </Section>
+   794→   794→   794→          )}
+   795→   795→   795→
+   796→   796→   796→          {/* Status timeline */}
+   797→   797→   797→          <Section title="Timeline">
+   798→   798→   798→            <ul className="space-y-2 text-xs">
+   799→   799→   799→              <TimelineItem
+   800→   800→   800→                label="Booking received"
+   801→   801→   801→                date={reservation.createdAt}
+   802→   802→   802→                done
+   803→   803→   803→              />
+   804→   804→   804→              <TimelineItem
+   805→   805→   805→                label="Confirmed"
+   806→   806→   806→                date={reservation.confirmedAt}
+   807→   807→   807→                done={!!reservation.confirmedAt}
+   808→   808→   808→              />
+   809→   809→   809→              <TimelineItem
+   810→   810→   810→                label="Checked in"
+   811→   811→   811→                date={reservation.checkedInAt}
+   812→   812→   812→                done={!!reservation.checkedInAt}
+   813→   813→   813→              />
+   814→   814→   814→              <TimelineItem
+   815→   815→   815→                label="Checked out"
+   816→   816→   816→                date={reservation.checkedOutAt}
+   817→   817→   817→                done={!!reservation.checkedOutAt}
+   818→   818→   818→              />
+   819→   819→   819→            </ul>
+   820→   820→   820→          </Section>
+   821→   821→   821→        </div>
+   822→   822→   822→
+   823→   823→   823→        <DialogFooter className="flex-row flex-wrap gap-2 border-t border-border px-4 py-4 sm:px-6">
+   824→   824→   824→          {s === "PENDING" && (
+   825→   825→   825→            <>
+   826→   826→   826→              <Button
+   827→   827→   827→                variant="outline"
+   828→   828→   828→                className="w-full border-red-300 text-red-700 hover:bg-red-50 sm:w-auto"
+   829→   829→   829→                disabled={pending}
+   830→   830→   830→                onClick={() => onMutate("REJECTED")}
+   831→   831→   831→              >
+   832→   832→   832→                <UserX className="size-4" />
+   833→   833→   833→                Decline
+   834→   834→   834→              </Button>
+   835→   835→   835→              <Button
+   836→   836→   836→                className="ml-auto w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+   837→   837→   837→                disabled={pending}
+   838→   838→   838→                onClick={() => onMutate("CONFIRMED")}
+   839→   839→   839→              >
+   840→   840→   840→                <Check className="size-4" />
+   841→   841→   841→                Approve
+   842→   842→   842→              </Button>
+   843→   843→   843→            </>
+   844→   844→   844→          )}
+   845→   845→   845→          {s === "CONFIRMED" && (
+   846→   846→   846→            <Button
+   847→   847→   847→              className="ml-auto w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
+   848→   848→   848→              disabled={pending}
+   849→   849→   849→              onClick={() => onMutate("CHECKED_IN")}
+   850→   850→   850→            >
+   851→   851→   851→              <LogIn className="size-4" />
+   852→   852→   852→              Check in
+   853→   853→   853→            </Button>
+   854→   854→   854→          )}
+   855→   855→   855→          {s === "CHECKED_IN" && (
+   856→   856→   856→            <Button
+   857→   857→   857→              className="ml-auto w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
+   858→   858→   858→              disabled={pending}
+   859→   859→   859→              onClick={() => onMutate("COMPLETED")}
+   860→   860→   860→            >
+   861→   861→   861→              <LogOut className="size-4" />
+   862→   862→   862→              Check out
+   863→   863→   863→            </Button>
+   864→   864→   864→          )}
+   865→   865→   865→          {(s === "COMPLETED" ||
+   866→   866→   866→            s === "CANCELLED" ||
+   867→   867→   867→            s === "REJECTED" ||
+   868→   868→   868→            s === "NO_SHOW") && (
+   869→   869→   869→            <Button variant="outline" className="ml-auto w-full sm:w-auto" onClick={onClose}>
+   870→   870→   870→              Close
+   871→   871→   871→            </Button>
+   872→   872→   872→          )}
+   873→   873→   873→        </DialogFooter>
+   874→   874→   874→      </DialogContent>
+   875→   875→   875→    </Dialog>
+   876→   876→   876→  );
+   877→   877→   877→}
+   878→   878→   878→
+   879→   879→   879→function Section({
+   880→   880→   880→  title,
+   881→   881→   881→  children,
+   882→   882→   882→}: {
+   883→   883→   883→  title: string;
+   884→   884→   884→  children: React.ReactNode;
+   885→   885→   885→}) {
+   886→   886→   886→  return (
+   887→   887→   887→    <section className="mb-5">
+   888→   888→   888→      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   889→   889→   889→        {title}
+   890→   890→   890→      </h4>
+   891→   891→   891→      {children}
+   892→   892→   892→    </section>
+   893→   893→   893→  );
+   894→   894→   894→}
+   895→   895→   895→
+   896→   896→   896→function TimelineItem({
+   897→   897→   897→  label,
+   898→   898→   898→  date,
+   899→   899→   899→  done,
+   900→   900→   900→}: {
+   901→   901→   901→  label: string;
+   902→   902→   902→  date: string | null;
+   903→   903→   903→  done: boolean;
+   904→   904→   904→}) {
+   905→   905→   905→  return (
+   906→   906→   906→    <li className="flex items-center gap-2">
+   907→   907→   907→      <span
+   908→   908→   908→        className={cn(
+   909→   909→   909→          "size-2 rounded-full",
+   910→   910→   910→          done ? "bg-emerald-500" : "bg-muted-foreground/30"
+   911→   911→   911→        )}
+   912→   912→   912→      />
+   913→   913→   913→      <span
+   914→   914→   914→        className={cn(
+   915→   915→   915→          "flex-1",
+   916→   916→   916→          done ? "text-foreground" : "text-muted-foreground/70"
+   917→   917→   917→        )}
+   918→   918→   918→      >
+   919→   919→   919→        {label}
+   920→   920→   920→      </span>
+   921→   921→   921→      {date && (
+   922→   922→   922→        <span className="text-muted-foreground">{formatDate(date)}</span>
+   923→   923→   923→      )}
+   924→   924→   924→    </li>
+   925→   925→   925→  );
+   926→   926→   926→}
+   927→   927→   927→
+   928→   928→   928→function CreateReservationDialog({
+   929→   929→   929→  open,
+   930→   930→   930→  onClose,
+   931→   931→   931→  onCreated,
+   932→   932→   932→}: {
+   933→   933→   933→  open: boolean;
+   934→   934→   934→  onClose: () => void;
+   935→   935→   935→  onCreated: () => void;
+   936→   936→   936→}) {
+   937→   937→   937→  const qc = useQueryClient();
+   938→   938→   938→  const { data: roomsData } = useQuery({
+   939→   939→   939→    queryKey: ["admin-rooms", "active"],
+   940→   940→   940→    queryFn: () => apiFetch<{ rooms: Room[] }>("/api/rooms"),
+   941→   941→   941→    enabled: open,
+   942→   942→   942→  });
+   943→   943→   943→  const rooms = (roomsData?.rooms ?? []).filter((r) => r.isActive);
+   944→   944→   944→
+   945→   945→   945→  const {
+   946→   946→   946→    register,
+   947→   947→   947→    handleSubmit,
+   948→   948→   948→    watch,
+   949→   949→   949→    setValue,
+   950→   950→   950→    reset,
+   951→   951→   951→    formState: { errors },
+   952→   952→   952→  } = useForm<ReservationCreateInput>({
+   953→   953→   953→    resolver: zodResolver(reservationCreateSchema),
+   954→   954→   954→    defaultValues: {
+   955→   955→   955→      roomId: "",
+   956→   956→   956→      checkIn: "",
+   957→   957→   957→      checkOut: "",
+   958→   958→   958→      adults: 2,
+   959→   959→   959→      children: 0,
+   960→   960→   960→      guest: {
+   961→   961→   961→        firstName: "",
+   962→   962→   962→        lastName: "",
+   963→   963→   963→        email: "",
+   964→   964→   964→        phone: "",
+   965→   965→   965→        address: "",
+   966→   966→   966→        city: "",
+   967→   967→   967→        country: "",
+   968→   968→   968→      },
+   969→   969→   969→      specialRequests: "",
+   970→   970→   970→    },
+   971→   971→   971→  });
+   972→   972→   972→
+   973→   973→   973→  const roomId = watch("roomId");
+   974→   974→   974→  const checkIn = watch("checkIn");
+   975→   975→   975→  const checkOut = watch("checkOut");
+   976→   976→   976→  const selectedRoom = rooms.find((r) => r.id === roomId);
+   977→   977→   977→  const nights =
+   978→   978→   978→    checkIn && checkOut ? nightsBetween(checkIn, checkOut) : 0;
+   979→   979→   979→  const total = selectedRoom ? selectedRoom.pricePerNight * nights : 0;
+   980→   980→   980→
+   981→   981→   981→  const mutation = useMutation({
+   982→   982→   982→    mutationFn: (values: ReservationCreateInput) =>
+   983→   983→   983→      apiFetch<{ reservation: Reservation }>("/api/reservations", {
+   984→   984→   984→        method: "POST",
+   985→   985→   985→        body: JSON.stringify({ ...values, source: "WALK_IN" }),
+   986→   986→   986→      }),
+   987→   987→   987→    onSuccess: (data) => {
+   988→   988→   988→      toast.success(
+   989→   989→   989→        `Reservation ${data.reservation.referenceNo} created.`
+   990→   990→   990→      );
+   991→   991→   991→      qc.invalidateQueries({ queryKey: ["admin-reservations"] });
+   992→   992→   992→      qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+   993→   993→   993→      reset();
+   994→   994→   994→      onCreated();
+   995→   995→   995→    },
+   996→   996→   996→    onError: (err) => {
+   997→   997→   997→      const message =
+   998→   998→   998→        err instanceof ApiError
+   999→   999→   999→          ? err.message
+  1000→  1000→  1000→          : "Couldn't create reservation.";
+  1001→  1001→  1001→      toast.error(message);
+  1002→  1002→  1002→    },
+  1003→  1003→  1003→  });
+  1004→  1004→  1004→
+  1005→  1005→  1005→  return (
+  1006→  1006→  1006→    <Dialog
+  1007→  1007→  1007→      open={open}
+  1008→  1008→  1008→      onOpenChange={(o) => {
+  1009→  1009→  1009→        if (!o) {
+  1010→  1010→  1010→          reset();
+  1011→  1011→  1011→          onClose();
+  1012→  1012→  1012→        }
+  1013→  1013→  1013→      }}
+  1014→  1014→  1014→    >
+  1015→  1015→  1015→      <DialogContent className="max-h-[90vh] max-w-2xl gap-0 overflow-hidden p-0">
+  1016→  1016→  1016→        <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
+  1017→  1017→  1017→          <DialogTitle className="font-display text-xl font-medium tracking-tight">
+  1018→  1018→  1018→            New reservation
+  1019→  1019→  1019→          </DialogTitle>
+  1020→  1020→  1020→          <DialogDescription>
+  1021→  1021→  1021→            Create a walk-in or phone booking. Status starts as Pending.
+  1022→  1022→  1022→          </DialogDescription>
+  1023→  1023→  1023→        </DialogHeader>
+  1024→  1024→  1024→
+  1025→  1025→  1025→        <form
+  1026→  1026→  1026→          onSubmit={handleSubmit((v) => mutation.mutate(v))}
+  1027→  1027→  1027→          className="flex max-h-[70vh] flex-col"
+  1028→  1028→  1028→        >
+  1029→  1029→  1029→          <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+  1030→  1030→  1030→            {/* Guest */}
+  1031→  1031→  1031→            <div className="mb-5">
+  1032→  1032→  1032→              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+  1033→  1033→  1033→                Guest information
+  1034→  1034→  1034→              </h4>
+  1035→  1035→  1035→              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  1036→  1036→  1036→                <Field label="First name" error={errors.guest?.firstName?.message}>
+  1037→  1037→  1037→                  <Input {...register("guest.firstName")} className="h-10" />
+  1038→  1038→  1038→                </Field>
+  1039→  1039→  1039→                <Field label="Last name" error={errors.guest?.lastName?.message}>
+  1040→  1040→  1040→                  <Input {...register("guest.lastName")} className="h-10" />
+  1041→  1041→  1041→                </Field>
+  1042→  1042→  1042→                <Field label="Email" error={errors.guest?.email?.message}>
+  1043→  1043→  1043→                  <Input
+  1044→  1044→  1044→                    type="email"
+  1045→  1045→  1045→                    {...register("guest.email")}
+  1046→  1046→  1046→                    className="h-10"
+  1047→  1047→  1047→                  />
+  1048→  1048→  1048→                </Field>
+  1049→  1049→  1049→                <Field label="Phone" error={errors.guest?.phone?.message}>
+  1050→  1050→  1050→                  <Input {...register("guest.phone")} className="h-10" />
+  1051→  1051→  1051→                </Field>
+  1052→  1052→  1052→                <Field label="City" error={errors.guest?.city?.message}>
+  1053→  1053→  1053→                  <Input {...register("guest.city")} className="h-10" />
+  1054→  1054→  1054→                </Field>
+  1055→  1055→  1055→                <Field label="Country" error={errors.guest?.country?.message}>
+  1056→  1056→  1056→                  <Input {...register("guest.country")} className="h-10" />
+  1057→  1057→  1057→                </Field>
+  1058→  1058→  1058→              </div>
+  1059→  1059→  1059→            </div>
+  1060→  1060→  1060→
+  1061→  1061→  1061→            {/* Stay */}
+  1062→  1062→  1062→            <div className="mb-5">
+  1063→  1063→  1063→              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+  1064→  1064→  1064→                Stay details
+  1065→  1065→  1065→              </h4>
+  1066→  1066→  1066→              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  1067→  1067→  1067→                <Field label="Room" error={errors.roomId?.message}>
+  1068→  1068→  1068→                  <Select
+  1069→  1069→  1069→                    value={roomId}
+  1070→  1070→  1070→                    onValueChange={(v) => setValue("roomId", v)}
+  1071→  1071→  1071→                  >
+  1072→  1072→  1072→                    <SelectTrigger className="h-10">
+  1073→  1073→  1073→                      <SelectValue placeholder="Select a room" />
+  1074→  1074→  1074→                    </SelectTrigger>
+  1075→  1075→  1075→                    <SelectContent>
+  1076→  1076→  1076→                      {rooms.map((r) => (
+  1077→  1077→  1077→                        <SelectItem key={r.id} value={r.id}>
+  1078→  1078→  1078→                          {r.name} · {formatCurrency(r.pricePerNight)}/night
+  1079→  1079→  1079→                        </SelectItem>
+  1080→  1080→  1080→                      ))}
+  1081→  1081→  1081→                    </SelectContent>
+  1082→  1082→  1082→                  </Select>
+  1083→  1083→  1083→                </Field>
+  1084→  1084→  1084→                <div className="grid grid-cols-2 gap-3">
+  1085→  1085→  1085→                  <Field label="Adults" error={errors.adults?.message}>
+  1086→  1086→  1086→                    <Input
+  1087→  1087→  1087→                      type="number"
+  1088→  1088→  1088→                      min={1}
+  1089→  1089→  1089→                      {...register("adults", { valueAsNumber: true })}
+  1090→  1090→  1090→                      className="h-10"
+  1091→  1091→  1091→                    />
+  1092→  1092→  1092→                  </Field>
+  1093→  1093→  1093→                  <Field label="Children" error={errors.children?.message}>
+  1094→  1094→  1094→                    <Input
+  1095→  1095→  1095→                      type="number"
+  1096→  1096→  1096→                      min={0}
+  1097→  1097→  1097→                      {...register("children", { valueAsNumber: true })}
+  1098→  1098→  1098→                      className="h-10"
+  1099→  1099→  1099→                    />
+  1100→  1100→  1100→                  </Field>
+  1101→  1101→  1101→                </div>
+  1102→  1102→  1102→                <Field label="Check in" error={errors.checkIn?.message}>
+  1103→  1103→  1103→                  <Input
+  1104→  1104→  1104→                    type="date"
+  1105→  1105→  1105→                    {...register("checkIn")}
+  1106→  1106→  1106→                    className="h-10"
+  1107→  1107→  1107→                  />
+  1108→  1108→  1108→                </Field>
+  1109→  1109→  1109→                <Field label="Check out" error={errors.checkOut?.message}>
+  1110→  1110→  1110→                  <Input
+  1111→  1111→  1111→                    type="date"
+  1112→  1112→  1112→                    {...register("checkOut")}
+  1113→  1113→  1113→                    className="h-10"
+  1114→  1114→  1114→                  />
+  1115→  1115→  1115→                </Field>
+  1116→  1116→  1116→              </div>
+  1117→  1117→  1117→            </div>
+  1118→  1118→  1118→
+  1119→  1119→  1119→            {/* Special requests */}
+  1120→  1120→  1120→            <Field
+  1121→  1121→  1121→              label="Special requests (optional)"
+  1122→  1122→  1122→              error={errors.specialRequests?.message}
+  1123→  1123→  1123→            >
+  1124→  1124→  1124→              <Textarea
+  1125→  1125→  1125→                {...register("specialRequests")}
+  1126→  1126→  1126→                rows={2}
+  1127→  1127→  1127→                placeholder="Late check-in, birthday cake, extra towels…"
+  1128→  1128→  1128→              />
+  1129→  1129→  1129→            </Field>
+  1130→  1130→  1130→
+  1131→  1131→  1131→            {/* Price summary */}
+  1132→  1132→  1132→            {selectedRoom && nights > 0 && (
+  1133→  1133→  1133→              <div className="mt-5 rounded-lg border border-border bg-sand/40 p-4">
+  1134→  1134→  1134→                <div className="flex items-center justify-between text-sm">
+  1135→  1135→  1135→                  <span className="text-muted-foreground">
+  1136→  1136→  1136→                    {formatCurrency(selectedRoom.pricePerNight)} × {nights}{" "}
+  1137→  1137→  1137→                    {nights === 1 ? "night" : "nights"}
+  1138→  1138→  1138→                  </span>
+  1139→  1139→  1139→                  <span className="font-medium text-foreground">
+  1140→  1140→  1140→                    {formatCurrency(total)}
+  1141→  1141→  1141→                  </span>
+  1142→  1142→  1142→                </div>
+  1143→  1143→  1143→                <div className="mt-1.5 flex items-center justify-between border-t border-border pt-1.5 text-base font-medium">
+  1144→  1144→  1144→                  <span>Total</span>
+  1145→  1145→  1145→                  <span>{formatCurrency(total)}</span>
+  1146→  1146→  1146→                </div>
+  1147→  1147→  1147→              </div>
+  1148→  1148→  1148→            )}
+  1149→  1149→  1149→          </div>
+  1150→  1150→  1150→
+  1151→  1151→  1151→          <DialogFooter className="flex-row flex-wrap gap-2 border-t border-border px-4 py-4 sm:px-6">
+  1152→  1152→  1152→            <Button
+  1153→  1153→  1153→              type="button"
+  1154→  1154→  1154→              variant="outline"
+  1155→  1155→  1155→              className="w-full sm:w-auto"
+  1156→  1156→  1156→              onClick={() => {
+  1157→  1157→  1157→                reset();
+  1158→  1158→  1158→                onClose();
+  1159→  1159→  1159→              }}
+  1160→  1160→  1160→            >
+  1161→  1161→  1161→              Cancel
+  1162→  1162→  1162→            </Button>
+  1163→  1163→  1163→            <Button
+  1164→  1164→  1164→              type="submit"
+  1165→  1165→  1165→              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
+  1166→  1166→  1166→              disabled={mutation.isPending}
+  1167→  1167→  1167→            >
+  1168→  1168→  1168→              {mutation.isPending ? "Creating…" : "Create reservation"}
+  1169→  1169→  1169→            </Button>
+  1170→  1170→  1170→          </DialogFooter>
+  1171→  1171→  1171→        </form>
+  1172→  1172→  1172→      </DialogContent>
+  1173→  1173→  1173→    </Dialog>
+  1174→  1174→  1174→  );
+  1175→  1175→  1175→}
+  1176→  1176→  1176→
+  1177→  1177→  1177→function Field({
+  1178→  1178→  1178→  label,
+  1179→  1179→  1179→  error,
+  1180→  1180→  1180→  children,
+  1181→  1181→  1181→}: {
+  1182→  1182→  1182→  label: string;
+  1183→  1183→  1183→  error?: string;
+  1184→  1184→  1184→  children: React.ReactNode;
+  1185→  1185→  1185→}) {
+  1186→  1186→  1186→  return (
+  1187→  1187→  1187→    <div className="space-y-1.5">
+  1188→  1188→  1188→      <Label className="text-xs font-medium text-foreground">{label}</Label>
+  1189→  1189→  1189→      {children}
+  1190→  1190→  1190→      {error && <p className="text-xs text-red-700">{error}</p>}
+  1191→  1191→  1191→    </div>
+  1192→  1192→  1192→  );
+  1193→  1193→  1193→}
+  1194→  1194→  1194→
+  1195→  1195→  1195→export default BookingsAdmin;
+  1196→  1196→  1196→

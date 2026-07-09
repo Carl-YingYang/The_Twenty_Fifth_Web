@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
@@ -22,6 +23,7 @@ import {
 } from "recharts";
 
 import { AdminLayout } from "./AdminLayout";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { StatCard, EmptyState } from "./StatCard";
 import { BookingStatusBadge } from "./StatusBadges";
 import { Button } from "@/components/ui/button";
@@ -162,6 +164,10 @@ export function DashboardAdmin() {
 function NeedsAttention() {
   const qc = useQueryClient();
   const navigate = useViewStore((s) => s.navigate);
+  const [pendingAction, setPendingAction] = useState<{
+    reservation: Reservation;
+    status: "CONFIRMED" | "REJECTED";
+  } | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["admin-reservations", "PENDING"],
     queryFn: () =>
@@ -197,6 +203,55 @@ function NeedsAttention() {
       toast.error(message);
     },
   });
+
+  const confirmMeta = (() => {
+    if (!pendingAction) return null;
+    const r = pendingAction.reservation;
+    const guest =
+      `${r.guest?.firstName ?? ""} ${r.guest?.lastName ?? ""}`.trim() ||
+      "this guest";
+    const ref = r.referenceNo;
+    if (pendingAction.status === "CONFIRMED") {
+      return {
+        tone: "success" as const,
+        title: "Approve this reservation?",
+        description: `You're about to confirm ${ref} for ${guest}. The guest will receive a confirmation email and the room will be held for their dates.`,
+        confirmLabel: "Approve reservation",
+        hint: "The guest will be notified by email.",
+        successToast: "Reservation approved.",
+        emailKey: "Confirmation email sent to",
+      };
+    }
+    return {
+      tone: "destructive" as const,
+      title: "Decline this reservation?",
+      description: `Declining ${ref} (${guest}) releases the held dates back to availability. The guest will be notified that their booking could not be accommodated.`,
+      confirmLabel: "Decline reservation",
+      hint: "This cannot be undone.",
+      successToast: "Reservation declined.",
+      emailKey: "Cancellation notice sent to",
+    };
+  })();
+
+  const confirmStatus = async () => {
+    if (!pendingAction || !confirmMeta) return;
+    try {
+      await statusMutation.mutateAsync({
+        id: pendingAction.reservation.id,
+        status: pendingAction.status,
+      });
+      toast.success(confirmMeta.successToast);
+      const email = pendingAction.reservation.guest?.email;
+      if (email)
+        setTimeout(
+          () => toast.info(`✉️ ${confirmMeta.emailKey} ${email}`),
+          800
+        );
+      setPendingAction(null);
+    } catch {
+      // error toast already shown by mutation onError
+    }
+  };
 
   const pending = data?.reservations ?? [];
 
@@ -259,16 +314,7 @@ function NeedsAttention() {
                   className="flex-1 h-9 bg-emerald-600 text-white hover:bg-emerald-700 sm:flex-none"
                   disabled={statusMutation.isPending}
                   onClick={() =>
-                    statusMutation.mutate(
-                      { id: r.id, status: "CONFIRMED" },
-                      {
-                        onSuccess: () => {
-                          toast.success("Reservation approved.");
-                          const email = r.guest?.email;
-                          if (email) setTimeout(() => toast.info(`✉️ Confirmation email sent to ${email}`), 800);
-                        },
-                      }
-                    )
+                    setPendingAction({ reservation: r, status: "CONFIRMED" })
                   }
                 >
                   <Check className="size-4" />
@@ -280,16 +326,7 @@ function NeedsAttention() {
                   className="flex-1 h-9 border-red-300 text-red-700 hover:bg-red-50 sm:flex-none"
                   disabled={statusMutation.isPending}
                   onClick={() =>
-                    statusMutation.mutate(
-                      { id: r.id, status: "REJECTED" },
-                      {
-                        onSuccess: () => {
-                          toast.success("Reservation declined.");
-                          const email = r.guest?.email;
-                          if (email) setTimeout(() => toast.info(`✉️ Cancellation notice sent to ${email}`), 800);
-                        },
-                      }
-                    )
+                    setPendingAction({ reservation: r, status: "REJECTED" })
                   }
                 >
                   <X className="size-4" />
@@ -300,6 +337,18 @@ function NeedsAttention() {
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={!!pendingAction}
+        onOpenChange={(o) => !o && setPendingAction(null)}
+        tone={confirmMeta?.tone ?? "default"}
+        title={confirmMeta?.title ?? ""}
+        description={confirmMeta?.description ?? ""}
+        confirmLabel={confirmMeta?.confirmLabel ?? "Confirm"}
+        hint={confirmMeta?.hint}
+        loading={statusMutation.isPending}
+        onConfirm={confirmStatus}
+      />
     </Card>
   );
 }

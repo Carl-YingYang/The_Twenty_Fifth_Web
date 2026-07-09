@@ -1640,3 +1640,40 @@ Stage Summary:
 - Lazy loading: all gallery images use SmartImage (blur-up) + loading="lazy"
 - Validators: accept both absolute URLs and relative /uploads/ paths
 - Lint: 0 errors. Dev server: HTTP 200, upload + gallery POST verified working end-to-end.
+
+---
+Task ID: 13-a
+Agent: main (orchestrator)
+Task: Add confirmation popup messages + toast feedback to EVERY action button across all admin modules (delete/update/create/status-change), plus important user-section actions.
+
+Work Log:
+- Ran comprehensive inventory via Explore subagent across all 12 admin files.
+- Found: 3 files already use AlertDialog for deletes (Rooms/Gallery/Amenities); 10 unguarded status mutations in BookingsAdmin; 2 in DashboardAdmin; logout + mark-all-read in AdminLayout; room status dropdown in RoomsAdmin; 3 settings saves; GuestsAdmin "new booking for guest" navigation.
+- Created reusable `/src/components/admin/ConfirmDialog.tsx` — wraps AlertDialog with tone-based icons (destructive/warning/success/info/default), loading state on confirm button, blocks dismissal while in-flight, async-safe onConfirm.
+- Improved the user's prompt into a 3-tier spec (destructive→confirm; committing→confirm+toast; create/update→loading+toast) before coding.
+
+Stage Summary:
+- Foundation component `ConfirmDialog` ready for use across all admin modules.
+- Next: wire it into BookingsAdmin, DashboardAdmin, AdminLayout, RoomsAdmin, SettingsAdmin, GuestsAdmin.
+
+---
+Task ID: 13-b
+Agent: main (orchestrator)
+Task: Wire ConfirmDialog into all admin action buttons + agent-browser QA.
+
+Work Log:
+- BookingsAdmin: added shared `pendingAction` state + `getStatusConfirm()` map; routed all 10 status buttons (Approve/Decline/Check-in/Check-out × table/mobile/details-dialog) through one ConfirmDialog; uses `mutateAsync` + `isPending` for loading; preserved existing email-notification toasts.
+- DashboardAdmin: NeedsAttention Approve/Decline now route through a ConfirmDialog with per-status tone (success/destructive) + success/email toasts on confirm.
+- AdminLayout: logout now opens a ConfirmDialog (default tone, LogOut icon) with a `loggingOut` loading state; "Mark all read" opens an info-tone ConfirmDialog + now toasts success/error.
+- RoomsAdmin: room status dropdown (AVAILABLE/OCCUPIED/MAINTENANCE/BLOCKED) routes through a ConfirmDialog with status-specific tone + description.
+- GalleryAdmin + AmenitiesAdmin: upgraded their raw AlertDialog deletes to the shared ConfirmDialog (destructive tone, trash icon, "cannot be undone" hint) for visual consistency; removed now-unused AlertDialog imports.
+- GuestsAdmin (the "Users" section): "New booking for this guest" now opens an info-tone ConfirmDialog + toasts "Starting a new booking for {name}" on confirm.
+- SettingsAdmin: verified already satisfies create/update tier (loading state on Save + success/error toast on all 3 tabs) — no change needed.
+- Lint: 0 errors (3 pre-existing warnings about RHF `watch()`, unrelated).
+- agent-browser QA verified end-to-end: room status Maintenance confirm, reservation Check-in confirm (fired mutation successfully), logout confirm, photo delete confirm — all render with correct titles/tones/buttons; Cancel dismisses without firing; no console or dev.log errors.
+
+Stage Summary:
+- Every state-changing admin action now has a confirmation popup (destructive/committing) or loading+toast (create/update), driven by one reusable `ConfirmDialog` component for a consistent look.
+- Tone-coded icons: destructive=red trash, warning=amber alert, success=green check, info=primary, default=logout.
+- Loading state on confirm buttons + dismissal blocked while a request is in-flight (safer for destructive ops).
+- All 4 tested flows green via agent-browser.

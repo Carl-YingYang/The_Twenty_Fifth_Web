@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 
 import { AdminLayout } from "./AdminLayout";
+import { ConfirmDialog, type ConfirmTone } from "./ConfirmDialog";
 import { RoomStatusBadge } from "./StatusBadges";
 import { EmptyState } from "./StatCard";
 import { ImageUploader } from "./ImageUploader";
@@ -106,6 +107,10 @@ export function RoomsAdmin() {
   const [editing, setEditing] = useState<Room | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Room | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<{
+    room: Room;
+    status: RoomStatus;
+  } | null>(null);
   const [page, setPage] = useState(1);
 
   // Client-side pagination
@@ -138,6 +143,19 @@ export function RoomsAdmin() {
     },
   });
 
+  const confirmStatus = async () => {
+    if (!pendingStatus) return;
+    try {
+      await statusMutation.mutateAsync({
+        id: pendingStatus.room.id,
+        status: pendingStatus.status,
+      });
+      setPendingStatus(null);
+    } catch {
+      // error toast already shown by mutation onError
+    }
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
       apiFetch(`/api/rooms/${id}`, { method: "DELETE" }),
@@ -152,6 +170,54 @@ export function RoomsAdmin() {
       toast.error(message);
     },
   });
+
+  const roomStatusConfirm = (() => {
+    if (!pendingStatus) return null;
+    const { room, status } = pendingStatus;
+    const cfg = ROOM_STATUS_CONFIG[status];
+    const label = cfg?.label ?? status;
+    switch (status) {
+      case "AVAILABLE":
+        return {
+          tone: "success" as ConfirmTone,
+          title: `Set ${room.name} as available?`,
+          description:
+            "Guests will be able to book this room immediately in new reservations.",
+          confirmLabel: "Set as available",
+        };
+      case "OCCUPIED":
+        return {
+          tone: "warning" as ConfirmTone,
+          title: `Mark ${room.name} as occupied?`,
+          description:
+            "Manually mark this room as occupied (e.g. a walk-in). It will be excluded from availability search until you change it back.",
+          confirmLabel: "Mark as occupied",
+        };
+      case "MAINTENANCE":
+        return {
+          tone: "warning" as ConfirmTone,
+          title: `Put ${room.name} under maintenance?`,
+          description:
+            "The room will be hidden from booking and the calendar until you set it back to Open. Existing reservations are kept.",
+          confirmLabel: "Set as maintenance",
+        };
+      case "BLOCKED":
+        return {
+          tone: "destructive" as ConfirmTone,
+          title: `Block ${room.name}?`,
+          description:
+            "Blocking takes the room out of inventory entirely. Existing reservations are kept, but no new bookings can use this room.",
+          confirmLabel: "Block room",
+        };
+      default:
+        return {
+          tone: "info" as ConfirmTone,
+          title: `Change ${room.name} status to ${label}?`,
+          description: "This updates the room's availability status.",
+          confirmLabel: `Set as ${label}`,
+        };
+    }
+  })();
 
   return (
     <AdminLayout title="The Villa" subtitle="Manage rooms, photos, and availability">
@@ -202,7 +268,7 @@ export function RoomsAdmin() {
                 onEdit={() => setEditing(room)}
                 onDelete={() => setDeleting(room)}
                 onStatusChange={(s) =>
-                  statusMutation.mutate({ id: room.id, status: s })
+                  setPendingStatus({ room, status: s })
                 }
                 pending={statusMutation.isPending}
               />
@@ -336,6 +402,18 @@ export function RoomsAdmin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Status-change confirmation */}
+      <ConfirmDialog
+        open={!!pendingStatus}
+        onOpenChange={(o) => !o && setPendingStatus(null)}
+        tone={roomStatusConfirm?.tone ?? "default"}
+        title={roomStatusConfirm?.title ?? ""}
+        description={roomStatusConfirm?.description ?? ""}
+        confirmLabel={roomStatusConfirm?.confirmLabel ?? "Confirm"}
+        loading={statusMutation.isPending}
+        onConfirm={confirmStatus}
+      />
     </AdminLayout>
   );
 }

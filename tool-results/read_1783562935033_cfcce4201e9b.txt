@@ -1,0 +1,935 @@
+     1→"use client";
+     2→
+     3→import { useState } from "react";
+     4→import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+     5→import { useForm } from "react-hook-form";
+     6→import { zodResolver } from "@hookform/resolvers/zod";
+     7→import {
+     8→  Bath,
+     9→  BedDouble,
+    10→  Building2,
+    11→  Home,
+    12→  ImagePlus,
+    13→  Pencil,
+    14→  Plus,
+    15→  Sparkles,
+    16→  Sofa,
+    17→  Trees,
+    18→  Trash2,
+    19→  Users,
+    20→  Utensils,
+    21→  Waves,
+    22→  X,
+    23→} from "lucide-react";
+    24→import { toast } from "sonner";
+    25→
+    26→import { AdminLayout } from "./AdminLayout";
+    27→import { RoomStatusBadge } from "./StatusBadges";
+    28→import { EmptyState } from "./StatCard";
+    29→import { ImageUploader } from "./ImageUploader";
+    30→import { Button } from "@/components/ui/button";
+    31→import { Card } from "@/components/ui/card";
+    32→import { Input } from "@/components/ui/input";
+    33→import { Label } from "@/components/ui/label";
+    34→import { Skeleton } from "@/components/ui/skeleton";
+    35→import { Textarea } from "@/components/ui/textarea";
+    36→import {
+    37→  Dialog,
+    38→  DialogContent,
+    39→  DialogDescription,
+    40→  DialogFooter,
+    41→  DialogHeader,
+    42→  DialogTitle,
+    43→} from "@/components/ui/dialog";
+    44→import {
+    45→  AlertDialog,
+    46→  AlertDialogAction,
+    47→  AlertDialogCancel,
+    48→  AlertDialogContent,
+    49→  AlertDialogDescription,
+    50→  AlertDialogFooter,
+    51→  AlertDialogHeader,
+    52→  AlertDialogTitle,
+    53→} from "@/components/ui/alert-dialog";
+    54→import {
+    55→  DropdownMenu,
+    56→  DropdownMenuContent,
+    57→  DropdownMenuItem,
+    58→  DropdownMenuTrigger,
+    59→} from "@/components/ui/dropdown-menu";
+    60→import {
+    61→  Select,
+    62→  SelectContent,
+    63→  SelectItem,
+    64→  SelectTrigger,
+    65→  SelectValue,
+    66→} from "@/components/ui/select";
+    67→import {
+    68→  Pagination,
+    69→  PaginationContent,
+    70→  PaginationItem,
+    71→  PaginationLink,
+    72→  PaginationNext,
+    73→  PaginationPrevious,
+    74→} from "@/components/ui/pagination";
+    75→import {
+    76→  ChevronLeft,
+    77→  ChevronRight,
+    78→  ChevronsLeft,
+    79→  ChevronsRight,
+    80→} from "lucide-react";
+    81→
+    82→import { apiFetch, ApiError } from "@/lib/api-client";
+    83→import { cn, formatCurrency } from "@/lib/utils";
+    84→import { ROOM_STATUS_CONFIG } from "@/lib/constants";
+    85→import type { Room, RoomStatus, RoomType } from "@/types";
+    86→
+    87→const ROOM_STATUS_VALUES: RoomStatus[] = [
+    88→  "AVAILABLE",
+    89→  "RESERVED",
+    90→  "OCCUPIED",
+    91→  "CLEANING",
+    92→  "MAINTENANCE",
+    93→  "BLOCKED",
+    94→];
+    95→
+    96→const ROOMS_PAGE_SIZE = 6;
+    97→
+    98→export function RoomsAdmin() {
+    99→  const qc = useQueryClient();
+   100→  const { data, isLoading } = useQuery({
+   101→    queryKey: ["admin-rooms"],
+   102→    queryFn: () => apiFetch<{ rooms: Room[] }>("/api/rooms"),
+   103→  });
+   104→  const rooms = (data?.rooms ?? []).filter((r) => r.isActive);
+   105→
+   106→  const [editing, setEditing] = useState<Room | null>(null);
+   107→  const [creating, setCreating] = useState(false);
+   108→  const [deleting, setDeleting] = useState<Room | null>(null);
+   109→  const [page, setPage] = useState(1);
+   110→
+   111→  // Client-side pagination
+   112→  const totalPages = Math.max(1, Math.ceil(rooms.length / ROOMS_PAGE_SIZE));
+   113→  const currentPage = Math.min(page, totalPages);
+   114→  const startIdx = (currentPage - 1) * ROOMS_PAGE_SIZE;
+   115→  const endIdx = Math.min(startIdx + ROOMS_PAGE_SIZE, rooms.length);
+   116→  const pagedRooms = rooms.slice(startIdx, endIdx);
+   117→
+   118→  const goToPage = (p: number) => {
+   119→    setPage(Math.max(1, Math.min(p, totalPages)));
+   120→  };
+   121→
+   122→  const statusMutation = useMutation({
+   123→    mutationFn: ({ id, status }: { id: string; status: RoomStatus }) =>
+   124→      apiFetch<{ room: Room }>(`/api/rooms/${id}`, {
+   125→        method: "PATCH",
+   126→        body: JSON.stringify({ status }),
+   127→      }),
+   128→    onSuccess: (data) => {
+   129→      qc.invalidateQueries({ queryKey: ["admin-rooms"] });
+   130→      qc.invalidateQueries({ queryKey: ["admin-calendar"] });
+   131→      qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+   132→      toast.success(`${data.room.name} marked as ${ROOM_STATUS_CONFIG[data.room.status].label}.`);
+   133→    },
+   134→    onError: (err) => {
+   135→      const message =
+   136→        err instanceof ApiError ? err.message : "Couldn't update room.";
+   137→      toast.error(message);
+   138→    },
+   139→  });
+   140→
+   141→  const deleteMutation = useMutation({
+   142→    mutationFn: (id: string) =>
+   143→      apiFetch(`/api/rooms/${id}`, { method: "DELETE" }),
+   144→    onSuccess: () => {
+   145→      qc.invalidateQueries({ queryKey: ["admin-rooms"] });
+   146→      toast.success("Room removed.");
+   147→      setDeleting(null);
+   148→    },
+   149→    onError: (err) => {
+   150→      const message =
+   151→        err instanceof ApiError ? err.message : "Couldn't remove room.";
+   152→      toast.error(message);
+   153→    },
+   154→  });
+   155→
+   156→  return (
+   157→    <AdminLayout title="The Villa" subtitle="Manage rooms, photos, and availability">
+   158→      <div className="mb-5 flex items-center justify-between gap-3 pb-6">
+   159→        <div className="min-w-0">
+   160→          <div className="eyebrow">{rooms.length} spaces</div>
+   161→          <h2 className="mt-1 truncate font-display text-2xl font-medium tracking-tight">
+   162→            The Villa at {`The Twenty-Fifth`}
+   163→          </h2>
+   164→        </div>
+   165→        <Button
+   166→          onClick={() => setCreating(true)}
+   167→          className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+   168→        >
+   169→          <Plus className="size-4" />
+   170→          <span className="hidden sm:inline">Add Room</span>
+   171→        </Button>
+   172→      </div>
+   173→
+   174→      {isLoading ? (
+   175→        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   176→          {Array.from({ length: 3 }).map((_, i) => (
+   177→            <Skeleton key={i} className="h-72 w-full rounded-lg" />
+   178→          ))}
+   179→        </div>
+   180→      ) : rooms.length === 0 ? (
+   181→        <EmptyState
+   182→          icon={Home}
+   183→          title="No rooms yet"
+   184→          description="Add your first room to start taking reservations."
+   185→          action={
+   186→            <Button
+   187→              onClick={() => setCreating(true)}
+   188→              className="bg-primary text-primary-foreground hover:bg-primary/90"
+   189→            >
+   190→              <Plus className="size-4" />
+   191→              Add Room
+   192→            </Button>
+   193→          }
+   194→        />
+   195→      ) : (
+   196→        <>
+   197→          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 pb-6">
+   198→            {pagedRooms.map((room) => (
+   199→              <RoomCard
+   200→                key={room.id}
+   201→                room={room}
+   202→                onEdit={() => setEditing(room)}
+   203→                onDelete={() => setDeleting(room)}
+   204→                onStatusChange={(s) =>
+   205→                  statusMutation.mutate({ id: room.id, status: s })
+   206→                }
+   207→                pending={statusMutation.isPending}
+   208→              />
+   209→            ))}
+   210→          </div>
+   211→
+   212→          {/* Pagination footer */}
+   213→          {totalPages > 1 && (
+   214→            <div className="flex flex-col items-center gap-3 border-t border-border pt-4 sm:flex-row sm:justify-between">
+   215→              <p className="text-xs text-muted-foreground">
+   216→                Showing {startIdx + 1}–{endIdx} of {rooms.length} rooms
+   217→              </p>
+   218→              <Pagination className="sm:justify-end">
+   219→                <PaginationContent>
+   220→                  <PaginationItem>
+   221→                    <button
+   222→                      type="button"
+   223→                      onClick={() => goToPage(1)}
+   224→                      disabled={currentPage === 1}
+   225→                      className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+   226→                      aria-label="First page"
+   227→                    >
+   228→                      <ChevronsLeft className="size-4" />
+   229→                    </button>
+   230→                  </PaginationItem>
+   231→                  <PaginationItem>
+   232→                    <PaginationPrevious
+   233→                      onClick={() => goToPage(currentPage - 1)}
+   234→                      aria-disabled={currentPage === 1}
+   235→                      className={currentPage === 1 ? "pointer-events-none opacity-40" : ""}
+   236→                    />
+   237→                  </PaginationItem>
+   238→                  {Array.from({ length: totalPages }).map((_, i) => {
+   239→                    const p = i + 1;
+   240→                    // Show first, last, current, and neighbors; ellipsis for gaps
+   241→                    if (
+   242→                      p === 1 ||
+   243→                      p === totalPages ||
+   244→                      Math.abs(p - currentPage) <= 1
+   245→                    ) {
+   246→                      return (
+   247→                        <PaginationItem key={p}>
+   248→                          <PaginationLink
+   249→                            isActive={p === currentPage}
+   250→                            onClick={() => goToPage(p)}
+   251→                          >
+   252→                            {p}
+   253→                          </PaginationLink>
+   254→                        </PaginationItem>
+   255→                      );
+   256→                    }
+   257→                    if (p === currentPage - 2 || p === currentPage + 2) {
+   258→                      return (
+   259→                        <PaginationItem key={p} className="text-muted-foreground">
+   260→                          <span className="px-1">…</span>
+   261→                        </PaginationItem>
+   262→                      );
+   263→                    }
+   264→                    return null;
+   265→                  })}
+   266→                  <PaginationItem>
+   267→                    <PaginationNext
+   268→                      onClick={() => goToPage(currentPage + 1)}
+   269→                      aria-disabled={currentPage === totalPages}
+   270→                      className={currentPage === totalPages ? "pointer-events-none opacity-40" : ""}
+   271→                    />
+   272→                  </PaginationItem>
+   273→                  <PaginationItem>
+   274→                    <button
+   275→                      type="button"
+   276→                      onClick={() => goToPage(totalPages)}
+   277→                      disabled={currentPage === totalPages}
+   278→                      className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+   279→                      aria-label="Last page"
+   280→                    >
+   281→                      <ChevronsRight className="size-4" />
+   282→                    </button>
+   283→                  </PaginationItem>
+   284→                </PaginationContent>
+   285→              </Pagination>
+   286→            </div>
+   287→          )}
+   288→        </>
+   289→      )}
+   290→
+   291→      {/* Edit dialog */}
+   292→      {editing && (
+   293→        <RoomFormDialog
+   294→          room={editing}
+   295→          open={!!editing}
+   296→          onClose={() => setEditing(null)}
+   297→          onSaved={() => {
+   298→            setEditing(null);
+   299→            qc.invalidateQueries({ queryKey: ["admin-rooms"] });
+   300→          }}
+   301→        />
+   302→      )}
+   303→
+   304→      {/* Create dialog */}
+   305→      <RoomFormDialog
+   306→        open={creating}
+   307→        onClose={() => setCreating(false)}
+   308→        onSaved={() => {
+   309→          setCreating(false);
+   310→          qc.invalidateQueries({ queryKey: ["admin-rooms"] });
+   311→        }}
+   312→      />
+   313→
+   314→      {/* Delete confirm */}
+   315→      <AlertDialog
+   316→        open={!!deleting}
+   317→        onOpenChange={(o) => !o && setDeleting(null)}
+   318→      >
+   319→        <AlertDialogContent>
+   320→          <AlertDialogHeader>
+   321→            <AlertDialogTitle>Remove this room?</AlertDialogTitle>
+   322→            <AlertDialogDescription>
+   323→              {deleting?.name} will be hidden from the website and calendar.
+   324→              Existing reservations are kept. This cannot be undone.
+   325→            </AlertDialogDescription>
+   326→          </AlertDialogHeader>
+   327→          <AlertDialogFooter>
+   328→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   329→            <AlertDialogAction
+   330→              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+   331→              onClick={() => deleting && deleteMutation.mutate(deleting.id)}
+   332→              disabled={deleteMutation.isPending}
+   333→            >
+   334→              {deleteMutation.isPending ? "Removing…" : "Remove room"}
+   335→            </AlertDialogAction>
+   336→          </AlertDialogFooter>
+   337→        </AlertDialogContent>
+   338→      </AlertDialog>
+   339→    </AdminLayout>
+   340→  );
+   341→}
+   342→
+   343→function RoomCard({
+   344→  room,
+   345→  onEdit,
+   346→  onDelete,
+   347→  onStatusChange,
+   348→  pending,
+   349→}: {
+   350→  room: Room;
+   351→  onEdit: () => void;
+   352→  onDelete: () => void;
+   353→  onStatusChange: (s: RoomStatus) => void;
+   354→  pending: boolean;
+   355→}) {
+   356→  const image = room.images?.[0]?.url;
+   357→  const cfg = ROOM_STATUS_CONFIG[room.status as string] ?? ROOM_STATUS_CONFIG.AVAILABLE;
+   358→
+   359→  return (
+   360→    <Card className="overflow-hidden rounded-lg border border-border shadow-card">
+   361→      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+   362→        {image ? (
+   363→          <img
+   364→            src={image}
+   365→            alt={room.images?.[0]?.altText ?? room.name}
+   366→            className="size-full object-cover"
+   367→          />
+   368→        ) : (
+   369→          <div className="flex size-full items-center justify-center bg-sand text-muted-foreground">
+   370→            <BedDouble className="size-8" />
+   371→          </div>
+   372→        )}
+   373→        <div className="absolute left-3 top-3">
+   374→          <RoomStatusBadge status={room.status as string} />
+   375→        </div>
+   376→        <div className="absolute right-3 top-3 rounded-md bg-white/90 px-2.5 py-1 text-xs font-medium text-foreground backdrop-blur-sm">
+   377→          {formatCurrency(room.pricePerNight)}
+   378→          <span className="text-muted-foreground">/night</span>
+   379→        </div>
+   380→      </div>
+   381→
+   382→      <div className="p-4 sm:p-5">
+   383→        <div className="flex items-start justify-between gap-2">
+   384→          <div className="min-w-0">
+   385→            <div className="font-display text-base font-medium tracking-tight text-foreground sm:text-lg">
+   386→              {room.name}
+   387→            </div>
+   388→            <div className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+   389→              {room.type?.name ?? "Room"} · {room.number}
+   390→            </div>
+   391→          </div>
+   392→        </div>
+   393→
+   394→        <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground sm:text-sm">
+   395→          <span className="flex items-center gap-1">
+   396→            <Users className="size-3.5" />
+   397→            Sleeps {room.capacity}
+   398→          </span>
+   399→          {room.view && (
+   400→            <span className="flex items-center gap-1">
+   401→              <Home className="size-3.5" />
+   402→              {room.view}
+   403→            </span>
+   404→          )}
+   405→        </div>
+   406→
+   407→        <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-muted-foreground sm:text-sm sm:leading-relaxed">
+   408→          {room.description}
+   409→        </p>
+   410→
+   411→        <div className="mt-4 flex flex-wrap items-center gap-2">
+   412→          <Button
+   413→            variant="outline"
+   414→            size="sm"
+   415→            className="h-10 flex-1 min-w-[100px] text-sm"
+   416→            onClick={onEdit}
+   417→          >
+   418→            <Pencil className="size-3.5" />
+   419→            Edit
+   420→          </Button>
+   421→          <DropdownMenu>
+   422→            <DropdownMenuTrigger asChild>
+   423→              <Button
+   424→                variant="outline"
+   425→                size="sm"
+   426→                className="h-10 min-w-[44px] gap-1.5"
+   427→                disabled={pending}
+   428→              >
+   429→                <span
+   430→                  className="size-2 rounded-full"
+   431→                  style={{ backgroundColor: cfg.color }}
+   432→                />
+   433→                <span className="hidden sm:inline">{cfg.label}</span>
+   434→              </Button>
+   435→            </DropdownMenuTrigger>
+   436→            <DropdownMenuContent align="end">
+   437→              {ROOM_STATUS_VALUES.map((s) => {
+   438→                const c = ROOM_STATUS_CONFIG[s];
+   439→                return (
+   440→                  <DropdownMenuItem
+   441→                    key={s}
+   442→                    onClick={() => onStatusChange(s)}
+   443→                    className="gap-2"
+   444→                  >
+   445→                    <span
+   446→                      className="size-2 rounded-full"
+   447→                      style={{ backgroundColor: c.color }}
+   448→                    />
+   449→                    {c.label}
+   450→                    <span className="text-xs text-muted-foreground">
+   451→                      — {c.friendly}
+   452→                    </span>
+   453→                  </DropdownMenuItem>
+   454→                );
+   455→              })}
+   456→            </DropdownMenuContent>
+   457→          </DropdownMenu>
+   458→          <Button
+   459→            variant="ghost"
+   460→            size="icon"
+   461→            className="size-10 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-700"
+   462→            onClick={onDelete}
+   463→            aria-label="Remove room"
+   464→          >
+   465→            <Trash2 className="size-4" />
+   466→          </Button>
+   467→        </div>
+   468→      </div>
+   469→    </Card>
+   470→  );
+   471→}
+   472→
+   473→interface RoomFormValues {
+   474→  number: string;
+   475→  name: string;
+   476→  description: string;
+   477→  pricePerNight: number;
+   478→  capacity: number;
+   479→  status: RoomStatus;
+   480→  typeId: string;
+   481→  view: string;
+   482→  imageUrls: { url: string; altText: string }[];
+   483→}
+   484→
+   485→// Image category system — stored in altText as "Category::Caption" for zero-migration compat
+   486→const IMAGE_CATEGORIES = [
+   487→  { value: "Pool", label: "Pool", icon: Waves },
+   488→  { value: "Bedroom", label: "Bedroom", icon: BedDouble },
+   489→  { value: "Bathroom", label: "Bathroom", icon: Bath },
+   490→  { value: "Garden", label: "Garden", icon: Trees },
+   491→  { value: "Living Area", label: "Living Area", icon: Sofa },
+   492→  { value: "Dining", label: "Dining", icon: Utensils },
+   493→  { value: "Exterior", label: "Exterior", icon: Building2 },
+   494→  { value: "Amenity", label: "Amenity", icon: Sparkles },
+   495→  { value: "Other", label: "Other", icon: Home },
+   496→] as const;
+   497→
+   498→type ImageCategory = (typeof IMAGE_CATEGORIES)[number]["value"];
+   499→
+   500→function parseImageAlt(altText: string): { category: ImageCategory; caption: string } {
+   501→  if (!altText) return { category: "Other", caption: "" };
+   502→  const sepIdx = altText.indexOf("::");
+   503→  if (sepIdx === -1) return { category: "Other", caption: altText };
+   504→  const cat = altText.slice(0, sepIdx) as ImageCategory;
+   505→  const cap = altText.slice(sepIdx + 2);
+   506→  const valid = IMAGE_CATEGORIES.some((c) => c.value === cat);
+   507→  return { category: valid ? cat : "Other", caption: cap };
+   508→}
+   509→
+   510→function formatImageAlt(category: ImageCategory, caption: string): string {
+   511→  return `${category}::${caption.trim()}`;
+   512→}
+   513→
+   514→function getCategoryConfig(value: ImageCategory) {
+   515→  return IMAGE_CATEGORIES.find((c) => c.value === value) ?? IMAGE_CATEGORIES[IMAGE_CATEGORIES.length - 1];
+   516→}
+   517→
+   518→function RoomFormDialog({
+   519→  room,
+   520→  open,
+   521→  onClose,
+   522→  onSaved,
+   523→}: {
+   524→  room?: Room | null;
+   525→  open: boolean;
+   526→  onClose: () => void;
+   527→  onSaved: () => void;
+   528→}) {
+   529→  const qc = useQueryClient();
+   530→  const { data: typesData } = useQuery({
+   531→    queryKey: ["admin-room-types"],
+   532→    queryFn: () => apiFetch<{ roomTypes: (RoomType & { rooms: { id: string }[] })[] }>("/api/rooms/types"),
+   533→    enabled: open,
+   534→  });
+   535→  const types = typesData?.roomTypes ?? [];
+   536→
+   537→  const {
+   538→    register,
+   539→    handleSubmit,
+   540→    watch,
+   541→    setValue,
+   542→    reset,
+   543→    formState: { errors },
+   544→  } = useForm<RoomFormValues>({
+   545→    defaultValues: {
+   546→      number: room?.number ?? "",
+   547→      name: room?.name ?? "",
+   548→      description: room?.description ?? "",
+   549→      pricePerNight: room?.pricePerNight ?? 0,
+   550→      capacity: room?.capacity ?? 2,
+   551→      status: (room?.status as RoomStatus) ?? "AVAILABLE",
+   552→      typeId: room?.typeId ?? "",
+   553→      view: room?.view ?? "",
+   554→      imageUrls:
+   555→        room?.images?.map((i) => ({ url: i.url, altText: i.altText ?? "" })) ??
+   556→        [],
+   557→    },
+   558→  });
+   559→
+   560→  const [newImageUrl, setNewImageUrl] = useState("");
+   561→  const [newImageAlt, setNewImageAlt] = useState("");
+   562→  const [newImageCategory, setNewImageCategory] = useState<ImageCategory>("Pool");
+   563→
+   564→  const imageUrls = watch("imageUrls");
+   565→  const status = watch("status");
+   566→  const typeId = watch("typeId");
+   567→
+   568→  function addImage() {
+   569→    const trimmedUrl = newImageUrl.trim();
+   570→    const trimmedAlt = newImageAlt.trim();
+   571→    if (!trimmedUrl) {
+   572→      toast.error("Please upload an image first.");
+   573→      return;
+   574→    }
+   575→    if (!trimmedAlt) {
+   576→      toast.error("Caption is required — describe what's in the image so guests know what they're looking at.");
+   577→      return;
+   578→    }
+   579→    setValue("imageUrls", [
+   580→      ...imageUrls,
+   581→      { url: trimmedUrl, altText: formatImageAlt(newImageCategory, trimmedAlt) },
+   582→    ]);
+   583→    setNewImageUrl("");
+   584→    setNewImageAlt("");
+   585→    setNewImageCategory("Pool");
+   586→  }
+   587→
+   588→  function removeImage(idx: number) {
+   589→    setValue(
+   590→      "imageUrls",
+   591→      imageUrls.filter((_, i) => i !== idx)
+   592→    );
+   593→  }
+   594→
+   595→  const mutation = useMutation({
+   596→    mutationFn: (values: RoomFormValues) => {
+   597→      const payload = {
+   598→        ...values,
+   599→        floor: null,
+   600→        imageUrls: values.imageUrls.map((i, idx) => ({
+   601→          url: i.url,
+   602→          altText: i.altText || null,
+   603→          isPrimary: idx === 0,
+   604→        })),
+   605→      };
+   606→      if (room) {
+   607→        return apiFetch<{ room: Room }>(`/api/rooms/${room.id}`, {
+   608→          method: "PATCH",
+   609→          body: JSON.stringify(payload),
+   610→        });
+   611→      }
+   612→      return apiFetch<{ room: Room }>("/api/rooms", {
+   613→        method: "POST",
+   614→        body: JSON.stringify(payload),
+   615→      });
+   616→    },
+   617→    onSuccess: () => {
+   618→      toast.success(room ? "Room updated." : "Room added.");
+   619→      qc.invalidateQueries({ queryKey: ["admin-rooms"] });
+   620→      reset();
+   621→      onSaved();
+   622→    },
+   623→    onError: (err) => {
+   624→      const message =
+   625→        err instanceof ApiError ? err.message : "Couldn't save room.";
+   626→      toast.error(message);
+   627→    },
+   628→  });
+   629→
+   630→  return (
+   631→    <Dialog
+   632→      open={open}
+   633→      onOpenChange={(o) => {
+   634→        if (!o) {
+   635→          reset();
+   636→          onClose();
+   637→        }
+   638→      }}
+   639→    >
+   640→      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+   641→        <DialogHeader className="flex shrink-0 items-center justify-between border-b border-border px-4 py-5 sm:px-6">
+   642→          <div className="min-w-0">
+   643→            <DialogTitle className="font-display text-xl font-medium tracking-tight">
+   644→              {room ? "Edit room" : "Add room"}
+   645→            </DialogTitle>
+   646→            <DialogDescription>
+   647→              {room
+   648→                ? `Update ${room.name}`
+   649→                : "Add a new space to the villa."}
+   650→            </DialogDescription>
+   651→          </div>
+   652→        </DialogHeader>
+   653→
+   654→        <form
+   655→          onSubmit={handleSubmit((v) => mutation.mutate(v))}
+   656→          className="flex min-h-0 flex-1 flex-col"
+   657→        >
+   658→          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
+   659→            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+   660→              <Field label="Room name" error={errors.name?.message}>
+   661→                <Input {...register("name", { required: true })} className="h-10" />
+   662→              </Field>
+   663→              <Field label="Room number / label" error={errors.number?.message}>
+   664→                <Input {...register("number", { required: true })} className="h-10" />
+   665→              </Field>
+   666→            </div>
+   667→
+   668→            <Field label="Description" error={errors.description?.message}>
+   669→              <Textarea
+   670→                {...register("description", { required: true })}
+   671→                rows={4}
+   672→                className="min-h-[110px] resize-y leading-relaxed"
+   673→                placeholder="Describe the room — what makes it special, what guests will love..."
+   674→              />
+   675→            </Field>
+   676→
+   677→            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+   678→              <Field
+   679→                label="Price per night (₱)"
+   680→                error={errors.pricePerNight?.message}
+   681→              >
+   682→                <Input
+   683→                  type="number"
+   684→                  min={0}
+   685→                  {...register("pricePerNight", { valueAsNumber: true, required: true })}
+   686→                  className="h-10"
+   687→                />
+   688→              </Field>
+   689→              <Field label="Capacity" error={errors.capacity?.message}>
+   690→                <Input
+   691→                  type="number"
+   692→                  min={1}
+   693→                  {...register("capacity", { valueAsNumber: true, required: true })}
+   694→                  className="h-10"
+   695→                />
+   696→              </Field>
+   697→              <Field label="View" error={errors.view?.message}>
+   698→                <Input {...register("view")} className="h-10" />
+   699→              </Field>
+   700→            </div>
+   701→
+   702→            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+   703→              <Field label="Room type" error={errors.typeId?.message}>
+   704→                <Select
+   705→                  value={typeId}
+   706→                  onValueChange={(v) => setValue("typeId", v)}
+   707→                >
+   708→                  <SelectTrigger className="h-10">
+   709→                    <SelectValue placeholder="Select type" />
+   710→                  </SelectTrigger>
+   711→                  <SelectContent>
+   712→                    {types.map((t) => (
+   713→                      <SelectItem key={t.id} value={t.id}>
+   714→                        {t.name}
+   715→                      </SelectItem>
+   716→                    ))}
+   717→                  </SelectContent>
+   718→                </Select>
+   719→              </Field>
+   720→              <Field label="Status" error={errors.status?.message}>
+   721→                <Select
+   722→                  value={status}
+   723→                  onValueChange={(v) => setValue("status", v as RoomStatus)}
+   724→                >
+   725→                  <SelectTrigger className="h-10 w-full whitespace-nowrap">
+   726→                    <SelectValue />
+   727→                  </SelectTrigger>
+   728→                  <SelectContent>
+   729→                    {ROOM_STATUS_VALUES.map((s) => (
+   730→                      <SelectItem key={s} value={s} className="whitespace-nowrap">
+   731→                        {ROOM_STATUS_CONFIG[s].label} — {ROOM_STATUS_CONFIG[s].friendly}
+   732→                      </SelectItem>
+   733→                    ))}
+   734→                  </SelectContent>
+   735→                </Select>
+   736→              </Field>
+   737→            </div>
+   738→
+   739→            {/* Images — structured manager with category + caption */}
+   740→            <div>
+   741→              <div className="flex items-center justify-between">
+   742→                <Label className="text-xs font-medium text-foreground">
+   743→                  Images
+   744→                </Label>
+   745→                {imageUrls.length > 0 && (
+   746→                  <span className="text-xs text-muted-foreground">
+   747→                    {imageUrls.length} image{imageUrls.length === 1 ? "" : "s"} · first image is the cover
+   748→                  </span>
+   749→                )}
+   750→              </div>
+   751→
+   752→              {/* Existing images — horizontal scrollable single row */}
+   753→              {imageUrls.length > 0 && (
+   754→                <div className="no-scrollbar mt-2 flex gap-3 overflow-x-auto pb-2">
+   755→                  {imageUrls.map((img, idx) => {
+   756→                    const { category, caption } = parseImageAlt(img.altText);
+   757→                    const cfg = getCategoryConfig(category);
+   758→                    const Icon = cfg.icon;
+   759→                    return (
+   760→                      <div
+   761→                        key={idx}
+   762→                        className="group relative w-56 shrink-0 overflow-hidden rounded-lg border border-border bg-card"
+   763→                      >
+   764→                        {/* Larger thumbnail 16:10 */}
+   765→                        <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">
+   766→                          <img
+   767→                            src={img.url}
+   768→                            alt={caption || `Room image ${idx + 1}`}
+   769→                            className="h-full w-full object-cover"
+   770→                            loading="lazy"
+   771→                          />
+   772→                          {/* Cover badge */}
+   773→                          {idx === 0 && (
+   774→                            <span className="absolute left-1.5 top-1.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+   775→                              Cover
+   776→                            </span>
+   777→                          )}
+   778→                          {/* Remove button */}
+   779→                          <Button
+   780→                            type="button"
+   781→                            variant="ghost"
+   782→                            size="icon"
+   783→                            className="absolute right-1.5 top-1.5 size-7 shrink-0 rounded-md bg-black/50 text-white opacity-0 transition hover:bg-red-600 hover:text-white group-hover:opacity-100"
+   784→                            onClick={() => removeImage(idx)}
+   785→                            aria-label={`Remove ${cfg.label} image`}
+   786→                          >
+   787→                            <X className="size-3.5" />
+   788→                          </Button>
+   789→                        </div>
+   790→                        {/* Category + caption */}
+   791→                        <div className="space-y-1 p-2.5">
+   792→                          <div className="flex items-center gap-1.5">
+   793→                            <span className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+   794→                              <Icon className="size-3" />
+   795→                            </span>
+   796→                            <span className="truncate text-xs font-semibold text-foreground">
+   797→                              {cfg.label}
+   798→                            </span>
+   799→                            <span className="ml-auto text-[10px] text-muted-foreground">
+   800→                              #{idx + 1}
+   801→                            </span>
+   802→                          </div>
+   803→                          <div
+   804→                            className="truncate text-xs text-muted-foreground"
+   805→                            title={caption || "No caption"}
+   806→                          >
+   807→                            {caption || (
+   808→                              <span className="italic text-muted-foreground/70">No caption</span>
+   809→                            )}
+   810→                          </div>
+   811→                          {/* URL — single-line scrollable, NOT truncated */}
+   812→                          <div
+   813→                            className="no-scrollbar mt-0.5 overflow-x-auto whitespace-nowrap text-[10px] text-muted-foreground/70"
+   814→                            title={img.url}
+   815→                          >
+   816→                            {img.url}
+   817→                          </div>
+   818→                        </div>
+   819→                      </div>
+   820→                    );
+   821→                  })}
+   822→                </div>
+   823→              )}
+   824→
+   825→              {imageUrls.length === 0 && (
+   826→                <p className="mt-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-4 text-center text-xs text-muted-foreground">
+   827→                  No images yet. Add at least one — the first image becomes the cover photo.
+   828→                </p>
+   829→              )}
+   830→
+   831→              {/* Add image form */}
+   832→              <div className="mt-3 space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+   833→                <div className="text-xs font-medium text-foreground">Add an image</div>
+   834→
+   835→                {/* File uploader — replaces URL input */}
+   836→                <ImageUploader
+   837→                  onUploaded={(uploadedUrl) => setNewImageUrl(uploadedUrl)}
+   838→                  compact
+   839→                  label="Upload image"
+   840→                />
+   841→
+   842→                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[140px_1fr]">
+   843→                  <Select
+   844→                    value={newImageCategory}
+   845→                    onValueChange={(v) => setNewImageCategory(v as ImageCategory)}
+   846→                  >
+   847→                    <SelectTrigger className="h-9 w-full whitespace-nowrap">
+   848→                      <SelectValue />
+   849→                    </SelectTrigger>
+   850→                    <SelectContent>
+   851→                      {IMAGE_CATEGORIES.map((c) => {
+   852→                        const Icon = c.icon;
+   853→                        return (
+   854→                          <SelectItem key={c.value} value={c.value} className="whitespace-nowrap">
+   855→                            <span className="flex items-center gap-2">
+   856→                              <Icon className="size-3.5" />
+   857→                              {c.label}
+   858→                            </span>
+   859→                          </SelectItem>
+   860→                        );
+   861→                      })}
+   862→                    </SelectContent>
+   863→                  </Select>
+   864→                  <Input
+   865→                    placeholder="Caption (required) — e.g., Pool view at sunset"
+   866→                    value={newImageAlt}
+   867→                    onChange={(e) => setNewImageAlt(e.target.value)}
+   868→                    className="h-9"
+   869→                  />
+   870→                </div>
+   871→                <Button
+   872→                  type="button"
+   873→                  variant="outline"
+   874→                  size="sm"
+   875→                  className="h-9 shrink-0"
+   876→                  onClick={addImage}
+   877→                  disabled={!newImageUrl || !newImageAlt}
+   878→                >
+   879→                  <ImagePlus className="size-3.5" />
+   880→                  Add image
+   881→                </Button>
+   882→              </div>
+   883→            </div>
+   884→          </div>
+   885→
+   886→          <DialogFooter className="flex shrink-0 flex-row gap-2 border-t border-border bg-card px-4 py-4 sm:px-6">
+   887→            <Button
+   888→              type="button"
+   889→              variant="outline"
+   890→              className="w-full sm:w-auto"
+   891→              onClick={() => {
+   892→                reset();
+   893→                onClose();
+   894→              }}
+   895→            >
+   896→              Cancel
+   897→            </Button>
+   898→            <Button
+   899→              type="submit"
+   900→              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
+   901→              disabled={mutation.isPending}
+   902→            >
+   903→              {mutation.isPending
+   904→                ? "Saving…"
+   905→                : room
+   906→                ? "Save changes"
+   907→                : "Add room"}
+   908→            </Button>
+   909→          </DialogFooter>
+   910→        </form>
+   911→      </DialogContent>
+   912→    </Dialog>
+   913→  );
+   914→}
+   915→
+   916→function Field({
+   917→  label,
+   918→  error,
+   919→  children,
+   920→}: {
+   921→  label: string;
+   922→  error?: string;
+   923→  children: React.ReactNode;
+   924→}) {
+   925→  return (
+   926→    <div className="space-y-1.5">
+   927→      <Label className="text-xs font-medium text-foreground">{label}</Label>
+   928→      {children}
+   929→      {error && <p className="text-xs text-red-700">{error}</p>}
+   930→    </div>
+   931→  );
+   932→}
+   933→
+   934→export default RoomsAdmin;
+   935→

@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 
 import { AdminLayout } from "./AdminLayout";
+import { ConfirmDialog, type ConfirmTone } from "./ConfirmDialog";
 import { BookingStatusBadge } from "./StatusBadges";
 import { EmptyState } from "./StatCard";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,63 @@ const STATUS_TABS: { value: string; label: string }[] = [
   { value: "HISTORY", label: "History" },
 ];
 
+/** Confirmation metadata for each mutating status transition. */
+function getStatusConfirm(
+  status: BookingStatus,
+  reservation: Reservation
+): {
+  tone: ConfirmTone;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  hint?: string;
+} {
+  const guest =
+    `${reservation.guest?.firstName ?? ""} ${reservation.guest?.lastName ?? ""}`.trim() ||
+    "this guest";
+  const ref = reservation.referenceNo;
+  switch (status) {
+    case "CONFIRMED":
+      return {
+        tone: "success",
+        title: "Approve this reservation?",
+        description: `You're about to confirm ${ref} for ${guest}. The room will be held for their dates and the guest will receive a confirmation email.`,
+        confirmLabel: "Approve reservation",
+        hint: "The guest will be notified by email.",
+      };
+    case "REJECTED":
+      return {
+        tone: "destructive",
+        title: "Decline this reservation?",
+        description: `Declining ${ref} (${guest}) releases the held dates back to availability. The guest will be notified that their booking could not be accommodated.`,
+        confirmLabel: "Decline reservation",
+        hint: "This cannot be undone.",
+      };
+    case "CHECKED_IN":
+      return {
+        tone: "info",
+        title: "Check in this guest?",
+        description: `Mark ${guest} (${ref}) as checked in. This records the actual arrival and starts the stay.`,
+        confirmLabel: "Check in guest",
+      };
+    case "COMPLETED":
+      return {
+        tone: "warning",
+        title: "Check out this guest?",
+        description: `Check out ${guest} (${ref}) and close this stay. The room returns to available inventory and the reservation becomes part of history.`,
+        confirmLabel: "Check out guest",
+        hint: "This cannot be undone.",
+      };
+    default:
+      return {
+        tone: "info",
+        title: "Update this reservation?",
+        description: `Apply a status change to ${ref}.`,
+        confirmLabel: "Update reservation",
+      };
+  }
+}
+
 /** Count reservations visible under a given tab (History aggregates 4 statuses). */
 function countForTab(tab: string, reservations: Reservation[]): number {
   if (tab === "ALL") return reservations.length;
@@ -132,6 +190,10 @@ export function BookingsAdmin() {
   const [page, setPage] = useState(1);
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{
+    reservation: Reservation;
+    status: BookingStatus;
+  } | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -221,6 +283,23 @@ export function BookingsAdmin() {
       toast.error(message);
     },
   });
+
+  const confirmStatus = async () => {
+    if (!pendingAction) return;
+    try {
+      await statusMutation.mutateAsync({
+        id: pendingAction.reservation.id,
+        status: pendingAction.status,
+      });
+      setPendingAction(null);
+    } catch {
+      // error toast already shown by mutation onError; keep dialog open for retry
+    }
+  };
+
+  const confirmMeta = pendingAction
+    ? getStatusConfirm(pendingAction.status, pendingAction.reservation)
+    : null;
 
   const selected = allReservations.find((r) => r.id === detailsId) ?? null;
 
@@ -383,7 +462,7 @@ export function BookingsAdmin() {
                       reservation={r}
                       onView={() => setDetailsId(r.id)}
                       onMutate={(s) =>
-                        statusMutation.mutate({ id: r.id, status: s })
+                        setPendingAction({ reservation: r, status: s })
                       }
                       pending={statusMutation.isPending}
                     />
@@ -446,7 +525,7 @@ export function BookingsAdmin() {
                   reservation={r}
                   onView={() => setDetailsId(r.id)}
                   onMutate={(s) =>
-                    statusMutation.mutate({ id: r.id, status: s })
+                    setPendingAction({ reservation: r, status: s })
                   }
                   pending={statusMutation.isPending}
                   fullWidth
@@ -561,7 +640,7 @@ export function BookingsAdmin() {
           open={!!selected}
           onClose={() => setDetailsId(null)}
           onMutate={(s) => {
-            statusMutation.mutate({ id: selected.id, status: s });
+            setPendingAction({ reservation: selected, status: s });
             setDetailsId(null);
           }}
           pending={statusMutation.isPending}
@@ -577,6 +656,19 @@ export function BookingsAdmin() {
           qc.invalidateQueries({ queryKey: ["admin-reservations"] });
           qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
         }}
+      />
+
+      {/* Status-change confirmation (shared by table rows, mobile cards, and the details dialog) */}
+      <ConfirmDialog
+        open={!!pendingAction}
+        onOpenChange={(o) => !o && setPendingAction(null)}
+        tone={confirmMeta?.tone ?? "default"}
+        title={confirmMeta?.title ?? ""}
+        description={confirmMeta?.description ?? ""}
+        confirmLabel={confirmMeta?.confirmLabel ?? "Confirm"}
+        hint={confirmMeta?.hint}
+        loading={statusMutation.isPending}
+        onConfirm={confirmStatus}
       />
     </AdminLayout>
   );

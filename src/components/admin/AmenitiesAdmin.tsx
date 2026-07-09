@@ -6,6 +6,7 @@ import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminLayout } from "./AdminLayout";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { EmptyState } from "./StatCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -21,16 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -180,30 +171,17 @@ export function AmenitiesAdmin() {
         />
       )}
 
-      <AlertDialog
+      <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove this amenity?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleting?.name} will be removed from the villa and any rooms it
-              was attached to.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={() => deleting && deleteMutation.mutate(deleting.id)}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? "Removing…" : "Remove"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        tone="destructive"
+        title="Remove this amenity?"
+        description={`${deleting?.name ?? "This amenity"} will be removed from the villa and detached from any rooms it was attached to.`}
+        confirmLabel="Remove amenity"
+        hint="This cannot be undone."
+        loading={deleteMutation.isPending}
+        onConfirm={() => deleting && deleteMutation.mutate(deleting.id)}
+      />
     </AdminLayout>
   );
 }
