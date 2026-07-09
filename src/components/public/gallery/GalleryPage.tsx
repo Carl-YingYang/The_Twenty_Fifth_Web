@@ -10,6 +10,7 @@ import { GALLERY_CATEGORIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { GalleryItem } from "@/types";
 import { FadeUpSection, SectionHeading, SmartImage } from "../shared";
+import { GuestMoments } from "./GuestMoments";
 
 interface GalleryResponse {
   gallery: GalleryItem[];
@@ -289,6 +290,9 @@ export function GalleryPage() {
           )}
         </div>
       </section>
+
+      {/* Customer-satisfaction section — real guest moments from Facebook */}
+      <GuestMoments />
 
       {/* Lightbox — fixed overlay, 150ms opacity fade only */}
       {current && (

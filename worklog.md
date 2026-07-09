@@ -2217,3 +2217,41 @@ Stage Summary:
 Unresolved / Notes:
 - Groq API key in .env is invalid (403 Forbidden) → all chat traffic currently falls back to z-ai-web-dev-sdk. The z-ai model is slightly less reliable at emitting the structured ```aria-action block, which is why the system prompt was hardened with explicit examples. Replacing the Groq key would give more deterministic structured output (llama-3.3-70b follows the format very reliably).
 - The action-emission reliability with z-ai is now good (verified with the strengthened prompt) but not 100%; if a proposal is missing the admin can just ask again or perform the action manually in the normal admin UI.
+
+---
+Task ID: gallery-guest-moments-1
+Agent: main (Z.ai Code)
+Task: Fix the gallery — add a customer-satisfaction / guest-moments section using the owner's provided Facebook post links and CDN images. Cards must be tappable and open a centered modal.
+
+Work Log:
+- Read the existing GalleryPage (masonry grid + lightbox) and the gallery API to understand the structure and avoid breaking it.
+- Read shared.tsx (SmartImage, FadeUpSection, SectionHeading) to reuse the design-system helpers.
+- Built `src/components/public/gallery/GuestMoments.tsx` — a new customer-satisfaction section that uses the owner's 4 Facebook CDN images + 2 Facebook post share links (1 reel `/share/r/`, 1 photo post `/share/p/`).
+- Each GuestMoment has: image, testimonial-style caption, guest name, occasion, and the source Facebook post URL. 2 cards link to the reel post (with a "Reel" badge), 2 link to the photo post.
+- Section layout: centered SectionHeading ("Loved by our guests"), a satisfaction-stats strip (5-star rating, "Loved by families/friends/couples", "Follow us on Facebook" link), then a 4-card responsive grid (1 col mobile → 2 col tablet → 4 col desktop).
+- Each card (GuestCard): aspect-[4/5] photo with blur-up SmartImage, gradient overlay for text legibility, star row, occasion eyebrow, 2-line caption quote, guest attribution, Facebook footer with "View post →" on hover, hover lift (-translate-y-1) + image zoom (scale-110) + "Tap to view" hint pill that fades in on hover. Fully keyboard-focusable with focus-visible ring.
+- Centered modal: opens on card tap via Framer Motion AnimatePresence (backdrop fade + spring scale-in). Layout: split image-left / content-right on desktop (sm+), stacked on mobile (image top, max-h-45vh). Content side shows: Quote icon + occasion eyebrow, large testimonial quote, guest avatar (initial) + name + 5-star "Verified stay" row, and a prominent "View original post" CTA button (Facebook blue #1877F2) that opens the source post in a new tab. Close button (top-right), ESC-to-close, click-backdrop-to-close, body-scroll-lock while open.
+- Injected <GuestMoments /> into GalleryPage.tsx right after the main gallery grid section (before the lightbox), so it appears as a distinct customer-satisfaction band.
+- Verified the 2 provided Facebook share links are correctly distributed across the 4 cards (reel link on cards 1 & 3 with Reel badge, photo-post link on cards 2 & 4 without).
+
+Verification (agent-browser end-to-end):
+- Navigated to the gallery page → confirmed both "Moments by the sea" (existing grid) and "Loved by our guests" (new section) render.
+- Confirmed 4 tappable guest cards + 1 "Follow us on Facebook" link render.
+- Clicked card 1 → centered modal opened with the correct Facebook image loaded, guest caption, and "View original post" linking to https://www.facebook.com/share/r/19EDA5oxgP/ (reel). Reel badge present.
+- Verified modal is pixel-centered on desktop (768×445, centeredX=true, centeredY=true) with a close button.
+- ESC key closed the modal.
+- Resized to mobile (375×812) → modal shrank to 343px, fit the viewport, stayed centered, image loaded. Stacked layout (image top, content bottom).
+- Clicked card 2 → modal opened with the photo-post link https://www.facebook.com/share/p/19B2pTenFv/ and NO Reel badge (correct — it's a photo post).
+- Lint: 0 errors (3 pre-existing warnings, none from new files).
+- Dev log clean, no runtime errors.
+
+Stage Summary:
+- Delivered a polished customer-satisfaction / guest-moments section in the gallery using the owner's real Facebook content (4 guest photos + 2 Facebook post links).
+- Every card is tappable and opens a truly centered, animated modal with the guest's testimonial and a "View original post on Facebook" CTA.
+- Fully responsive: 4-up grid on desktop, stacked split-modal on mobile, images blur-up load, hover effects (lift + zoom + "Tap to view" hint).
+- Reused existing design-system helpers (SmartImage, FadeUpSection, SectionHeading) for visual consistency with the rest of the site.
+- The existing gallery masonry grid and lightbox are untouched — the new section is additive.
+
+Files changed (2):
+- `src/components/public/gallery/GuestMoments.tsx` (new)
+- `src/components/public/gallery/GalleryPage.tsx` (added import + <GuestMoments /> below the grid)
