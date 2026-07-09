@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Calendar as CalendarIcon,
   Users,
@@ -21,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import { useViewStore } from "@/store/useViewStore";
 import { useBookingStore } from "@/store/useBookingStore";
 import { RESORT_INFO } from "@/lib/constants";
@@ -81,76 +83,100 @@ const GALLERY_TEASER = [
   },
 ];
 
-// Order: villa pool showcase first (strongest establishing shot),
-// then beachfront sunset, then couple in infinity pool.
-const HERO_SLIDES = [
-  "/hero-3.png",
-  "/hero-2.png",
-  "/hero-1.png",
+// Owner-provided hero photography (July 2025):
+//  1. Aerial establishing shot of the villa, pool, beach & tropical greenery.
+//  2. Tropical beach at sunset — palm trees, thatched umbrellas, lounge chairs.
+//  3. Resort pool surrounded by lush palms — tranquil luxury.
+// Order: establish → dream → invite.
+interface HeroSlideDef {
+  src: string;
+  caption: string;
+}
+const HERO_SLIDES: HeroSlideDef[] = [
+  {
+    src: "/hero-1.png",
+    caption: "The villa, the pool, the beach — all your own.",
+  },
+  {
+    src: "/hero-2.png",
+    caption: "Sunsets you set your watch by.",
+  },
+  {
+    src: "/hero-3.png",
+    caption: "Your private pool, framed by palms.",
+  },
 ];
 
-// Hero crossfade — 3 images with blur-up progressive loading.
-// Each image renders as an <img> tag that starts blurred + scaled,
-// then sharpens when loaded. No empty dark box while loading.
-// Crossfade is pure CSS opacity (GPU-accelerated, very smooth).
+const HERO_INTERVAL_MS = 6500;
+
+// Hero crossfade — simple opacity fade in/out, the way it's always been.
+// Each image renders as an <img> tag that starts blurred + scaled, then
+// sharpens when loaded. No empty dark box while loading.
 function HeroSlideshow() {
   const [index, setIndex] = React.useState(0);
-  const [loadedCount, setLoadedCount] = React.useState(0);
 
   // Start the slideshow interval immediately — images fade in as they load.
   React.useEffect(() => {
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % HERO_SLIDES.length);
-    }, 6500);
+    }, HERO_INTERVAL_MS);
     return () => clearInterval(id);
   }, []);
 
   return (
     <div className="absolute inset-0">
-      {HERO_SLIDES.map((src, i) => (
+      {HERO_SLIDES.map((slide, i) => (
         <HeroSlide
-          key={src}
-          src={src}
+          key={slide.src}
+          src={slide.src}
           active={i === index}
-          onLoad={() => setLoadedCount((n) => n + 1)}
         />
       ))}
-      {/* Subtle slide indicator dots — bottom-right, positioned above the
-          booking card overlap so they stay visible on all viewports. */}
-      <div className="absolute bottom-24 right-4 z-10 flex gap-2 sm:bottom-8 sm:right-8">
-        {HERO_SLIDES.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => setIndex(i)}
-            aria-label={`Show hero image ${i + 1}`}
-            className="group relative h-1.5 w-6 overflow-hidden rounded-md bg-white/30 transition-all duration-300 hover:bg-white/50 sm:w-8"
+      {/* Rotating slide caption + indicator dots — bottom-right, positioned
+          above the booking card overlap so they stay visible on all
+          viewports. The caption crossfades with each slide change. */}
+      <div className="absolute bottom-24 right-4 z-10 flex flex-col items-end gap-3 sm:bottom-8 sm:right-8">
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={index}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="hidden max-w-[14rem] text-right text-xs font-medium uppercase tracking-[0.18em] text-white/85 drop-shadow-sm sm:block"
           >
-            {i === index && loadedCount > 0 && (
-              <span
-                key={index}
-                className="absolute left-0 top-0 h-full rounded-md bg-white"
-                style={{
-                  animation: "hero-progress 6.5s linear forwards",
-                }}
-              />
-            )}
-          </button>
-        ))}
+            {HERO_SLIDES[index].caption}
+          </motion.p>
+        </AnimatePresence>
+        <div className="flex gap-2">
+          {HERO_SLIDES.map((slide, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setIndex(i)}
+              aria-label={`Show hero image ${i + 1}: ${slide.caption}`}
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-300 hover:bg-white/60",
+                i === index
+                  ? "w-8 bg-white"
+                  : "w-3 bg-white/35"
+              )}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-// Single hero slide — blur-up progressive loading.
+// Single hero slide — simple blur-up progressive loading + opacity fade.
+// No Ken Burns zoom; the active slide is just a clean, still image.
 function HeroSlide({
   src,
   active,
-  onLoad,
 }: {
   src: string;
   active: boolean;
-  onLoad: () => void;
 }) {
   const [loaded, setLoaded] = React.useState(false);
 
@@ -165,10 +191,7 @@ function HeroSlide({
         alt=""
         aria-hidden="true"
         className="h-full w-full object-cover"
-        onLoad={() => {
-          setLoaded(true);
-          onLoad();
-        }}
+        onLoad={() => setLoaded(true)}
         style={{
           transform: loaded ? "scale(1)" : "scale(1.05)",
           filter: loaded ? "blur(0px)" : "blur(20px)",

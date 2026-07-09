@@ -2255,3 +2255,83 @@ Stage Summary:
 Files changed (2):
 - `src/components/public/gallery/GuestMoments.tsx` (new)
 - `src/components/public/gallery/GalleryPage.tsx` (added import + <GuestMoments /> below the grid)
+
+---
+Task ID: gallery-hero-revamp-1
+Agent: main (Z.ai Code)
+Task: Fix the gallery (add customer-satisfaction section, make items tappable with centered modal + hover effects) AND update the hero side (new images, simple fade transition, remove loading indicator).
+
+Work Log:
+
+**1. Gallery grid — rebuilt tiles with hover effects + "Tap to view" hint**
+- Rewrote GalleryPage.tsx grid tiles as `GalleryTile` motion.button components with:
+  - Hover lift (whileHover y:-4 spring)
+  - Image zoom on hover (scale-110 over 700ms)
+  - Category badge top-left (glass pill, backdrop-blur)
+  - "Tap to view" hint pill center, fades in on hover (Maximize2 icon)
+  - Gradient overlay strengthens on hover (opacity 70→95%)
+  - 2-line clamped caption at bottom
+  - focus-visible ring for keyboard a11y
+- Added "Tap any photo to enlarge" hint next to the photo count (desktop)
+
+**2. Gallery lightbox — rebuilt as polished centered modal**
+- Replaced the old plain lightbox with a Framer Motion animated centered modal:
+  - Backdrop fade + spring scale-in (stiffness 300, damping 30)
+  - Split layout on desktop (image left 64%, details panel right)
+  - Stacked on mobile (image top max-50vh, details below)
+  - Close button top-right (glass circle, hover scale)
+  - Counter badge top-left (glass pill "1 / 19")
+  - Prev/Next arrows overlay on image (desktop), footer buttons (mobile)
+  - Details panel: category badge (Tag icon), large title, description, footer with counter + "Use ← → keys to navigate" hint
+  - ESC to close, click-backdrop to close, body-scroll lock, arrow-key navigation
+  - AnimatePresence for smooth enter/exit
+
+**3. Gallery — GuestMoments customer-satisfaction section (already in place from prior session)**
+- Verified the GuestMoments section (4 Facebook guest photos + 2 FB post links, tappable cards → centered testimonial modal with "View original post" CTA) renders below the grid.
+
+**4. Hero — replaced images + simple fade + removed loading indicator**
+- Copied owner-provided hero photos to public/:
+  - hero-1.png = aerial establishing shot (villa, pool, beach, greenery) — KEPT from prior
+  - hero-2.png = NEW: tropical beach at sunset (palms, thatched umbrellas, lounge chairs)
+  - hero-3.png = NEW: resort pool surrounded by lush palms
+- Reverted the hero transition to the original simple opacity fade (user request: "the simple fade in and out"):
+  - Removed the Ken Burns zoom + drift that was added earlier
+  - HeroSlide now just does blur-up on load + opacity crossfade (duration 1600ms)
+  - Active slide is a clean, still image (scale(1) when loaded)
+- Removed the hero loading indicator (user request: "remove the hero loading indicator"):
+  - Removed the `loadedCount` state and the progress-bar `<span>` with `hero-progress` animation
+  - Indicator dots are now simple static pills: active = w-8 bg-white, inactive = w-3 bg-white/35
+  - No bar fills up; dots just toggle size/fill on active change
+- Kept the rotating slide caption (crossfades via AnimatePresence) and the clickable dots
+- Updated captions for the new images: "The villa, the pool, the beach — all your own." / "Sunsets you set your watch by." / "Your private pool, framed by palms."
+
+**5. Verification (agent-browser end-to-end)**
+- Hero: opened homepage → aerial establishing shot (hero-1) renders, headline "A beachfront villa all your own." visible, 3 simple static dots at bottom-right with NO progress/loading bar. Confirmed by VLM.
+- Gallery: navigated to gallery → "Moments by the sea" heading, category filter tabs (All/Resort/Rooms/Dining/Nature/Events), 19 photos across 2 pages, "Tap any photo to enlarge" hint.
+- Lightbox: clicked first tile → centered modal opened with split layout (image left, details right), "NATURE" badge, title "Golden Hour on the Coast", counter "1/19", nav arrows, close button.
+- ESC key closed the lightbox → back to gallery grid.
+- Lint: 0 errors (3 pre-existing RHF warnings, none from changed files).
+- Dev log: clean compiles, no runtime errors.
+
+Stage Summary:
+- Gallery grid tiles are now tappable with hover lift + zoom + "Tap to view" hint + category badge.
+- Gallery lightbox is a polished Framer Motion centered modal (split layout desktop, stacked mobile, keyboard nav, prev/next, counter).
+- GuestMoments customer-satisfaction section (Facebook guest photos + testimonials) renders below the grid.
+- Hero uses the owner's new photos (hero-2 = sunset beach, hero-3 = palm-framed pool; hero-1 aerial kept).
+- Hero transition is the original simple opacity fade (no Ken Burns).
+- Hero loading indicator (progress bar) is removed — dots are simple static pills.
+- Rotating slide caption + clickable dots retained.
+
+Files changed (2):
+- src/components/public/gallery/GalleryPage.tsx — rebuilt grid tiles (GalleryTile component) + lightbox (Framer Motion centered modal with split layout)
+- src/components/public/home/HomePage.tsx — hero: new images, simple fade (no Ken Burns), removed loading indicator (simple static dots), updated captions, added framer-motion + cn imports
+
+Assets changed (3):
+- public/hero-1.png (unchanged — aerial establishing shot)
+- public/hero-2.png (NEW — tropical beach at sunset)
+- public/hero-3.png (NEW — resort pool with palms)
+
+Unresolved / Notes:
+- The `hero-progress` keyframe in globals.css is now unused but left in place (harmless; could be removed later).
+- The gallery + GuestMoments + hero are all verified working end-to-end via agent-browser + VLM.
+- Groq API key still invalid (403) → chat falls back to z-ai. Unrelated to this task.
