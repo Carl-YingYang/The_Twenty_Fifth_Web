@@ -374,3 +374,31 @@
     display: none !important;
   }
 }
+
+/* ============================================================
+   Concierge chat — markdown rendering inside chat bubbles
+   ============================================================ */
+.chat-markdown {
+  word-break: break-word;
+}
+.chat-markdown p + p {
+  margin-top: 0.5rem;
+}
+.chat-markdown strong {
+  font-weight: 600;
+}
+.chat-markdown code {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.85em;
+}
+.dark .chat-markdown code {
+  background: rgba(255, 255, 255, 0.1);
+}
+/* User bubbles invert link color for contrast on teal bg */
+.bg-primary .chat-markdown a,
+[class*="bg-primary"] .chat-markdown a {
+  color: #fff;
+  text-decoration: underline;
+}

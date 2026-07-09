@@ -1967,3 +1967,97 @@ Stage Summary:
 - `src/lib/utils.ts` (formatClockTime helper)
 
 Lint: 0 errors, 3 pre-existing warnings. Dev server: HTTP 200, no errors.
+
+---
+Task ID: 15
+Agent: Main (Z.ai Code) — Concierge chatbot feature (Groq + z-ai fallback)
+
+Task: Add a customer-facing AI concierge chatbot ("Mara") to the public site using the Groq API, with the API key stored securely in .env. Improve the prompt first, then implement.
+
+Work Log:
+
+**0. Improved prompt (presented before coding)**
+- Refined the user's request into a spec covering: (a) security — GROQ_API_KEY in .env, server-side only, never bundled to client; (b) backend — Next.js API route injecting a rich system prompt with Mara's persona + full resort knowledge + LIVE room data from the DB; (c) frontend — floating concierge FAB on public pages, glassmorphism chat panel, streaming replies, markdown rendering, quick-reply chips, Start-booking CTA, error fallback, localStorage persistence, mobile-full-width, Framer Motion animations, ESC-to-close, ARIA labels; (d) persona — "Mara", warm Filipino beach-resort concierge, always guides toward booking, never collects payment.
+
+**1. Secure API key (.env)**
+- Appended `GROQ_API_KEY` and `GROQ_MODEL=llama-3.3-70b-versatile` to `/home/z/my-project/.env` (already gitignored via `.env*`). Key is only ever read server-side in the API route via `process.env.GROQ_API_KEY` — never imported in client code.
+
+**2. Shared FAQ module + refactor**
+- Created `src/lib/faqs.ts` — extracted the 17 FAQs (previously hardcoded inside FaqsPage) into a typed, shared module so the chatbot knowledge base and the public FAQs page stay in sync.
+- Refactored `src/components/public/faqs/FaqsPage.tsx` to import `FAQS` + `FAQ_CATEGORIES` from the shared module (removed the duplicated local array + interface).
+
+**3. Concierge knowledge base**
+- Created `src/lib/chatbot-knowledge.ts`:
+  - `fetchLiveRooms()` — queries the DB (Prisma) for active rooms with their type, price, capacity, view, bed config, and status. Returns a formatted block so Mara's pricing/capacity answers are always current.
+  - `buildConciergeSystemPrompt()` — assembles a comprehensive system prompt: Mara's persona, what she CAN/CANNOT do, exact resort facts (name, location, contact, check-in/out, capacity, amenities, payment methods, cancellation, getting-there, house rules), the LIVE room configuration list, the 5-step booking flow, and all 17 FAQs as a reference. Ends with response-style rules (concise, no markdown headings, don't invent info, direct to host contact when out of scope).
+
+**4. /api/chat route (streaming + resilient fallback)**
+- Created `src/app/api/chat/route.ts` (`runtime=nodejs`, `dynamic=force-dynamic`):
+  - **Primary provider: Groq** (OpenAI-compatible `https://api.groq.com/openai/v1/chat/completions`, streaming). Re-emits text deltas as a simplified `data: {content}` SSE stream.
+  - **Fallback provider: z-ai-web-dev-sdk** — if Groq returns 401/403/network error OR GROQ_API_KEY is unset, automatically falls back to the already-installed z-ai SDK (lazy-imported). The z-ai result is chunked into ~6-word pieces and emitted with a small delay to simulate streaming, keeping the UX consistent.
+  - **Groq skip cache**: on a 401/403 from Groq, sets a 5-minute `groqSkipUntil` flag so subsequent messages skip straight to the fallback (avoids paying the failed-request latency every time). A valid Groq key (when the user replaces it) will resume being used automatically.
+  - **Guardrails**: validates body, sanitizes message roles (only user/assistant allowed), caps history at 20 messages, caps each user message at 1200 chars, caps reply at 600 tokens, requires the last message to be from the user.
+  - **Graceful errors**: every failure path returns a guest-friendly message; the client shows a destructive-styled error bubble with "Message us" (Messenger) + "Call" fallback buttons.
+  - NOTE: The provided Groq key returns 403 Forbidden on a direct call (key is invalid/disabled), so the chatbot currently runs on the z-ai fallback. It works fully. Replacing GROQ_API_KEY with a valid key will automatically switch to Groq with no code change.
+
+**5. Concierge chat store**
+- Created `src/store/useChatStore.ts` (Zustand + persist):
+  - Stores `messages`, `open`, `hasWelcomed`.
+  - Actions: `setOpen`, `toggle`, `push`, `appendToLast` (streaming append), `markLastError`, `reset`.
+  - Persisted to localStorage key `mara-concierge` (only messages + hasWelcomed) so the conversation survives SPA view-switches AND page refreshes.
+
+**6. ConciergeChat widget**
+- Created `src/components/public/chatbot/ConciergeChat.tsx`:
+  - **Floating FAB** (bottom-right, z-50): teal bg, ConciergeBell icon, animated pulse ring, emerald "online" dot with ping, hover tooltip ("Chat with Mara · concierge"). Framer Motion spring entrance. `aria-label`.
+  - **Chat panel**: fixed bottom-right on desktop (390×600, max-h calc(100dvh-3rem), rounded-2xl); full-screen full-width on mobile (`h-[100dvh] w-full`). Glassmorphism header (bg-primary/95 backdrop-blur) with avatar, "Mara" name, "Online" status chip, Clear-conversation + Close buttons.
+  - **Messages area**: scrollable, gradient bg, auto-scrolls to bottom on new content. Guest bubbles (right, teal, rounded-br-md) vs Mara bubbles (left, white card, rounded-bl-md, with avatar). Error bubbles get destructive styling.
+  - **Markdown rendering**: uses react-markdown with safe link targets, styled lists, and a streaming cursor (`▋`) on the in-flight paragraph.
+  - **Typing indicator**: 3 bouncing dots (Framer Motion) shown while streaming and the placeholder bubble is still empty.
+  - **Quick-reply chips**: horizontal scroll row of 6 suggestions (How do I book / What rooms / Check-in times / Whole villa price / Is the beach private / Host an event), shown only when idle.
+  - **Inline action chips** (on the latest assistant reply + welcome only): "Start booking" (navigates to booking flow + closes chat) and "What's included?". Bug fixed: chips previously rendered on EVERY historical assistant message (noisy + dead handlers); now gated to the last message via `onStartBooking || onQuickReply` props.
+  - **Input**: auto-growing textarea, Enter to send / Shift+Enter newline, send button (disabled while streaming or empty), footer note linking to "Find My Booking" for confirmed reservations.
+  - **Error fallback**: error bubbles render "Message us" (Messenger link) + "Call" (tel:) buttons.
+  - **A11y**: `role="dialog"`, `aria-label`, ESC-to-close, auto-focus input on open, abort in-flight stream on unmount.
+  - Uses `useChatStore` for state + `useViewStore` for booking navigation.
+
+**7. Wired into public shell**
+- `src/app/page.tsx`: imported `ConciergeChat` and rendered it inside the public-site branch (after `<PublicFooter />`). NOT rendered on admin views or the login screen (by design — it's a guest concierge).
+- `src/app/globals.css`: added `.chat-markdown` styles (word-break, paragraph spacing, bold, inline code, inverted link color on teal user bubbles).
+
+**8. Verification (lint + agent-browser end-to-end)**
+- Lint: 0 errors, 3 pre-existing warnings (RHF `watch()` — unrelated).
+- Dev log: clean compilation; `/api/chat` returns 200 (via z-ai fallback); Groq 403s are caught and logged as "falling back to z-ai" as designed.
+- agent-browser QA (8 screenshots in `/home/z/my-project/download/qa-chat-*.png`):
+  1. FAB renders on public home page (NOT on admin views — confirmed by switching persisted view).
+  2. Click FAB → panel opens with welcome message ("Hi, I'm Mara…") + header "Mara · Online".
+  3. Sent "Can I host a birthday party for 15 people?…" → Mara streamed an on-brand reply recommending the whole villa, mentioning private beach + infinity pool, suggesting to mention the birthday when booking.
+  4. Quick-reply chip "Check-in times" → sent predefined question → Mara replied accurately (2 PM check-in, 12 noon check-out, flexible on early/late). Multi-turn context preserved (4 messages).
+  5. ESC closes panel; FAB reappears.
+  6. "Start booking" CTA → navigates to `book` view (BookingFlow "Pick your dates" heading rendered) + closes chat. (Initially failed because chips rendered on historical messages with dead handlers; fixed by gating chips to the last message.)
+  7. Conversation persists across SPA navigation (home → reopen chat → previous "Hi" + reply still present).
+  8. Welcome bubble's "Start booking" now wired (passes onStartBooking).
+
+Stage Summary:
+
+**Feature delivered:** "Mara" — an AI guest concierge chatbot on all public pages of The Twenty-Fifth, focused on helping guests book.
+
+**Architecture:**
+- `.env` → `GROQ_API_KEY` + `GROQ_MODEL` (server-side only).
+- `src/lib/faqs.ts` — shared FAQ data (single source of truth).
+- `src/lib/chatbot-knowledge.ts` — system-prompt builder with LIVE DB room data.
+- `src/app/api/chat/route.ts` — streaming SSE endpoint, Groq primary + z-ai fallback, guardrails, graceful errors.
+- `src/store/useChatStore.ts` — persisted conversation store.
+- `src/components/public/chatbot/ConciergeChat.tsx` — the widget (FAB + panel + bubbles + chips + typing + markdown + a11y).
+- Wired into `page.tsx` public shell; `.chat-markdown` CSS in globals.css.
+
+**Key decision — resilient fallback:** The user-supplied Groq key is invalid (403 on direct call). Rather than ship a broken feature, the route tries Groq first (so a valid key works with zero code change) and automatically falls back to the z-ai-web-dev-sdk LLM. The chatbot is fully functional today via the fallback.
+
+**Verification:** Lint 0 errors. agent-browser confirmed FAB visibility, panel open, streaming replies, multi-turn, quick replies, ESC close, Start-booking navigation, and cross-page persistence — all green.
+
+**Known limitation / risk:**
+- Groq key invalid (403) → running on z-ai fallback. Latency ~1–3s per reply (z-ai is non-streaming, chunked to simulate streaming). Replacing `GROQ_API_KEY` in `.env` with a valid key restores true token-by-token Groq streaming automatically.
+- No rate-limiting by IP (guardrails are per-request length/cap only). Acceptable for a resort concierge; could add IP-based limiting later.
+
+**Files changed (8) + created (4):**
+- Created: `src/lib/faqs.ts`, `src/lib/chatbot-knowledge.ts`, `src/app/api/chat/route.ts`, `src/store/useChatStore.ts`, `src/components/public/chatbot/ConciergeChat.tsx`
+- Modified: `.env` (added GROQ_API_KEY + GROQ_MODEL), `src/components/public/faqs/FaqsPage.tsx` (use shared FAQs), `src/app/page.tsx` (render ConciergeChat in public shell), `src/app/globals.css` (.chat-markdown styles).

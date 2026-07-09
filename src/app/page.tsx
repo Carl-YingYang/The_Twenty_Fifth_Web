@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 // Public components
 import { PublicNav } from "@/components/public/PublicNav";
 import { PublicFooter } from "@/components/public/PublicFooter";
+import { ConciergeChat } from "@/components/public/chatbot/ConciergeChat";
 import { HomePage } from "@/components/public/home/HomePage";
 import { AboutPage } from "@/components/public/about/AboutPage";
 import { RoomsPage } from "@/components/public/rooms/RoomsPage";
@@ -106,6 +107,7 @@ function AppShell() {
       <PublicNav />
       <main className="flex-1">{renderPublicView(view)}</main>
       <PublicFooter />
+      <ConciergeChat />
     </div>
   );
 }
