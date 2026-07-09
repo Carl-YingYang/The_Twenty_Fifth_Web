@@ -2371,3 +2371,49 @@ Stage Summary:
 - Root causes were: (1) too many static imports causing memory spike, (2) sandbox killing background processes
 - The lazy-loading refactor also improves production performance (smaller initial bundle, faster first paint)
 - Admin components now compile on-demand only when admin logs in, saving ~800MB+ of compile memory for public visitors
+
+---
+Task ID: HERO-FIX-001
+Agent: main (code assistant)
+Task: Fix hero section — remove pagination dots/caption, use simple fade in/out, replace 3 hero images with user-uploaded photos, implement LQIP blur-up loading.
+
+Work Log:
+- Refined the user's prompt into a clear spec before coding (user requested this explicitly)
+- Analyzed the 3 uploaded hero images via VLM (after resizing for API limits):
+  • hero-1(1).png — Aerial establishing shot of villa, pool, beach (2560×1440, 6.5MB)
+  • hero-1(2).png — Tropical beach at sunset with palms, umbrellas, lounge chairs (2560×1440, 6.4MB)
+  • hero-1(3).png — Pool surrounded by lush palms with covered pavilion (2560×1440, 7.8MB)
+- Confirmed the pasted reference image showed the pagination dots to be removed ("THE VILLA, THE POOL, THE BEACH" caption + 3 dot indicators)
+- Image processing (Python/PIL):
+  • Converted 3 PNGs to optimized WebP (quality 80, max 1920px wide): hero-1.webp (372KB), hero-2.webp (394KB), hero-3.webp (616KB) — 90%+ size reduction
+  • Generated 32px-wide JPEG LQIPs with Gaussian blur, base64-encoded (~400-520 bytes each)
+  • Wrote LQIP data to src/lib/hero-lqip.json (1.5KB total — inline, zero extra requests)
+  • Deleted old /public/hero-1.png, hero-2.png, hero-3.png
+- Rewrote hero section in src/components/public/home/HomePage.tsx:
+  • Removed `framer-motion` (AnimatePresence, motion) imports — no longer needed
+  • Removed `cn` import — no longer needed (was only used for dot className)
+  • Added `import heroLqip from "@/lib/hero-lqip.json"` (resolveJsonModule already enabled)
+  • Updated HERO_SLIDES to reference .webp files + LQIP data URIs
+  • Added HERO_FADE_MS (1600ms crossfade) and HERO_BLURUP_MS (900ms blur-up) constants
+  • Rewrote HeroSlideshow: removed the entire `<div>` containing the AnimatePresence caption + dot indicators button row. Now just renders the slides.
+  • Rewrote HeroSlide with two-layer LQIP blur-up technique:
+    - Layer 1 (LQIP): tiny base64 JPEG, blur(24px) + scale(1.1), painted on first frame, fades out (opacity 1→0) when HQ loads
+    - Layer 2 (HQ): WebP <img> with loading="eager" decoding="async", starts at opacity 0 + blur(24px) + scale(1.05), transitions to opacity 1 + blur(0) + scale(1) when onLoad fires
+    - Container crossfades between active/inactive slides via opacity transition
+- Ran `bun run lint` → 0 errors, 3 warnings (pre-existing React Hook Form watch() warnings, unrelated)
+- Restarted dev server (killed chrome first to free memory, used subshell detachment pattern)
+- Verified via agent-browser + VLM:
+  • Slide 1 (0s): aerial villa shot ✅
+  • Slide 2 (10s, after 6.5s interval + 1.6s crossfade): beach at sunset ✅
+  • Slide 3 (17s): pool with palms + pavilion ✅
+  • No pagination dots visible ✅
+  • No caption text visible ✅
+  • No console errors ✅
+  • WebP images served correctly (HTTP 200, correct content-type) ✅
+
+Stage Summary:
+- Hero section completely rebuilt per user spec: pagination dots + caption removed, simple opacity crossfade between 3 slides, LQIP blur-up loading implemented
+- 3 new hero photos (user-uploaded) compressed from 6-8MB PNGs to 370-620KB WebP (90%+ reduction) with no visible quality loss
+- LQIP technique ensures instant visual on first paint (tiny base64 JPEGs paint immediately) with premium progressive sharpening when HQ loads
+- Removed framer-motion dependency from HomePage (smaller bundle, less JS)
+- All 3 slides verified cycling correctly with clean crossfades

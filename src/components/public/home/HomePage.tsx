@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Calendar as CalendarIcon,
   Users,
@@ -22,8 +21,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
 import { useViewStore } from "@/store/useViewStore";
+// LQIP (Low Quality Image Placeholder) data — tiny ~400-byte base64 JPEGs
+// embedded inline for zero extra network requests. Generated from the full-
+// resolution hero photos at build time (see src/lib/hero-lqip.json).
+import heroLqip from "@/lib/hero-lqip.json";
 import { useBookingStore } from "@/store/useBookingStore";
 import { RESORT_INFO } from "@/lib/constants";
 import type { Room, Amenity } from "@/types";
@@ -86,36 +88,34 @@ const GALLERY_TEASER = [
 // Owner-provided hero photography (July 2025):
 //  1. Aerial establishing shot of the villa, pool, beach & tropical greenery.
 //  2. Tropical beach at sunset — palm trees, thatched umbrellas, lounge chairs.
-//  3. Resort pool surrounded by lush palms — tranquil luxury.
+//  3. Resort pool surrounded by lush palms with a covered pavilion.
 // Order: establish → dream → invite.
+//
+// LQIP blur-up: each slide renders two layers —
+//   (1) a tiny (~32px) heavily-blurred JPEG embedded as a base64 data URI
+//       so it paints on the very first frame (zero extra network round-trip),
+//   (2) the full-resolution WebP on top, which crossfades from opacity 0 → 1
+//       and blur(24px) → blur(0) once it finishes loading.
+// The result: no blank/dark box ever, and a premium progressive sharpening.
 interface HeroSlideDef {
   src: string;
-  caption: string;
+  lqip: string;
 }
 const HERO_SLIDES: HeroSlideDef[] = [
-  {
-    src: "/hero-1.png",
-    caption: "The villa, the pool, the beach — all your own.",
-  },
-  {
-    src: "/hero-2.png",
-    caption: "Sunsets you set your watch by.",
-  },
-  {
-    src: "/hero-3.png",
-    caption: "Your private pool, framed by palms.",
-  },
+  { src: "/hero-1.webp", lqip: heroLqip["hero-1"] },
+  { src: "/hero-2.webp", lqip: heroLqip["hero-2"] },
+  { src: "/hero-3.webp", lqip: heroLqip["hero-3"] },
 ];
 
 const HERO_INTERVAL_MS = 6500;
+const HERO_FADE_MS = 1600; // crossfade duration between slides
+const HERO_BLURUP_MS = 900; // blur-up duration when HQ image loads
 
-// Hero crossfade — simple opacity fade in/out, the way it's always been.
-// Each image renders as an <img> tag that starts blurred + scaled, then
-// sharpens when loaded. No empty dark box while loading.
+// Hero slideshow — auto-advancing, pure opacity crossfade, no visible
+// controls or captions. Each slide handles its own LQIP blur-up loading.
 function HeroSlideshow() {
   const [index, setIndex] = React.useState(0);
 
-  // Start the slideshow interval immediately — images fade in as they load.
   React.useEffect(() => {
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % HERO_SLIDES.length);
@@ -124,78 +124,89 @@ function HeroSlideshow() {
   }, []);
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0" aria-hidden="true">
       {HERO_SLIDES.map((slide, i) => (
         <HeroSlide
           key={slide.src}
           src={slide.src}
+          lqip={slide.lqip}
           active={i === index}
+          fadeMs={HERO_FADE_MS}
+          blurMs={HERO_BLURUP_MS}
         />
       ))}
-      {/* Rotating slide caption + indicator dots — bottom-right, positioned
-          above the booking card overlap so they stay visible on all
-          viewports. The caption crossfades with each slide change. */}
-      <div className="absolute bottom-24 right-4 z-10 flex flex-col items-end gap-3 sm:bottom-8 sm:right-8">
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={index}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="hidden max-w-[14rem] text-right text-xs font-medium uppercase tracking-[0.18em] text-white/85 drop-shadow-sm sm:block"
-          >
-            {HERO_SLIDES[index].caption}
-          </motion.p>
-        </AnimatePresence>
-        <div className="flex gap-2">
-          {HERO_SLIDES.map((slide, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setIndex(i)}
-              aria-label={`Show hero image ${i + 1}: ${slide.caption}`}
-              className={cn(
-                "h-1.5 rounded-full transition-all duration-300 hover:bg-white/60",
-                i === index
-                  ? "w-8 bg-white"
-                  : "w-3 bg-white/35"
-              )}
-            />
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
 
-// Single hero slide — simple blur-up progressive loading + opacity fade.
-// No Ken Burns zoom; the active slide is just a clean, still image.
+// Single hero slide — LQIP blur-up placeholder + HQ crossfade.
+// Two stacked layers inside an absolutely-positioned container:
+//   • LQIP layer: always rendered (painted on first frame from base64),
+//     blurred + upscaled to fill. Stays visible until HQ is loaded.
+//   • HQ layer: <img> on top, starts at opacity 0 + blur(24px), then
+//     transitions to opacity 1 + blur(0) when its onLoad fires.
+// The container itself crossfades between active/inactive slides.
 function HeroSlide({
   src,
+  lqip,
   active,
+  fadeMs,
+  blurMs,
 }: {
   src: string;
+  lqip: string;
   active: boolean;
+  fadeMs: number;
+  blurMs: number;
 }) {
-  const [loaded, setLoaded] = React.useState(false);
+  const [hqLoaded, setHqLoaded] = React.useState(false);
+
+  // Reset loaded state when the source changes (defensive — shouldn't happen
+  // in practice since each slide instance is keyed by src, but keeps the
+  // component robust if reused).
+  React.useEffect(() => {
+    setHqLoaded(false);
+  }, [src]);
 
   return (
     <div
-      className="absolute inset-0 transition-opacity duration-[1600ms] ease-in-out"
-      style={{ opacity: active ? 1 : 0 }}
+      className="absolute inset-0"
+      style={{
+        opacity: active ? 1 : 0,
+        transition: `opacity ${fadeMs}ms ease-in-out`,
+      }}
       aria-hidden={!active}
     >
+      {/* LQIP background — tiny base64 JPEG, blurred + scaled to fill.
+          Renders instantly; fades out once HQ is loaded so it doesn't
+          bleed through the sharp image. */}
+      <img
+        src={lqip}
+        alt=""
+        aria-hidden="true"
+        className="h-full w-full object-cover"
+        style={{
+          transform: "scale(1.1)",
+          filter: "blur(24px)",
+          opacity: hqLoaded ? 0 : 1,
+          transition: `opacity ${blurMs}ms ease-out`,
+        }}
+      />
+      {/* HQ image — loads on top of the LQIP. Starts blurred + transparent,
+          then sharpens + fades in when loaded. */}
       <img
         src={src}
         alt=""
         aria-hidden="true"
-        className="h-full w-full object-cover"
-        onLoad={() => setLoaded(true)}
+        className="absolute inset-0 h-full w-full object-cover"
+        loading="eager"
+        decoding="async"
+        onLoad={() => setHqLoaded(true)}
         style={{
-          transform: loaded ? "scale(1)" : "scale(1.05)",
-          filter: loaded ? "blur(0px)" : "blur(20px)",
-          transition: "filter 1s ease-out, transform 1s ease-out",
+          opacity: hqLoaded ? 1 : 0,
+          filter: hqLoaded ? "blur(0px)" : "blur(24px)",
+          transform: hqLoaded ? "scale(1)" : "scale(1.05)",
+          transition: `opacity ${blurMs}ms ease-out, filter ${blurMs}ms ease-out, transform ${blurMs}ms ease-out`,
         }}
       />
     </div>
