@@ -63,6 +63,12 @@ db/*.db-journal
 db/*.db-wal
 db/*.db-shm
 
+# Add these lines to .gitignore (near the db/*.db lines)
+prisma/db/*.db
+prisma/db/*.db-journal
+prisma/db/*.db-wal
+prisma/db/*.db-shm
+
 # Uploaded files & screenshots (local dev artifacts, large, not needed in repo)
 upload/
 download/
