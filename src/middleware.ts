@@ -39,9 +39,12 @@ export async function middleware(req: NextRequest) {
   // Public catalog & booking submission endpoints (guest-facing):
   //   /api/rooms, /api/rooms/availability, /api/rooms/types,
   //   /api/amenities, /api/gallery, /api/calendar,
-  //   /api/contact, /api/chat,
+  //   /api/chat,
   //   /api/reservations (POST only — new booking request),
   //   /api/reservations/lookup (find-my-booking by ref + email)
+  //
+  // Note: /api/contact was removed — the client replaced the contact
+  // form with direct social media links (Facebook, Instagram, WhatsApp).
   //
   // Note: even though these are public, the route handlers themselves
   // can still call requireRole() internally where appropriate.
@@ -49,7 +52,6 @@ export async function middleware(req: NextRequest) {
     /^\/api\/rooms(\/.*)?$/,
     /^\/api\/amenities(\/.*)?$/,
     /^\/api\/gallery(\/.*)?$/,
-    /^\/api\/contact(\/.*)?$/,
     /^\/api\/chat(\/.*)?$/,
     /^\/api\/settings(\/.*)?$/,        // public resort info
     /^\/api\/notifications(\/.*)?$/,   // safe-ish; handler can auth if needed
