@@ -6,10 +6,12 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminLayout } from "./AdminLayout";
+import { BlockDatesDialog } from "./BlockDatesDialog";
 import { BookingStatusBadge } from "./StatusBadges";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -86,6 +88,15 @@ interface CalendarResponse {
   endDate: string;
 }
 
+// Blocked date range fetched from /api/calendar/block.
+interface BlockedDateEntry {
+  id: string;
+  roomId: string;
+  startDate: string;
+  endDate: string;
+  reason: string | null;
+}
+
 const RANGE_OPTIONS = [
   { value: 7, label: "7d" },
   { value: 14, label: "14d" },
@@ -142,6 +153,25 @@ export function CalendarAdmin() {
     queryFn: () => apiFetch<{ rooms: Room[] }>("/api/rooms"),
   });
 
+  // Fetch admin-blocked date ranges (Step 6: Block Dates feature).
+  // These take precedence over reservations in the cell status — a
+  // blocked day shows red and cannot be booked by public users.
+  const { data: blocksData } = useQuery({
+    queryKey: ["blocked-dates"],
+    queryFn: () => apiFetch<{ blocks: BlockedDateEntry[] }>("/api/calendar/block"),
+  });
+
+  // Map roomId -> list of blocked date ranges for quick lookup.
+  const blocksByRoom = useMemo(() => {
+    const m = new Map<string, BlockedDateEntry[]>();
+    for (const b of blocksData?.blocks ?? []) {
+      const list = m.get(b.roomId) ?? [];
+      list.push(b);
+      m.set(b.roomId, list);
+    }
+    return m;
+  }, [blocksData]);
+
   const roomStatusMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const r of roomsData?.rooms ?? []) {
@@ -168,10 +198,11 @@ export function CalendarAdmin() {
     return calendarData.calendar.map((row) => {
       const roomRes = reservationsByRoom.get(row.room.id) ?? [];
       const roomStatus = roomStatusMap.get(row.room.id) ?? "AVAILABLE";
+      const roomBlocks = blocksByRoom.get(row.room.id) ?? [];
       const newCells = row.cells.map((cell) => {
         const day = new Date(cell.date);
         day.setHours(0, 0, 0, 0);
-        const computed = computeCellStatus(day, roomRes, roomStatus);
+        const computed = computeCellStatus(day, roomRes, roomStatus, roomBlocks);
         // Preserve original reservationId/ref/guestName from API cell when
         // the computed cell still has a reservation attached.
         const attachedRes = computed.reservation;
@@ -188,7 +219,7 @@ export function CalendarAdmin() {
       });
       return { ...row, cells: newCells };
     });
-  }, [calendarData, reservationsByRoom, roomStatusMap]);
+  }, [calendarData, reservationsByRoom, roomStatusMap, blocksByRoom]);
 
   const days = calendarData?.days ?? [];
 
@@ -266,6 +297,16 @@ export function CalendarAdmin() {
             );
           })}
         </div>
+        {/* Step 6: Block Dates — opens a dialog to mark a room unavailable
+            for a date range (owner use, maintenance, holiday holds). */}
+        {roomsData?.rooms && (
+          <BlockDatesDialog rooms={roomsData.rooms}>
+            <Button variant="outline" size="sm" className="h-9 gap-2">
+              <Ban className="size-4 text-red-600" />
+              Block Dates
+            </Button>
+          </BlockDatesDialog>
+        )}
       </div>
 
       {/* Legend */}
@@ -508,11 +549,16 @@ function ReservationDialog({
 // days" bug from the API. The API marks CLEANING based on
 // room.status which persists; we instead show CLEANING only
 // on the checkout day of a just-departed reservation.
+//
+// Step 6: Also checks admin-blocked date ranges. A blocked day
+// shows BLOCKED (red) and takes precedence over reservations —
+// the admin explicitly marked it unavailable.
 // ============================================================
 function computeCellStatus(
   day: Date,
   roomReservations: Reservation[],
-  roomStatus: string
+  roomStatus: string,
+  roomBlocks: BlockedDateEntry[] = []
 ): { status: CellStatus; reservation?: Reservation } {
   // 1. Room-level maintenance/blocked takes precedence
   if (roomStatus === "MAINTENANCE") return { status: "MAINTENANCE" };
@@ -520,6 +566,18 @@ function computeCellStatus(
 
   const dayStart = new Date(day);
   dayStart.setHours(0, 0, 0, 0);
+
+  // 2. Check admin date-range blocks — [startDate, endDate) semantics.
+  // A block covers the night of startDate up to (but not including) endDate.
+  for (const b of roomBlocks) {
+    const bs = new Date(b.startDate);
+    bs.setHours(0, 0, 0, 0);
+    const be = new Date(b.endDate);
+    be.setHours(0, 0, 0, 0);
+    if (dayStart >= bs && dayStart < be) {
+      return { status: "BLOCKED" };
+    }
+  }
 
   for (const r of roomReservations) {
     if (["CANCELLED", "REJECTED"].includes(r.status)) continue;

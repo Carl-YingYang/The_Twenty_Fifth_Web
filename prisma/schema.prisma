@@ -34,6 +34,7 @@ model User {
 
   auditLogs    AuditLog[]
   notifications Notification[]
+  blockedDates BlockedDate[]
 
   @@index([email])
 }
@@ -75,6 +76,7 @@ model Room {
   images      RoomImage[]
   amenities   RoomAmenity[]
   reservations ReservationRoom[]
+  blockedDates BlockedDate[]
 
   @@index([typeId])
   @@index([status])
@@ -179,6 +181,29 @@ model ReservationRoom {
 
   @@index([reservationId])
   @@index([roomId])
+}
+
+// ---------- Blocked Dates (admin manual holds) ----------
+// Lets the admin mark a room unavailable for a date range so public
+// users cannot book it (e.g. owner use, maintenance, holiday holds).
+// Semantics match reservations: [startDate, endDate) — endDate is
+// exclusive (the morning checkout), so a 1-night block for Jul 5 is
+// startDate=Jul5 00:00, endDate=Jul6 00:00.
+model BlockedDate {
+  id        String   @id @default(cuid())
+  roomId    String
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([roomId])
+  @@index([startDate, endDate])
 }
 
 // ---------- Gallery ----------

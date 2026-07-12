@@ -119,6 +119,25 @@ export async function POST(req: NextRequest) {
         throw new ApiError(409, "Room is not available for the selected dates");
       }
 
+      // ── Check for admin-blocked dates (Step 6: Block Dates feature) ──
+      // The admin can manually block a date range on a room (owner use,
+      // maintenance, holiday holds). Public bookings must respect these.
+      const blockedOverlap = await tx.blockedDate.findFirst({
+        where: {
+          roomId: d.roomId,
+          AND: [
+            { startDate: { lt: co } },
+            { endDate: { gt: ci } },
+          ],
+        },
+      });
+      if (blockedOverlap) {
+        throw new ApiError(
+          409,
+          "Room is not available for the selected dates"
+        );
+      }
+
       const totalAmount = room.pricePerNight * nights;
 
       // ── Step 2: upsert the guest (find-or-create by email) ──

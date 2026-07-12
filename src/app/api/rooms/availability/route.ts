@@ -58,11 +58,25 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Check admin-blocked dates (Step 6: Block Dates feature) ──
+  // A room with a blocked date range overlapping [ci, co) is unavailable.
+  const blockedOverlaps = await db.blockedDate.findMany({
+    where: {
+      AND: [
+        { startDate: { lt: co } },
+        { endDate: { gt: ci } },
+      ],
+    },
+    select: { roomId: true },
+  });
+  const blockedRoomIds = new Set(blockedOverlaps.map((b) => b.roomId));
+
   // Rooms in maintenance/blocked are not available
   const availableRooms = rooms
     .filter(
       (r) =>
         !bookedRoomIds.has(r.id) &&
+        !blockedRoomIds.has(r.id) &&
         r.status !== "MAINTENANCE" &&
         r.status !== "BLOCKED" &&
         r.capacity >= totalGuests

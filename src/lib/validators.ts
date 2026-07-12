@@ -220,9 +220,28 @@ export const toolExecuteSchema = z.object({
   args: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 });
 
+// Block Dates — admin marks a room unavailable for a date range.
+// Semantics match reservations: [startDate, endDate) — endDate is exclusive.
+export const blockDateCreateSchema = z
+  .object({
+    roomId: z.string().min(1, "Room is required"),
+    startDate: z.string().min(1, "Start date is required"),
+    endDate: z.string().min(1, "End date is required"),
+    reason: z.string().max(200, "Reason is too long").optional().or(z.literal("")),
+  })
+  .refine((data) => new Date(data.endDate) > new Date(data.startDate), {
+    message: "End date must be after start date",
+    path: ["endDate"],
+  })
+  .refine(
+    (data) => new Date(data.startDate) >= new Date(new Date().toDateString()),
+    { message: "Start date cannot be in the past", path: ["startDate"] }
+  );
+
 export type ContactFormInput = z.infer<typeof contactFormSchema>;
 export type NotificationUpdateInput = z.infer<typeof notificationUpdateSchema>;
 export type ReservationStatusInput = z.infer<typeof reservationStatusSchema>;
 export type RoomUpdateInput = z.infer<typeof roomUpdateSchema>;
 export type SettingsUpdateInput = z.infer<typeof settingsUpdateSchema>;
 export type ToolExecuteInput = z.infer<typeof toolExecuteSchema>;
+export type BlockDateCreateInput = z.infer<typeof blockDateCreateSchema>;
