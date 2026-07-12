@@ -121,7 +121,7 @@ model Guest {
   id        String   @id @default(cuid())
   firstName String
   lastName  String
-  email     String
+  email     String   @unique
   phone     String
   address   String?
   city      String?
