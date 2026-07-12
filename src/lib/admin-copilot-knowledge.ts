@@ -27,9 +27,12 @@ interface LiveContext {
   occupiedRooms: number;
   totalRooms: number;
   revenueToday: number;
-  pendingList: { referenceNo: string; guestName: string; checkIn: string; nights: number; total: number; status: string }[];
-  arrivalsList: { referenceNo: string; guestName: string; roomNames: string }[];
-  departuresList: { referenceNo: string; guestName: string; roomNames: string }[];
+  // P1 sanitization: reference numbers + guest IDs only. NO names,
+  // emails, or phone numbers in the system prompt. The AI fetches PII
+  // on-demand via tools (getGuestDetails) when the admin asks.
+  pendingList: { referenceNo: string; guestId: string; checkIn: string; nights: number; total: number; status: string }[];
+  arrivalsList: { referenceNo: string; guestId: string; roomNames: string }[];
+  departuresList: { referenceNo: string; guestId: string; roomNames: string }[];
   roomStatusBreakdown: { status: string; count: number }[];
 }
 
@@ -94,7 +97,7 @@ async function fetchLiveContext(): Promise<LiveContext> {
     revenueToday: revenueAgg._sum.totalAmount ?? 0,
     pendingList: pending.map((r) => ({
       referenceNo: r.referenceNo,
-      guestName: `${r.guest.firstName} ${r.guest.lastName}`,
+      guestId: r.guestId,
       checkIn: fmtDate(r.checkIn),
       nights: r.nights,
       total: r.totalAmount,
@@ -102,12 +105,12 @@ async function fetchLiveContext(): Promise<LiveContext> {
     })),
     arrivalsList: arrivals.map((r) => ({
       referenceNo: r.referenceNo,
-      guestName: `${r.guest.firstName} ${r.guest.lastName}`,
+      guestId: r.guestId,
       roomNames: r.rooms.map((rr) => rr.room.name).join(", ") || "—",
     })),
     departuresList: departures.map((r) => ({
       referenceNo: r.referenceNo,
-      guestName: `${r.guest.firstName} ${r.guest.lastName}`,
+      guestId: r.guestId,
       roomNames: r.rooms.map((rr) => rr.room.name).join(", ") || "—",
     })),
     roomStatusBreakdown: roomStatuses.map((s) => ({ status: s.status, count: s._count })),
@@ -115,21 +118,24 @@ async function fetchLiveContext(): Promise<LiveContext> {
 }
 
 function formatContextBlock(ctx: LiveContext): string {
+  // P1 sanitization: lists show reference numbers + guest IDs only.
+  // The AI must call getGuestDetails(guestId) to learn the guest's name
+  // — it is never pre-loaded into the system prompt.
   const pendingLines = ctx.pendingList.length
     ? ctx.pendingList
         .map(
           (p) =>
-            `- ${p.referenceNo} · ${p.guestName} · check-in ${p.checkIn} · ${p.nights} night(s) · ₱${Math.round(p.total).toLocaleString()} · ${p.status}`
+            `- ${p.referenceNo} · guest ${p.guestId} · check-in ${p.checkIn} · ${p.nights} night(s) · ₱${Math.round(p.total).toLocaleString()} · ${p.status}`
         )
         .join("\n")
     : "(none)";
 
   const arrivalLines = ctx.arrivalsList.length
-    ? ctx.arrivalsList.map((a) => `- ${a.referenceNo} · ${a.guestName} · ${a.roomNames}`).join("\n")
+    ? ctx.arrivalsList.map((a) => `- ${a.referenceNo} · guest ${a.guestId} · ${a.roomNames}`).join("\n")
     : "(none)";
 
   const departureLines = ctx.departuresList.length
-    ? ctx.departuresList.map((d) => `- ${d.referenceNo} · ${d.guestName} · ${d.roomNames}`).join("\n")
+    ? ctx.departuresList.map((d) => `- ${d.referenceNo} · guest ${d.guestId} · ${d.roomNames}`).join("\n")
     : "(none)";
 
   const roomLines = ctx.roomStatusBreakdown.length
@@ -145,13 +151,13 @@ function formatContextBlock(ctx: LiveContext): string {
 - Occupancy: ${ctx.occupancyRate}% (${ctx.occupiedRooms}/${ctx.totalRooms} rooms occupied, ${ctx.availableRooms} available)
 - Revenue confirmed today: ₱${Math.round(ctx.revenueToday).toLocaleString()}
 
-### Pending reservations awaiting action
+### Pending reservations awaiting action (reference no · guest id · dates)
 ${pendingLines}
 
-### Today's arrivals
+### Today's arrivals (reference no · guest id · rooms)
 ${arrivalLines}
 
-### Today's departures
+### Today's departures (reference no · guest id · rooms)
 ${departureLines}
 
 ### Room status breakdown
@@ -171,7 +177,7 @@ export async function buildAdminCopilotSystemPrompt(): Promise<string> {
     };
   }
 
-  return `You are **Aria**, the operations copilot for **${RESORT_INFO.name}**, an exclusive private beachfront villa in ${RESORT_INFO.addressShort}, Philippines. You assist the resort's admin and staff team directly inside the management dashboard.
+  return sanitizePrompt(`You are **Aria**, the operations copilot for **${RESORT_INFO.name}**, an exclusive private beachfront villa in ${RESORT_INFO.addressShort}, Philippines. You assist the resort's admin and staff team directly inside the management dashboard.
 
 # Your persona
 - Sharp, efficient, and operational — like a capable operations manager who keeps the front desk running smoothly.
@@ -183,10 +189,11 @@ export async function buildAdminCopilotSystemPrompt(): Promise<string> {
 - Answer questions about live operations: today's arrivals/departures, pending bookings, occupancy, room statuses, revenue, recent activity. Use ONLY the live snapshot below — never fabricate numbers or reference numbers.
 - Propose automation actions the admin can approve with one click (see the action format below). This is your superpower — when a task is clear, propose the exact action instead of just describing it.
 - Summarize and explain the state of the resort.
+- Look up guest details on demand: if you need a guest's name, email, or phone to answer the admin's question, call the getGuestDetails tool with the guest ID from the snapshot. Do NOT guess or fabricate PII.
 
 # What you CANNOT do
 - You cannot execute anything yourself. Every write action you propose is shown to the admin as a confirmation card; nothing happens until they click "Approve".
-- Never invent a reference number, guest name, room number, or price. If you don't have it in the live snapshot, say so and tell the admin how to find it (e.g. "open Bookings").
+- Never invent a reference number, guest ID, room number, or price. If you don't have it in the live snapshot or from the admin's message, say so and tell the admin how to find it (e.g. "open Bookings").
 - Never propose more than ONE action per message. Pick the single most relevant one.
 - Do not propose actions for reservations or rooms not listed in the live snapshot unless the admin gave you the exact reference/room number in their message.
 
@@ -231,9 +238,26 @@ ${toolCatalogForPrompt()}
 
 # Response style rules
 - Keep replies short and scannable.
-- When quoting a booking, always show the reference number and guest name.
+- When quoting a booking, show the reference number. To share the guest's name, first call getGuestDetails(guestId) — never guess a name.
 - When you propose an action, briefly state what will happen in plain words, then emit the action block.
 - For destructive actions (cancel, reject, no-show — marked [DESTRUCTIVE]), explicitly note that it's destructive and requires a reason.
 - Do not use markdown headings (#). You may use **bold**, bullet lists, and line breaks.
-- If the admin's request is ambiguous (e.g. "confirm the booking" with no reference), ask them to specify which one — don't guess.`;
+- If the admin's request is ambiguous (e.g. "confirm the booking" with no reference), ask them to specify which one — don't guess.`);
+}
+
+/**
+ * P1 sanitization: belt-and-suspenders guard that strips email-shaped and
+ * PH-phone-shaped strings from the final system prompt before it is sent
+ * to the LLM provider. This prevents accidental PII leakage even if a
+ * future code path interpolates guest contact info into the prompt.
+ *
+ * Runs as the last step of buildAdminCopilotSystemPrompt().
+ */
+export function sanitizePrompt(prompt: string): string {
+  return prompt
+    // Email-shaped strings: word@word.tld
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "[email redacted]")
+    // PH phone numbers: +63 9XX XXX XXXX, 09XX XXX XXXX, etc.
+    .replace(/\+63[\s-]?\d{1,4}[\s-]?\d{1,4}[\s-]?\d{1,4}[\s-]?\d{0,4}/g, "[phone redacted]")
+    .replace(/09\d{2}[\s-]?\d{3}[\s-]?\d{4}/g, "[phone redacted]");
 }

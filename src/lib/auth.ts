@@ -107,9 +107,38 @@ export const authOptions: NextAuthOptions = {
   },
   // Use HttpOnly + SameSite=Lax cookies. Secure is auto-enabled in
   // production by NextAuth based on NEXTAUTH_URL's protocol.
+  // P1 hardening: explicitly configure ALL three auth cookies
+  // (sessionToken, callbackUrl, csrfToken) with the same strict baseline.
+  //
+  // Why each flag:
+  //   httpOnly: true   — JS cannot read the cookie (defeats XSS token theft).
+  //   sameSite: "lax"  — cookie is sent on top-level navigations but NOT on
+  //                       cross-site POSTs (balances CSRF protection with
+  //                       the "click a link to the dashboard" UX).
+  //   secure: prod     — cookie only sent over HTTPS in production. We keep
+  //                       secure=false in dev so http://localhost:3000 works.
+  //   path: "/"         — cookie is scoped to the whole app.
   cookies: {
     sessionToken: {
       name: "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    callbackUrl: {
+      name: "next-auth.callback-url",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    csrfToken: {
+      name: "next-auth.csrf-token",
       options: {
         httpOnly: true,
         sameSite: "lax",
