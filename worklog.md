@@ -3104,3 +3104,25 @@ Stage Summary:
 - SECURITY NOTE: The user shared a GitHub PAT in plaintext in the IM. The PAT was used solely for this push. The user should rotate/revoke this token at https://github.com/settings/tokens after confirming the push, since it was transmitted in chat.
 - The remote `main` branch (a5381a5) was NOT touched — only feature/verdara-rrms was updated.
 - Local `main` still carries the full verbose history (with the old Groq key in a historical commit) — do NOT push main without history scrubbing.
+
+---
+Task ID: P1
+Agent: Z.ai Code (main session)
+Task: Execute PHASE 1 (P1) — Security & Infrastructure Hardening on feature/verdara-rrms.
+
+Work Log:
+- STEP 1 (Rate Limiting): Installed @upstash/ratelimit + @upstash/redis. Created src/lib/rate-limit.ts with loginLimiter (5/min), reservationLimiter (10/min), chatLimiter (20/min). Fail-open when Upstash env vars missing (dev). Integrated loginLimiter into middleware for POST /api/auth/callback/credentials (IP-based, 429 + Retry-After). reservationLimiter into POST /api/reservations (IP). chatLimiter into POST /api/chat (IP) and POST /api/admin/chat (user:id).
+- STEP 2 (Zod Validation): Audited all POST/PUT/PATCH routes — found 6 bypassed. Added parseBody<T>(req, schema) helper to src/lib/api.ts. Added 6 new schemas to src/lib/validators.ts (contactFormSchema, notificationUpdateSchema, reservationStatusSchema, roomUpdateSchema, settingsUpdateSchema, toolExecuteSchema). Fixed rooms/types bug: was using roomCreateSchema + db.room.create (created a Room, not a RoomType); now uses roomTypeCreateSchema + db.roomType.create with auto-slug. Wired Zod into all 6 routes.
+- STEP 3 (Guest.email @unique): Added @unique to Guest.email in prisma/schema.prisma. Created scripts/dedupe-guests.ts (idempotent: groups by email, picks most-complete primary, re-points Reservation.guestId, deletes dupes in per-duplicate $transactions). Added dedupe:guests script to package.json.
+- STEP 4 (Cookie Hardening): Extended auth.ts cookies config to explicitly set sessionToken + callbackUrl + csrfToken, all httpOnly=true, sameSite=lax, secure=(prod), path=/.
+- STEP 5 (AI Sanitization): Refactored admin-copilot-knowledge.ts — removed raw guest names from pendingList/arrivalsList/departuresList (now reference numbers + guest IDs only). Updated system prompt: AI must call getGuestDetails(guestId) to learn a name. Added sanitizePrompt() helper that strips email-shaped + PH-phone-shaped strings; buildAdminCopilotSystemPrompt() wraps return in sanitizePrompt().
+- STEP 6 (Build Strictness): next.config.ts — typescript.ignoreBuildErrors true→false, added eslint.ignoreDuringBuilds: false.
+- Git: Rebased 4 P1 commits onto clean P0 orphan (abdc6ba). Force-pushed feature/verdara-rrms: abdc6ba..1bb639f. Remote verified via git ls-remote + FETCH_HEAD file checks.
+
+Stage Summary:
+- PUSH SUCCESSFUL: feature/verdara-rrms @ 1bb639f (5 commits: 1 P0 + 4 P1).
+- Remote verified: rate-limit.ts ✓, dedupe-guests.ts ✓, Guest.email @unique ✓, ignoreBuildErrors=false ✓, sanitizePrompt ✓, parseBody ✓.
+- New .env vars required: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN (optional in dev, fail-open).
+- Local migration commands: bun run dedupe:guests → bunx prisma db push → bun run db:seed → bun run dev.
+- Pre-existing TS warnings (NOT fixed, intentionally): react-hooks/incompatible-library on BookingsAdmin.tsx:1150 and RoomsAdmin.tsx:618 (React Hook Form watch() — not introduced by P1).
+- Known hygiene follow-up: worklog.md + README.md still reference old demo password "verdara2025" (no longer valid — P0 moved auth to ADMIN_SEED_PASSWORD env var). Scrub in a future commit.
