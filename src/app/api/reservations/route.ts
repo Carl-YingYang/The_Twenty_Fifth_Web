@@ -4,6 +4,7 @@ import { nightsBetween, generateReferenceNo } from "@/lib/utils";
 import { reservationCreateSchema } from "@/lib/validators";
 import { requireUser } from "@/app/api/_lib/auth-helpers";
 import { ApiError, apiError } from "@/lib/api";
+import { reservationLimiter, rateLimit, getClientIp, retryAfterSeconds } from "@/lib/rate-limit";
 
 // GET — list reservations with optional filters.
 // P0 security: exposes guest PII (name, email, phone) → admin/staff only.
@@ -51,8 +52,19 @@ export async function GET(req: NextRequest) {
 // P0 security: wraps the entire multi-step mutation in a prisma.$transaction
 // to guarantee atomicity. If guest upsert succeeds but reservation create
 // fails, the whole thing rolls back — no orphan guests, no double-bookings.
+// P1 security: rate-limited to 10 bookings/min per IP to prevent spam.
 export async function POST(req: NextRequest) {
   try {
+    // ── P1 rate limit (IP-based — this is a public endpoint) ──
+    const ip = getClientIp(req);
+    const rl = await rateLimit(reservationLimiter, ip);
+    if (!rl.success) {
+      return NextResponse.json(
+        { success: false, error: "Too many booking requests. Please wait a minute and try again." },
+        { status: 429, headers: { "Retry-After": String(retryAfterSeconds(rl.reset)) } }
+      );
+    }
+
     const body = await req.json();
     const parsed = reservationCreateSchema.safeParse(body);
     if (!parsed.success) {

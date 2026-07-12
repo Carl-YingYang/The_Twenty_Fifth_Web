@@ -2,13 +2,33 @@
 // Centralized middleware — gates every API route except NextAuth's own.
 // P0 security: prevents unauthenticated access at the edge before any
 // route handler runs. RBAC is enforced per-route via requireRole().
+// P1 security: IP-based rate limiting on the login (credentials callback)
+// endpoint to blunt brute-force attacks.
 // ──────────────────────────────────────────────────────────────────────────
 
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { loginLimiter, rateLimit, getClientIp, retryAfterSeconds } from "@/lib/rate-limit";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // ── P1: Rate-limit the NextAuth credentials callback (login) ──────────
+  // This is the single endpoint where a password is checked. 5 attempts
+  // per minute per IP blunts credential-stuffing without blocking legit
+  // users (who retry maybe 2-3 times on a typo).
+  if (pathname === "/api/auth/callback/credentials" && req.method === "POST") {
+    const ip = getClientIp(req);
+    const rl = await rateLimit(loginLimiter, ip);
+    if (!rl.success) {
+      return NextResponse.json(
+        { success: false, error: "Too many login attempts. Please wait a minute and try again." },
+        { status: 429, headers: { "Retry-After": String(retryAfterSeconds(rl.reset)) } }
+      );
+    }
+    // Fall through — NextAuth handles its own CSRF + credential check.
+    return NextResponse.next();
+  }
 
   // ── Public API routes — no session required ──────────────────────────
   // NextAuth's own endpoints handle their own auth + CSRF.

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { buildConciergeSystemPrompt } from "@/lib/chatbot-knowledge";
 import { completeWithZai } from "@/lib/zai-completion";
+import { chatLimiter, rateLimit, getClientIp, retryAfterSeconds } from "@/lib/rate-limit";
 
 // ============================================================
 // /api/chat — Concierge chatbot endpoint
@@ -84,6 +85,13 @@ function chunkText(text: string): string[] {
 }
 
 export async function POST(req: NextRequest) {
+  // ── P1 rate limit (IP-based — public endpoint, no user id) ──
+  const ip = getClientIp(req);
+  const rl = await rateLimit(chatLimiter, ip);
+  if (!rl.success) {
+    return jsonError("Too many messages. Please slow down a moment.", 429);
+  }
+
   // Parse + validate body (structural only — no length limits).
   let body: { messages?: unknown };
   try {

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { buildAdminCopilotSystemPrompt } from "@/lib/admin-copilot-knowledge";
 import { completeWithZai } from "@/lib/zai-completion";
+import { chatLimiter, rateLimit } from "@/lib/rate-limit";
 
 // ============================================================
 // /api/admin/chat — Admin Copilot ("Aria") chat endpoint
@@ -71,6 +72,12 @@ export async function POST(req: NextRequest) {
   // ---- Auth gate ----
   const { user, response } = await requireAuth(req);
   if (!user) return response!;
+
+  // ---- P1 rate limit (user-id-based — admin is authenticated) ----
+  const rl = await rateLimit(chatLimiter, `user:${user.id}`);
+  if (!rl.success) {
+    return jsonError("Too many copilot requests. Please slow down.", 429);
+  }
 
   // ---- Parse body ----
   let body: { messages?: unknown };
