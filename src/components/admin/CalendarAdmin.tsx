@@ -426,7 +426,13 @@ function CellContent({
       aria-label={
         hasReservation
           ? `${cell.guestName ?? "Guest"} — ${cell.referenceNo ?? ""}`
-          : "Open"
+          : cell.status === "BLOCKED"
+            ? "Blocked"
+            : cell.status === "MAINTENANCE"
+              ? "Maintenance"
+              : cell.status === "CLEANING"
+                ? "Cleaning"
+                : "Open"
       }
       className={cn(
         "flex min-h-[44px] w-full flex-col items-start gap-0.5 px-2 py-1.5 text-left text-[11px] leading-tight transition-opacity",

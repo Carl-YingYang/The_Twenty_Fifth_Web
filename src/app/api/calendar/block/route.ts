@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { user } = await requireRole(req, "ADMIN");
+    const user = await requireRole(req, "ADMIN");
 
     const d = await parseBody(req, blockDateCreateSchema);
 

@@ -9,7 +9,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user } = await requireRole(req, "ADMIN");
+    const user = await requireRole(req, "ADMIN");
     const { id } = await params;
 
     const block = await db.blockedDate.findUnique({

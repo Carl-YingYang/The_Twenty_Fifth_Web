@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 // Body is validated against roomCreateSchema (Zod) — see src/lib/validators.ts.
 export async function POST(req: NextRequest) {
   try {
-    const { user } = await requireRole(req, "ADMIN");
+    const user = await requireRole(req, "ADMIN");
 
     const d = await parseBody(req, roomCreateSchema);
 
