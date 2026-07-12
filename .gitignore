@@ -1,0 +1,94 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files — NEVER commit these (contains API keys)
+.env
+.env.*
+.env.local
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# local-only config / agent tooling
+local-*
+.claude
+.z-ai-config
+*.log
+dev.log
+dev.out.log
+server.log
+test
+prompt
+
+# Skills directory (internal tooling, not part of the app)
+/skills/
+
+# Database (contains user/guest data — never commit)
+db/*.db
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
+
+# Uploaded files & screenshots (local dev artifacts, large, not needed in repo)
+upload/
+download/
+tool-results/
+agent-ctx/
+
+# QA screenshots (generated during testing)
+qa-*.png
+
+# Hero source images (already optimized as .webp in /public)
+public/uploads/
+
+# Internal development worklog (not needed in repo)
+worklog.md
+
+# database files — local SQLite, never commit (PII + migrations)
+db/
+*.db
+*.db-journal
+
+# agent/tool artifacts — never commit
+tool-results/
+upload/
+download/
+agent-ctx/
+qa-*.png
+.commit-msg.txt
+*.patch
+.zscripts/dev.pid

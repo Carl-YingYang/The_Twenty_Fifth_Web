@@ -1,0 +1,404 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-playfair);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-section: var(--section);
+  --color-coral: var(--coral);
+  --color-coral-foreground: var(--coral-foreground);
+  --color-sand: var(--sand);
+  --color-ink: var(--ink);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+}
+
+/* ============================================================
+   THE TWENTY-FIFTH — Editorial Beachfront Palette
+   - Warm sand background, deep ocean teal primary,
+     sunset coral accent, charcoal ink text.
+   - Sharp flat design: hairline borders, one shadow tier.
+   ============================================================ */
+:root {
+  --radius: 0.625rem;
+
+  /* Surfaces */
+  --background: #FBF8F3;       /* warm sand */
+  --foreground: #1B2A2E;       /* near-black ink */
+  --card: #FFFFFF;
+  --card-foreground: #1B2A2E;
+  --popover: #FFFFFF;
+  --popover-foreground: #1B2A2E;
+
+  /* Brand */
+  --primary: #0E5A6F;          /* deep ocean teal */
+  --primary-foreground: #FFFFFF;
+  --secondary: #F0E8DA;        /* soft sand chip */
+  --secondary-foreground: #1B2A2E;
+  --accent: #E27D60;           /* sunset coral */
+  --accent-foreground: #FFFFFF;
+
+  --coral: #E27D60;
+  --coral-foreground: #FFFFFF;
+  --sand: #F0E8DA;
+  --ink: #1B2A2E;
+
+  --muted: #F4EFE6;
+  --muted-foreground: #6B7A7E;
+  --section: #F7F3EC;
+
+  --destructive: #C0392B;
+  --destructive-foreground: #FFFFFF;
+  --success: #2E8B6F;
+  --success-foreground: #FFFFFF;
+  --warning: #D9943C;
+  --warning-foreground: #1B2A2E;
+  --danger: #C0392B;
+  --danger-foreground: #FFFFFF;
+
+  --border: #E5DED0;
+  --input: #E5DED0;
+  --ring: #0E5A6F;
+
+  --chart-1: #0E5A6F;
+  --chart-2: #E27D60;
+  --chart-3: #2E8B6F;
+  --chart-4: #D9943C;
+  --chart-5: #6B7A7E;
+
+  /* Admin sidebar — deep ocean */
+  --sidebar: #0A3D4A;
+  --sidebar-foreground: #E8F1F4;
+  --sidebar-primary: #E27D60;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #0F4C5C;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #0F4C5C;
+  --sidebar-ring: #E27D60;
+}
+
+.dark {
+  --background: #0F1F24;
+  --foreground: #EDE6D8;
+  --card: #162A30;
+  --card-foreground: #EDE6D8;
+  --popover: #162A30;
+  --popover-foreground: #EDE6D8;
+
+  --primary: #4DBFD4;
+  --primary-foreground: #0A1F25;
+  --secondary: #1F3A42;
+  --secondary-foreground: #EDE6D8;
+  --accent: #E8987E;
+  --accent-foreground: #1B2A2E;
+
+  --coral: #E8987E;
+  --coral-foreground: #1B2A2E;
+  --sand: #1F3A42;
+  --ink: #EDE6D8;
+
+  --muted: #1A2C32;
+  --muted-foreground: #9FB0B5;
+  --section: #122429;
+
+  --destructive: #E57373;
+  --destructive-foreground: #0F1F24;
+  --success: #4ADE80;
+  --success-foreground: #0F1F24;
+  --warning: #FBBF24;
+  --warning-foreground: #0F1F24;
+  --danger: #E57373;
+  --danger-foreground: #0F1F24;
+
+  --border: #2D4A52;
+  --input: #2D4A52;
+  --ring: #4DBFD4;
+
+  --chart-1: #4DBFD4;
+  --chart-2: #E8987E;
+  --chart-3: #4ADE80;
+  --chart-4: #FBBF24;
+  --chart-5: #9FB0B5;
+
+  --sidebar: #072B35;
+  --sidebar-foreground: #C9DBE0;
+  --sidebar-primary: #E8987E;
+  --sidebar-primary-foreground: #072B35;
+  --sidebar-accent: #122E38;
+  --sidebar-accent-foreground: #EDE6D8;
+  --sidebar-border: #122E38;
+  --sidebar-ring: #E8987E;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "ss01", "cv01", "cv03";
+  }
+  /* Editorial serif headings */
+  h1, h2, h3, h4 {
+    font-family: var(--font-playfair), Georgia, serif;
+    letter-spacing: -0.015em;
+    font-weight: 500;
+  }
+  h5, h6 {
+    font-family: var(--font-inter), system-ui, sans-serif;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  /* Custom scrollbar — slim, sand-toned */
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #D6CDB9;
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #B5AB95;
+    background-clip: content-box;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #2D4A52;
+    background-clip: content-box;
+  }
+  /* Selection */
+  ::selection {
+    background: var(--coral);
+    color: #FFFFFF;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+  /* Brand gradient text — teal → coral */
+  .text-gradient-ocean {
+    background: linear-gradient(120deg, #0E5A6F 0%, #2E8B6F 55%, #E27D60 110%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  /* Eyebrow label — small caps tracking */
+  .eyebrow {
+    font-family: var(--font-inter), system-ui, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--coral);
+  }
+  /* ONE subtle elevation tier — sharp flat design (raw CSS so @apply works) */
+  .shadow-card,
+  .shadow-luxury,
+  .shadow-flat,
+  .shadow-flat-sm {
+    box-shadow: 0 1px 2px rgba(15, 31, 36, 0.04),
+                0 1px 3px rgba(15, 31, 36, 0.06);
+  }
+  .shadow-card-hover,
+  .shadow-luxury-lg {
+    box-shadow: 0 2px 4px rgba(15, 31, 36, 0.05),
+                0 8px 24px -8px rgba(14, 90, 111, 0.18);
+  }
+  /* Hairline border helper */
+  .border-hairline { border: 1px solid var(--border); }
+  /* Hide scrollbar for carousel areas */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  /* Section container */
+  .container-luxury {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+  .container-tight {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+  /* Underline link hover */
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-repeat: no-repeat;
+    background-position: left bottom;
+    transition: background-size 0.25s ease;
+  }
+  .link-underline:hover {
+    background-size: 100% 1px;
+  }
+  /* Editorial image hover */
+  .img-zoom {
+    transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .img-zoom:hover {
+    transform: scale(1.04);
+  }
+}
+
+/* Hero slideshow progress bar — fills the active dot over the slide duration */
+@keyframes hero-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+/* Reduced motion — accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   Print styles — for guest reservation invoice
+   Hides nav/footer/sidebar, expands the invoice card to a
+   clean printable layout. Triggered by window.print() from
+   the "Print invoice" button on FindReservation.
+   ============================================================ */
+@media print {
+  /* Hide chrome elements that aren't part of the invoice */
+  nav,
+  footer,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* Reset layout so the invoice takes the full page */
+  html, body {
+    background: #ffffff !important;
+    color: #1B2A2E !important;
+    font-size: 11pt !important;
+  }
+
+  /* The main content should fill the page width */
+  main {
+    flex: none !important;
+  }
+
+  /* The print-only block (resort header on the invoice) */
+  [data-print-only] {
+    display: block !important;
+  }
+
+  /* The invoice card itself — strip shadows/borders for print */
+  [data-invoice] {
+    box-shadow: none !important;
+    border: 1px solid #d4cfc1 !important;
+    page-break-inside: avoid;
+  }
+
+  /* Status badges should print with their colors */
+  [data-invoice] [data-status-badge] {
+    border: 1px solid currentColor !important;
+    padding: 4px 10px !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Avoid page breaks inside rows */
+  [data-invoice] > * {
+    page-break-inside: avoid;
+  }
+
+  /* Make sure links show their href in print */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #6b6557;
+  }
+
+  /* Hide the action buttons row when printing */
+  [data-invoice-actions] {
+    display: none !important;
+  }
+}
+
+/* ============================================================
+   Concierge chat — markdown rendering inside chat bubbles
+   ============================================================ */
+.chat-markdown {
+  word-break: break-word;
+}
+.chat-markdown p + p {
+  margin-top: 0.5rem;
+}
+.chat-markdown strong {
+  font-weight: 600;
+}
+.chat-markdown code {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.85em;
+}
+.dark .chat-markdown code {
+  background: rgba(255, 255, 255, 0.1);
+}
+/* User bubbles invert link color for contrast on teal bg */
+.bg-primary .chat-markdown a,
+[class*="bg-primary"] .chat-markdown a {
+  color: #fff;
+  text-decoration: underline;
+}
