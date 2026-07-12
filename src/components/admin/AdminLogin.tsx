@@ -61,6 +61,13 @@ export function AdminLogin() {
         login(me.user as User, "nextauth");
         toast.success(`Welcome back, ${(me.user as User).name.split(" ")[0]}.`);
         navigate("admin-dashboard");
+        // Clear the ?view=admin-login query param from the URL so the
+        // browser back button doesn't return to the login screen.
+        // replaceState avoids adding a new history entry — the login
+        // page is replaced in-place by the dashboard.
+        if (typeof window !== "undefined" && window.location.search) {
+          window.history.replaceState(null, "", window.location.pathname);
+        }
       } else {
         toast.error("Session could not be established. Please try again.");
       }
