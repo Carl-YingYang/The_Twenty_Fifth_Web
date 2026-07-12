@@ -74,29 +74,24 @@ async function main() {
   const passwordHash = await hashPassword(seedPassword);
   const admin = await db.user.upsert({
     where: { email: "stay@the25thinzambales.com" },
-    update: { passwordHash },
+    update: { passwordHash, role: "ADMIN", isActive: true },
     create: {
       email: "stay@the25thinzambales.com",
       passwordHash,
       name: "Villa Manager",
-      role: "SUPER_ADMIN",
+      role: "ADMIN",
       isActive: true,
     },
   });
   console.log(`  ✓ Admin user: ${admin.email}`);
 
-  const staff = await db.user.upsert({
-    where: { email: "frontdesk@the25thinzambales.com" },
-    update: {},
-    create: {
-      email: "frontdesk@the25thinzambales.com",
-      passwordHash: await hashPassword(seedPassword),
-      name: "Front Desk",
-      role: "STAFF",
-      isActive: true,
-    },
+  // Single-admin model: the frontdesk/staff user was removed per client
+  // request. Only one ADMIN role is provisioned. If any stale STAFF users
+  // exist from a previous seed, deactivate them so they can no longer sign in.
+  await db.user.updateMany({
+    where: { email: { not: "stay@the25thinzambales.com" } },
+    data: { isActive: false },
   });
-  console.log(`  ✓ Staff user: ${staff.email}`);
 
   // ---------- Room Types ----------
   // The Twenty-Fifth is a single beachfront villa with 4 bedrooms.
