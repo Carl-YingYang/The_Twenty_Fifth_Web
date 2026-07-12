@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getTool, type ToolArgs } from "@/lib/admin-copilot-tools";
+import { ApiError, apiError, parseBody } from "@/lib/api";
+import { toolExecuteSchema } from "@/lib/validators";
 
 // ============================================================
 // /api/admin/chat/execute — Controlled action execution
@@ -23,56 +25,42 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const { user, response } = await requireAuth(req);
-  if (!user) return response!;
-
-  let body: { tool?: unknown; args?: unknown };
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  }
+    const { user, response } = await requireAuth(req);
+    if (!user) return response!;
 
-  const { tool, args } = body;
-  if (typeof tool !== "string" || !tool.trim()) {
-    return NextResponse.json({ error: "Missing tool name." }, { status: 400 });
-  }
+    // P1: strict Zod validation of the { tool, args } envelope.
+    const d = await parseBody(req, toolExecuteSchema);
+    const { tool, args } = d;
 
-  const toolDef = getTool(tool);
-  if (!toolDef) {
-    return NextResponse.json(
-      { error: `Unknown tool "${tool}". Action rejected.` },
-      { status: 400 }
-    );
-  }
+    const toolDef = getTool(tool);
+    if (!toolDef) {
+      throw new ApiError(400, `Unknown tool "${tool}". Action rejected.`);
+    }
 
-  // Normalize args into a string→string record.
-  const cleanArgs: ToolArgs = {};
-  if (args && typeof args === "object" && !Array.isArray(args)) {
-    for (const [k, v] of Object.entries(args as Record<string, unknown>)) {
-      if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
-        cleanArgs[k] = String(v);
+    // Normalize args into a string→string record.
+    const cleanArgs: ToolArgs = {};
+    if (args && typeof args === "object" && !Array.isArray(args)) {
+      for (const [k, v] of Object.entries(args)) {
+        if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+          cleanArgs[k] = String(v);
+        }
       }
     }
-  }
 
-  // Server-side re-validation (never trust the client).
-  const validationError = toolDef.validate(cleanArgs);
-  if (validationError) {
-    return NextResponse.json({ error: validationError }, { status: 400 });
-  }
-
-  // Confirm all required args are present.
-  for (const reqArg of toolDef.requiredArgs) {
-    if (!cleanArgs[reqArg]?.trim()) {
-      return NextResponse.json(
-        { error: `Missing required argument: ${reqArg}.` },
-        { status: 400 }
-      );
+    // Server-side re-validation (never trust the client).
+    const validationError = toolDef.validate(cleanArgs);
+    if (validationError) {
+      throw new ApiError(400, validationError);
     }
-  }
 
-  try {
+    // Confirm all required args are present.
+    for (const reqArg of toolDef.requiredArgs) {
+      if (!cleanArgs[reqArg]?.trim()) {
+        throw new ApiError(400, `Missing required argument: ${reqArg}.`);
+      }
+    }
+
     const result = await toolDef.run(cleanArgs, user, req);
     return NextResponse.json({
       ok: result.success,
@@ -82,13 +70,11 @@ export async function POST(req: NextRequest) {
       label: toolDef.label,
     });
   } catch (err) {
+    if (err instanceof ApiError) return apiError(err, err.statusCode);
     console.error(
-      `[/api/admin/chat/execute] tool "${tool}" threw:`,
+      `[/api/admin/chat/execute] tool threw:`,
       (err as Error)?.message
     );
-    return NextResponse.json(
-      { error: "The action failed to execute. Please try again or do it manually." },
-      { status: 500 }
-    );
+    return apiError(err);
   }
 }

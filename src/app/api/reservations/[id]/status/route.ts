@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireUser } from "@/app/api/_lib/auth-helpers";
-import { ApiError, apiError } from "@/lib/api";
+import { ApiError, apiError, parseBody } from "@/lib/api";
+import { reservationStatusSchema } from "@/lib/validators";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   PENDING: ["CONFIRMED", "REJECTED", "CANCELLED"],
@@ -53,8 +54,9 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const body = await req.json();
-    const { status, rejectedReason } = body as { status: string; rejectedReason?: string };
+    // P1: strict Zod validation (was casting body without validation).
+    const d = await parseBody(req, reservationStatusSchema);
+    const { status, rejectedReason } = d;
 
     const reservation = await db.reservation.findUnique({
       where: { id },

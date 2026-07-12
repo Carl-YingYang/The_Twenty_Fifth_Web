@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
-import { roomCreateSchema } from "@/lib/validators";
+import { requireUser } from "@/app/api/_lib/auth-helpers";
+import { ApiError, apiError, parseBody } from "@/lib/api";
+import { roomTypeCreateSchema } from "@/lib/validators";
+
+// ============================================================
+// /api/rooms/types — Room Type catalog (public GET, admin POST)
+//
+// P1 bugfix: POST previously used `roomCreateSchema` and created a Room
+// (db.room.create) instead of a RoomType. This route is for creating
+// room TYPES (e.g. "Beachfront Suite"), not individual rooms. Fixed to
+// use `roomTypeCreateSchema` + `db.roomType.create`.
+// ============================================================
 
 export async function GET() {
   const roomTypes = await db.roomType.findMany({
@@ -17,69 +27,55 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, response } = await requireAuth(req);
-  if (!user) return response!;
-
   try {
-    const body = await req.json();
-    const parsed = roomCreateSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid input" },
-        { status: 400 }
-      );
-    }
-    const d = parsed.data;
+    const user = await requireUser(req);
 
-    const existing = await db.room.findUnique({ where: { number: d.number } });
+    // P1: strict Zod validation via parseBody (was using the wrong schema).
+    const d = await parseBody(req, roomTypeCreateSchema);
+
+    // Auto-generate slug from name if not provided.
+    const slug =
+      d.slug ??
+      d.name
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+
+    // Enforce uniqueness of name + slug (both @unique in schema).
+    const existing = await db.roomType.findFirst({
+      where: { OR: [{ name: d.name }, { slug }] },
+    });
     if (existing) {
-      return NextResponse.json(
-        { error: "Room number already exists" },
-        { status: 409 }
-      );
+      throw new ApiError(409, "A room type with that name or slug already exists");
     }
 
-    const room = await db.room.create({
+    const roomType = await db.roomType.create({
       data: {
-        number: d.number,
         name: d.name,
+        slug,
         description: d.description,
-        floor: d.floor ?? null,
-        view: d.view ?? null,
-        pricePerNight: d.pricePerNight,
+        basePrice: d.basePrice,
         capacity: d.capacity,
-        status: d.status,
-        typeId: d.typeId,
-        images: d.imageUrls?.length
-          ? {
-              create: d.imageUrls.map((img, i) => ({
-                url: img.url,
-                altText: img.altText ?? null,
-                isPrimary: img.isPrimary ?? i === 0,
-                sortOrder: i,
-              })),
-            }
-          : undefined,
-        amenities: d.amenityIds?.length
-          ? { create: d.amenityIds.map((amenityId) => ({ amenityId })) }
-          : undefined,
+        size: d.size ?? null,
+        bedConfig: d.bedConfig || null,
       },
-      include: { type: true, images: true, amenities: { include: { amenity: true } } },
+      include: { rooms: true },
     });
 
     await db.auditLog.create({
       data: {
         userId: user.id,
-        action: "ROOM_CREATED",
-        entity: "Room",
-        entityId: room.id,
-        details: `Created room ${room.number} (${room.name})`,
+        action: "ROOM_TYPE_CREATED",
+        entity: "RoomType",
+        entityId: roomType.id,
+        details: `Created room type ${roomType.name} (slug: ${roomType.slug})`,
       },
     });
 
-    return NextResponse.json({ room });
-  } catch (error) {
-    console.error("Create room error:", error);
-    return NextResponse.json({ error: "Failed to create room" }, { status: 500 });
+    return NextResponse.json({ roomType }, { status: 201 });
+  } catch (err) {
+    if (err instanceof ApiError) return apiError(err, err.statusCode);
+    console.error("Create room type error:", err);
+    return apiError(err);
   }
 }

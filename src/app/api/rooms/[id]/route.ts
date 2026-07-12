@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { roomCreateSchema } from "@/lib/validators";
+import { ApiError, apiError, parseBody } from "@/lib/api";
+import { roomUpdateSchema } from "@/lib/validators";
 
 export async function GET(
   _req: NextRequest,
@@ -30,11 +31,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     const { id } = await params;
-    const body = await req.json();
-    // Partial update — accept all room fields optionally
+    // P1: strict Zod validation via parseBody (was destructuring raw body).
+    const d = await parseBody(req, roomUpdateSchema);
+
     const existing = await db.room.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json({ error: "Room not found" }, { status: 404 });
+      throw new ApiError(404, "Room not found");
     }
 
     const {
@@ -50,12 +52,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       isActive,
       amenityIds,
       imageUrls,
-    } = body;
+    } = d;
 
     if (number && number !== existing.number) {
       const dup = await db.room.findUnique({ where: { number } });
       if (dup) {
-        return NextResponse.json({ error: "Room number already exists" }, { status: 409 });
+        throw new ApiError(409, "Room number already exists");
       }
     }
 
@@ -113,9 +115,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
 
     return NextResponse.json({ room: { ...updated, amenities: updated.amenities.map((ra) => ra.amenity) } });
-  } catch (error) {
-    console.error("Update room error:", error);
-    return NextResponse.json({ error: "Failed to update room" }, { status: 500 });
+  } catch (err) {
+    if (err instanceof ApiError) return apiError(err, err.statusCode);
+    console.error("Update room error:", err);
+    return apiError(err);
   }
 }
 

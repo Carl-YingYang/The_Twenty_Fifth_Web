@@ -5,6 +5,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
+import { ZodError, type ZodSchema } from "zod";
 
 /**
  * Custom error class for API routes. Throw this from anywhere inside a
@@ -54,4 +55,33 @@ export function apiError(error: unknown, status?: number) {
   }
 
   return NextResponse.json({ success: false, error: message }, { status: code });
+}
+
+/**
+ * Parse + validate a request body against a Zod schema. Throws ApiError(400)
+ * on validation failure so the route's existing catch converts it to a clean
+ * 400 response with the formatted Zod issues.
+ *
+ * Usage:
+ *   const d = await parseBody(req, roomCreateSchema);
+ */
+export async function parseBody<T>(req: Request, schema: ZodSchema<T>): Promise<T> {
+  let json: unknown;
+  try {
+    json = await req.json();
+  } catch {
+    throw new ApiError(400, "Invalid JSON body");
+  }
+  try {
+    return schema.parse(json);
+  } catch (err) {
+    if (err instanceof ZodError) {
+      // Flatten the first issue into a readable message. Full issues array
+      // is available on the error but we keep the envelope simple.
+      const first = err.issues[0];
+      const path = first?.path?.length ? ` (${first.path.join(".")})` : "";
+      throw new ApiError(400, `${first?.message ?? "Invalid input"}${path}`);
+    }
+    throw new ApiError(400, "Invalid input");
+  }
 }

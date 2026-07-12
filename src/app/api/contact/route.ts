@@ -1,45 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { contactFormSchema } from "@/lib/validators";
+import { ApiError, apiError, parseBody } from "@/lib/api";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { name, email, phone, message } = body;
+    const d = await parseBody(req, contactFormSchema);
 
-    // Validate required fields
-    if (!name || typeof name !== "string" || !name.trim()) {
-      return NextResponse.json(
-        { error: "Name is required" },
-        { status: 400 }
-      );
-    }
-    if (!email || typeof email !== "string" || !email.trim()) {
-      return NextResponse.json(
-        { error: "Email is required" },
-        { status: 400 }
-      );
-    }
-    if (!message || typeof message !== "string" || !message.trim()) {
-      return NextResponse.json(
-        { error: "Message is required" },
-        { status: 400 }
-      );
-    }
-
-    // Validate email format (basic regex)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      return NextResponse.json(
-        { error: "Invalid email format" },
-        { status: 400 }
-      );
-    }
-
-    // Log the message (demo — no email service)
+    // Log the message (demo — no email service wired up yet).
+    // P1: fields are now Zod-validated before we touch them.
     console.log("[Contact Form]", {
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone?.trim() || "(not provided)",
-      message: message.trim(),
+      name: d.name.trim(),
+      email: d.email.trim(),
+      phone: d.phone?.trim() || "(not provided)",
+      message: d.message.trim(),
       timestamp: new Date().toISOString(),
     });
 
@@ -47,10 +20,8 @@ export async function POST(req: NextRequest) {
       success: true,
       message: "Message received",
     });
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid request body" },
-      { status: 400 }
-    );
+  } catch (err) {
+    if (err instanceof ApiError) return apiError(err, err.statusCode);
+    return apiError(err);
   }
 }
