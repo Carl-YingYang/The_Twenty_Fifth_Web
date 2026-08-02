@@ -14,8 +14,10 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Moon,
   Settings,
   Sparkles,
+  Sun,
   Users,
   Waves,
 } from "lucide-react";
@@ -32,6 +34,7 @@ import type { Notification, User, View } from "@/types";
 import { AdminLogin } from "./AdminLogin";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { AdminCopilot } from "./copilot/AdminCopilot";
+import { useThemeToggle } from "@/components/public/shared";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -74,6 +77,11 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const mounted = useMounted();
+
+  // Admin dashboard defaults to dark (the signature deep-teal admin-scope
+  // palette). The shared useThemeToggle hook persists the choice to
+  // localStorage so it follows the user across the public site too.
+  const theme = useThemeToggle(true);
 
   // Verify token validity on mount
   const { data: meData, isLoading: verifying } = useQuery({
@@ -137,7 +145,7 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
   );
 
   return (
-    <div className="admin-scope min-h-screen bg-background text-foreground">
+    <div className={cn("min-h-screen bg-background text-foreground", theme.dark && "admin-scope")}>
       <div className="flex min-h-screen">
         {/* Desktop sidebar */}
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 lg:block">
@@ -163,6 +171,7 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
             actions={actions}
             onOpenMobileNav={() => setMobileNavOpen(true)}
             user={user}
+            theme={theme}
           />
           <main className="min-h-0 flex-1 p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8">{children}</main>
         </div>
@@ -289,12 +298,14 @@ function TopBar({
   actions,
   onOpenMobileNav,
   user,
+  theme,
 }: {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
   onOpenMobileNav: () => void;
   user: User | null;
+  theme: { dark: boolean; toggle: () => void; ready: boolean };
 }) {
   const { navigate } = useViewStore();
   return (
@@ -320,6 +331,7 @@ function TopBar({
 
       <div className="flex items-center gap-1 sm:gap-1.5">
         {actions}
+        <AdminThemeToggle theme={theme} />
         <NotificationsBell />
         <Button
           variant="outline"
@@ -337,6 +349,40 @@ function TopBar({
         </Avatar>
       </div>
     </header>
+  );
+}
+
+// ============================================================
+// AdminThemeToggle — light/dark switch for the admin dashboard.
+// Receives the shared theme state from AdminLayout (which calls
+// useThemeToggle(true) so the admin opens in dark mode by default).
+// The parent conditionally applies the .admin-scope class based on
+// this state, so clicking the button produces a real visible switch
+// between the deep-teal dark dashboard and the light :root tokens.
+// ============================================================
+function AdminThemeToggle({
+  theme,
+}: {
+  theme: { dark: boolean; toggle: () => void; ready: boolean };
+}) {
+  const mounted = useMounted();
+
+  if (!mounted || !theme.ready) {
+    // Reserve the icon-button slot to avoid layout shift on first paint.
+    return <div className="size-9" aria-hidden />;
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={theme.toggle}
+      className="size-9 text-muted-foreground hover:text-foreground"
+      aria-label={theme.dark ? "Switch to light mode" : "Switch to dark mode"}
+      title={theme.dark ? "Light mode" : "Dark mode"}
+    >
+      {theme.dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+    </Button>
   );
 }
 
@@ -470,7 +516,7 @@ function NotificationsBell() {
 
 function AdminLayoutSkeleton() {
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="admin-scope flex min-h-screen bg-background">
       <div className="hidden w-64 shrink-0 bg-sidebar lg:block" />
       <div className="flex flex-1 flex-col">
         <div className="flex h-16 items-center gap-3 border-b border-border bg-background px-8">

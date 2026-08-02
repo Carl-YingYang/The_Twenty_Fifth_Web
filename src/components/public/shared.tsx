@@ -236,10 +236,18 @@ export function useCountUp(target: number, duration = 1600) {
 
 // ============================================================
 // useThemeToggle — toggles .dark class on <html>, persists
-// to localStorage. Same approach as admin.
+// to localStorage (key "rrms-theme"). Shared by the public site
+// and the admin dashboard so a user's preference follows them
+// across both surfaces.
+//
+// defaultDark: when no saved preference exists, start in dark
+// mode. The public site passes false (light default); the admin
+// dashboard passes true (dark default) so it opens in its
+// signature deep-teal admin-scope palette and the toggle offers
+// a genuine switch to the light :root tokens.
 // ============================================================
-export function useThemeToggle() {
-  const [dark, setDark] = React.useState(false);
+export function useThemeToggle(defaultDark = false) {
+  const [dark, setDark] = React.useState(defaultDark);
   const [ready, setReady] = React.useState(false);
 
   React.useEffect(() => {
@@ -247,16 +255,24 @@ export function useThemeToggle() {
     if (saved === "dark") {
       setDark(true);
       document.documentElement.classList.add("dark");
+    } else if (saved === "light") {
+      setDark(false);
+    } else if (defaultDark) {
+      // No saved preference — honour the surface's default.
+      setDark(true);
+      document.documentElement.classList.add("dark");
     }
     setReady(true);
-  }, []);
+  }, [defaultDark]);
 
   const toggle = React.useCallback(() => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("rrms-theme", next ? "dark" : "light");
-  }, [dark]);
+    setDark((prev) => {
+      const next = !prev;
+      document.documentElement.classList.toggle("dark", next);
+      localStorage.setItem("rrms-theme", next ? "dark" : "light");
+      return next;
+    });
+  }, []);
 
   return { dark, toggle, ready };
 }
