@@ -282,29 +282,101 @@
     letter-spacing: -0.01em;
     font-weight: 600;
   }
-  /* Custom scrollbar — slim, warm-toned */
+  /* ============================================================
+     Elegant Scrollbar — slim pill thumb, brand-tinted, smooth
+     - Firefox: scrollbar-width: thin + scrollbar-color (animated)
+     - WebKit: 10px width, fully-rounded thumb, gradient depth,
+       transparent track, smooth color transition on hover/active
+     ============================================================ */
+
+  /* Firefox — applies to every scrollable element */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(184, 174, 152, 0.55) transparent;
+  }
+  .dark *,
+  .admin-scope * {
+    scrollbar-color: rgba(94, 196, 206, 0.32) transparent;
+  }
+
+  /* WebKit (Chromium / Safari / Edge) */
   ::-webkit-scrollbar {
-    width: 9px;
-    height: 9px;
+    width: 10px;
+    height: 10px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
+    margin: 4px 0;
   }
   ::-webkit-scrollbar-thumb {
-    background: #D8D0C2;
-    border-radius: 5px;
-    border: 2px solid transparent;
-    background-clip: content-box;
+    /* Subtle warm gradient gives the thumb gentle dimension
+       without looking heavy. background-clip: padding-box keeps
+       the transparent border from tinting the visible thumb. */
+    background: linear-gradient(
+      180deg,
+      rgba(216, 208, 194, 0.85) 0%,
+      rgba(184, 174, 152, 0.85) 100%
+    );
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    min-height: 36px;
+    transition: background-color 0.25s ease, border-width 0.25s ease;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #B5AB95;
-    background-clip: content-box;
+    background: linear-gradient(
+      180deg,
+      rgba(184, 174, 152, 0.95) 0%,
+      rgba(138, 128, 102, 0.95) 100%
+    );
+    background-clip: padding-box;
+    border: 2px solid transparent;
   }
+  ::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(
+      180deg,
+      rgba(138, 128, 102, 1) 0%,
+      rgba(105, 96, 72, 1) 100%
+    );
+    background-clip: padding-box;
+  }
+  /* Where two scrollbars intersect */
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Dark / admin scope — cyan→coral gradient thumb that glows
+     subtly on hover, matching the dashboard's accent palette */
   .dark ::-webkit-scrollbar-thumb,
   .admin-scope ::-webkit-scrollbar-thumb {
-    background: #264D4F;
-    background-clip: content-box;
+    background: linear-gradient(
+      180deg,
+      rgba(94, 196, 206, 0.32) 0%,
+      rgba(212, 132, 106, 0.32) 100%
+    );
+    background-clip: padding-box;
+    border: 3px solid transparent;
   }
+  .dark ::-webkit-scrollbar-thumb:hover,
+  .admin-scope ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      180deg,
+      rgba(94, 196, 206, 0.55) 0%,
+      rgba(212, 132, 106, 0.55) 100%
+    );
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+  .dark ::-webkit-scrollbar-thumb:active,
+  .admin-scope ::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(
+      180deg,
+      rgba(94, 196, 206, 0.75) 0%,
+      rgba(212, 132, 106, 0.75) 100%
+    );
+    background-clip: padding-box;
+  }
+
   /* Selection */
   ::selection {
     background: var(--coral);

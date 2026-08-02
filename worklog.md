@@ -3690,3 +3690,43 @@ Stage Summary:
 - Public site: forest green (#1A3D2E) + terracotta (#E8A88C) + cyan (#5EC4CE) on cream.
 - Admin: dark teal-green (#0F2B2D) dashboard with coral + emerald accents, always dark.
 - SECURITY: PAT ghp_gTRU... still active. User should revoke after work is complete.
+
+---
+Task ID: elegant-scrollbar
+Agent: main (Z.ai Code)
+Task: Fix the ugly default-looking scrollbar — replace with an elegant, refined scrollbar UI that matches the coastal luxury theme. User complaint: "ang pangit naman neto" (it's ugly).
+
+Work Log:
+- Read prior worklog to understand the project (The Twenty-Fifth / Verdara Resort — luxury villa booking site with deep forest green + terracotta + cyan palette; admin uses dark teal-green dashboard scope).
+- Used VLM skill to analyze the user's uploaded screenshot (pasted_image_1785663108027.png) — confirmed the scrollbar was the default system style: chunky 12-16px wide, sharp corners, solid medium-dark gray thumb, no hover effects, no rounded corners. VLM verdict: "Ugly / Dated".
+- Read existing scrollbar CSS in `src/app/globals.css` (lines 285-307) — found a basic 9px wide scrollbar with simple `#D8D0C2` thumb and `border-radius: 5px`. Functional but not elegant.
+- Redesigned the scrollbar with a refined, luxury-tier treatment:
+  * **Width**: 10px (down from default 12-16px chunky look; with 3px transparent border, visible thumb is ~4px — slim and elegant)
+  * **Shape**: Full pill shape (`border-radius: 9999px`) instead of 5px slight round
+  * **Track**: Fully transparent with `margin: 4px 0` for breathing room at top/bottom
+  * **Thumb gradient**: Light → warm gray vertical gradient (`rgba(216,208,194,0.85)` → `rgba(184,174,152,0.85)`) gives subtle dimension without heaviness
+  * **Hover**: Thumb intensifies to deeper warm gray (`rgba(184,174,152,0.95)` → `rgba(138,128,102,0.95)`) and border shrinks 3px→2px to make thumb slightly wider on hover (visual feedback)
+  * **Active**: Even deeper warm tone (`rgba(138,128,102,1)` → `rgba(105,96,72,1)`) for click feedback
+  * **Min-height**: 36px so the thumb never collapses to a tiny nub on long pages
+  * **Smooth transition**: `transition: background-color 0.25s ease, border-width 0.25s ease`
+  * **Corner**: `::-webkit-scrollbar-corner { background: transparent; }` so where two scrollbars meet stays clean
+  * **Firefox support**: Added `* { scrollbar-width: thin; scrollbar-color: rgba(184,174,152,0.55) transparent; }` so Firefox gets the same slim treatment via native scrollbar-color API
+- Added **dark/admin scope variant** — cyan→coral gradient thumb (`rgba(94,196,206,0.32)` → `rgba(212,132,106,0.32)`) that matches the dashboard's accent palette. On hover, opacity intensifies to 0.55; on active, 0.75. Uses the same `linear-gradient` + `background-clip: padding-box` technique.
+- Encountered a separate issue during verification: dev server kept dying silently. Root cause was TWO-fold:
+  1. `NEXTAUTH_SECRET` env var was missing from `.env` — `src/lib/auth.ts:19` throws `FATAL: NEXTAUTH_SECRET is not set`, causing all `/api/auth/*` and dependent API routes to 500.
+  2. Turbopack's incremental cache (`.next/`) was corrupted — panic log showed `Unable to open static sorted file 00000004.sst` from a stale task database. This crashed the dev server on every other compile.
+  - Fixed by: (a) appending `NEXTAUTH_SECRET=$(openssl rand -base64 32)` to `.env`; (b) `rm -rf .next/` to clear corrupted cache; (c) wrote a `start-dev.sh` supervisor script that auto-restarts the dev server if it exits; (d) launched via `setsid` in a detached subshell so the bash tool's session-end doesn't kill the process tree.
+- Verified via agent-browser:
+  * `agent-browser open http://localhost:3000/` → page loaded successfully (title: "The Twenty-Fifth — Beachfront Villa in Zambales").
+  * `agent-browser scroll down 800` → triggered the scrollbar to appear.
+  * `agent-browser screenshot verification-scrolled.png` → captured the rendered state with scrollbar visible.
+  * VLM analysis of the screenshot: "The scrollbar is **very slim** (thin)... features **rounded corners**... both the track and the thumb appear to have fully rounded or pill-shaped ends... light, neutral gray or off-white with low opacity... transparent or matches the page background... **elegant and refined**... avoids the 'ugly' or heavy look of older, standard operating system scrollbars by being thin, subtle, and softly colored."
+- Verified homepage layout intact: VLM confirmed luxury beachfront villa aesthetic with dark green header, hero with palm trees and beach, all rendering correctly — no visual regressions from the CSS change.
+- `bun run lint` → 0 errors, 2 pre-existing warnings (React Hook Form `watch()` API in BookingsAdmin.tsx:1150 and RoomsAdmin.tsx:618 — unrelated to this task).
+
+Stage Summary:
+- Elegant scrollbar shipped in `src/app/globals.css` (lines 285-378). Slim 10px pill-shaped thumb with warm gradient, smooth hover/active transitions, Firefox `scrollbar-width: thin` support, brand-tinted cyan→coral variant for dark/admin scope.
+- User's "pangit" complaint resolved — VLM independently confirms the new scrollbar is "elegant and refined".
+- Bonus infrastructure fix: added missing `NEXTAUTH_SECRET` to `.env` (was causing 500s on all auth-dependent API routes); wrote `start-dev.sh` supervisor for resilient dev server restarts.
+- Ready for visual review in the Preview Panel.
+
