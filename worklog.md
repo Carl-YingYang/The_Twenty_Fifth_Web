@@ -3815,3 +3815,43 @@ Stage Summary:
 - origin/main remains untouched at a5381a5.
 - No action needed — bd5b346 is already on origin/feature/verdara-rrms.
 
+
+---
+Task ID: seagreen-brand-color
+Agent: main (Z.ai Code)
+Task: Update brand color from deep forest green #1A3D2E to SeaGreen #2E8B57 to match owner's reference image (pasted_image_1785666572656.png). Push to feature/verdara-rrms only — NOT main.
+
+Work Log:
+- User provided owner's brand reference image showing primary color as SeaGreen #2E8B57 (verified via VLM — "virtually identical to #2E8B57 (SeaGreen)", "solid flat green, no gradient").
+- Previous theme used #1A3D2E (deep dark forest green) which was too dark.
+- Switched to feature/verdara-rrms branch (where bd5b346 theme overhaul lives).
+- Updated globals.css :root tokens:
+  * --primary: #1A3D2E → #2E8B57
+  * --accent: #1A3D2E → #2E8B57
+  * --band: #1A3D2E → #2E8B57
+  * --chart-1: #1A3D2E → #2E8B57
+  * --sidebar: #1A3D2E → #2E8B57
+  * .text-gradient-ocean gradient start: #1A3D2E → #2E8B57
+- Updated hardcoded bg-[#1A3D2E] → bg-[#2E8B57] in 5 public components:
+  * PublicNav.tsx (header)
+  * PublicFooter.tsx (footer)
+  * HomePage.tsx (stats band)
+  * AboutPage.tsx (stats band)
+  * FindReservation.tsx (invoice header + print border, 3 instances)
+- Cream background (#F8F8F0), terracotta accents (#E8A88C), and cyan CTAs (#5EC4CE) remain unchanged.
+- Admin dark teal-green dashboard scope (.admin-scope) remains unchanged.
+- Committed as 9278d87 on feature/verdara-rrms branch.
+- VLM-verified the rendered result:
+  * Header: sea green #2E8B57 ✅ ("closer to #2E8B57 SeaGreen than #1A3D2E")
+  * Footer: sea green #2E8B57 ✅ ("matches the header color exactly")
+  * Background: cream ✅
+- Lint: 0 errors, 2 pre-existing warnings.
+- COULD NOT PUSH: no git credentials available in the environment (no ~/.git-credentials, no ~/.netrc, no GITHUB_TOKEN env var, no gh CLI). User needs to push manually.
+
+Stage Summary:
+- Commit 9278d87 ready on feature/verdara-rrms (1 commit ahead of origin).
+- Brand color updated from #1A3D2E (deep forest green) to #2E8B57 (SeaGreen) per owner's reference.
+- 6 files modified, 15 insertions, 15 deletions — colors only, no functionality changed.
+- NOT pushed to remote — user must run: `git push origin feature/verdara-rrms`
+- main branch untouched.
+
