@@ -88,7 +88,7 @@ export function AboutPage() {
       </section>
 
       {/* Stats band */}
-      <section className="bg-[#0A3D4A] py-14 text-white">
+      <section className="bg-[#1E5A3A] py-14 text-white">
         <div className="container-luxury">
           <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
             {STATS.map((s, i) => (

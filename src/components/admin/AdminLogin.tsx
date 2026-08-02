@@ -85,7 +85,7 @@ export function AdminLogin() {
   return (
     <div className="relative grid min-h-screen grid-cols-1 xl:grid-cols-[1.1fr_1fr]">
       {/* Left: brand panel — hidden below xl to give form room on tablets/large phones */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#0A3D4A] p-10 text-white xl:flex lg:p-14">
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#1E5A3A] p-10 text-white xl:flex lg:p-14">
         {/* Decorative ocean pattern */}
         <svg
           aria-hidden
@@ -118,7 +118,7 @@ export function AdminLogin() {
 
         {/* Glow */}
         <div className="pointer-events-none absolute -right-32 top-1/4 size-96 rounded-full bg-coral/20 blur-3xl" />
-        <div className="pointer-events-none absolute -left-24 bottom-0 size-96 rounded-full bg-[#4DBFD4]/20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-24 bottom-0 size-96 rounded-full bg-[#4ADE80]/20 blur-3xl" />
 
         <button
           onClick={() => navigate("home")}
@@ -160,7 +160,7 @@ export function AdminLogin() {
         <div className="w-full max-w-sm sm:max-w-md">
           {/* Brand header — visible below xl since left brand panel is hidden */}
           <div className="mb-6 flex flex-col items-center text-center xl:hidden">
-            <div className="mb-3 flex size-12 items-center justify-center rounded-lg bg-[#0A3D4A]">
+            <div className="mb-3 flex size-12 items-center justify-center rounded-lg bg-[#1E5A3A]">
               <Waves className="size-6 text-white" />
             </div>
             <div className="eyebrow">Admin Suite</div>

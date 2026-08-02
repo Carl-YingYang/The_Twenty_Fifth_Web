@@ -559,7 +559,7 @@ export function HomePage() {
       {/* ============================================================
           STATS BAND
       ============================================================ */}
-      <section className="bg-[#0A3D4A] py-16 text-white sm:py-20">
+      <section className="bg-[#1E5A3A] py-16 text-white sm:py-20">
         <div className="container-luxury">
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-5">
             {STATS.map((s, i) => (

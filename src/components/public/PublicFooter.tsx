@@ -55,7 +55,7 @@ export function PublicFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-auto bg-[#0A3D4A] text-white/80">
+    <footer className="mt-auto bg-[#1E5A3A] text-white/80">
       <div className="container-luxury py-10 sm:py-12 lg:py-16">
         {/* ───────────────────────────────────────────────────────
             MOBILE LAYOUT (default) — compact, single-column with

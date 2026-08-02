@@ -43,9 +43,9 @@ const RANGE_OPTIONS = [
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "#D9943C",
-  CONFIRMED: "#2E8B6F",
-  CHECKED_IN: "#0E5A6F",
-  COMPLETED: "#6B7A7E",
+  CONFIRMED: "#2E8B57",
+  CHECKED_IN: "#1E5A3A",
+  COMPLETED: "#5A6B5A",
   CANCELLED: "#C0392B",
   REJECTED: "#9F1239",
   NO_SHOW: "#9F1239",
@@ -260,17 +260,17 @@ export function ReportsAdmin() {
               <BarChart data={monthlyData}>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#E5DED0"
+                  stroke="#D6DCD0"
                   vertical={false}
                 />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 11, fill: "#6B7A7E" }}
-                  axisLine={{ stroke: "#E5DED0" }}
+                  tick={{ fontSize: 11, fill: "#5A6B5A" }}
+                  axisLine={{ stroke: "#D6DCD0" }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "#6B7A7E" }}
+                  tick={{ fontSize: 11, fill: "#5A6B5A" }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => `₱${v >= 1000 ? `${Math.round(v / 1000)}k` : v}`}
@@ -279,11 +279,11 @@ export function ReportsAdmin() {
                   formatter={(v: number) => [formatCurrency(v), "Revenue"]}
                   contentStyle={{
                     borderRadius: 5,
-                    border: "1px solid #E5DED0",
+                    border: "1px solid #D6DCD0",
                     fontSize: 12,
                   }}
                 />
-                <Bar dataKey="revenue" fill="#0E5A6F" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" fill="#2E8B57" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -304,17 +304,17 @@ export function ReportsAdmin() {
               <LineChart data={weeklyData}>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#E5DED0"
+                  stroke="#D6DCD0"
                   vertical={false}
                 />
                 <XAxis
                   dataKey="week"
-                  tick={{ fontSize: 11, fill: "#6B7A7E" }}
-                  axisLine={{ stroke: "#E5DED0" }}
+                  tick={{ fontSize: 11, fill: "#5A6B5A" }}
+                  axisLine={{ stroke: "#D6DCD0" }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "#6B7A7E" }}
+                  tick={{ fontSize: 11, fill: "#5A6B5A" }}
                   axisLine={false}
                   tickLine={false}
                   allowDecimals={false}
@@ -323,16 +323,16 @@ export function ReportsAdmin() {
                   formatter={(v: number) => [v, "Bookings"]}
                   contentStyle={{
                     borderRadius: 5,
-                    border: "1px solid #E5DED0",
+                    border: "1px solid #D6DCD0",
                     fontSize: 12,
                   }}
                 />
                 <Line
                   type="monotone"
                   dataKey="reservations"
-                  stroke="#E27D60"
+                  stroke="#3A9D5C"
                   strokeWidth={2}
-                  dot={{ fill: "#E27D60", r: 3 }}
+                  dot={{ fill: "#3A9D5C", r: 3 }}
                   activeDot={{ r: 5 }}
                 />
               </LineChart>
@@ -371,14 +371,14 @@ export function ReportsAdmin() {
                       {statusData.map((entry) => (
                         <Cell
                           key={entry.key}
-                          fill={STATUS_COLORS[entry.key] ?? "#6B7A7E"}
+                          fill={STATUS_COLORS[entry.key] ?? "#5A6B5A"}
                         />
                       ))}
                     </Pie>
                     <Tooltip
                       contentStyle={{
                         borderRadius: 5,
-                        border: "1px solid #E5DED0",
+                        border: "1px solid #D6DCD0",
                         fontSize: 12,
                       }}
                     />
@@ -425,12 +425,12 @@ export function ReportsAdmin() {
               <BarChart data={roomTypeData} layout="vertical" margin={{ left: 0, right: 8 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#E5DED0"
+                  stroke="#D6DCD0"
                   horizontal={false}
                 />
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11, fill: "#6B7A7E" }}
+                  tick={{ fontSize: 11, fill: "#5A6B5A" }}
                   axisLine={false}
                   tickLine={false}
                   allowDecimals={false}
@@ -438,7 +438,7 @@ export function ReportsAdmin() {
                 <YAxis
                   type="category"
                   dataKey="name"
-                  tick={{ fontSize: 10, fill: "#6B7A7E" }}
+                  tick={{ fontSize: 10, fill: "#5A6B5A" }}
                   axisLine={false}
                   tickLine={false}
                   width={80}
@@ -447,13 +447,13 @@ export function ReportsAdmin() {
                   formatter={(v: number) => [v, "Bookings"]}
                   contentStyle={{
                     borderRadius: 5,
-                    border: "1px solid #E5DED0",
+                    border: "1px solid #D6DCD0",
                     fontSize: 12,
                   }}
                 />
                 <Bar
                   dataKey="count"
-                  fill="#2E8B6F"
+                  fill="#2E8B57"
                   radius={[0, 4, 4, 0]}
                 />
               </BarChart>

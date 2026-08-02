@@ -57,120 +57,120 @@
 }
 
 /* ============================================================
-   THE TWENTY-FIFTH — Editorial Beachfront Palette
-   - Warm sand background, deep ocean teal primary,
-     sunset coral accent, charcoal ink text.
+   THE TWENTY-FIFTH — Forest Green Identity Palette
+   - Warm cream background, deep forest green primary,
+     bright forest accent, charcoal-green ink text.
    - Sharp flat design: hairline borders, one shadow tier.
    ============================================================ */
 :root {
   --radius: 0.625rem;
 
   /* Surfaces */
-  --background: #FBF8F3;       /* warm sand */
-  --foreground: #1B2A2E;       /* near-black ink */
+  --background: #F8F8F0;       /* warm cream */
+  --foreground: #1A2E20;       /* deep forest ink */
   --card: #FFFFFF;
-  --card-foreground: #1B2A2E;
+  --card-foreground: #1A2E20;
   --popover: #FFFFFF;
-  --popover-foreground: #1B2A2E;
+  --popover-foreground: #1A2E20;
 
   /* Brand */
-  --primary: #0E5A6F;          /* deep ocean teal */
+  --primary: #2E8B57;          /* deep forest green */
   --primary-foreground: #FFFFFF;
-  --secondary: #F0E8DA;        /* soft sand chip */
-  --secondary-foreground: #1B2A2E;
-  --accent: #E27D60;           /* sunset coral */
+  --secondary: #E8F0E5;        /* soft sage chip */
+  --secondary-foreground: #1A2E20;
+  --accent: #3A9D5C;           /* bright forest green */
   --accent-foreground: #FFFFFF;
 
-  --coral: #E27D60;
+  --coral: #3A9D5C;
   --coral-foreground: #FFFFFF;
-  --sand: #F0E8DA;
-  --ink: #1B2A2E;
+  --sand: #E8F0E5;
+  --ink: #1A2E20;
 
-  --muted: #F4EFE6;
-  --muted-foreground: #6B7A7E;
-  --section: #F7F3EC;
+  --muted: #F0F2E8;
+  --muted-foreground: #5A6B5A;
+  --section: #F2F4EC;
 
   --destructive: #C0392B;
   --destructive-foreground: #FFFFFF;
-  --success: #2E8B6F;
+  --success: #2E8B57;
   --success-foreground: #FFFFFF;
   --warning: #D9943C;
-  --warning-foreground: #1B2A2E;
+  --warning-foreground: #1A2E20;
   --danger: #C0392B;
   --danger-foreground: #FFFFFF;
 
-  --border: #E5DED0;
-  --input: #E5DED0;
-  --ring: #0E5A6F;
+  --border: #D6DCD0;
+  --input: #D6DCD0;
+  --ring: #2E8B57;
 
-  --chart-1: #0E5A6F;
-  --chart-2: #E27D60;
-  --chart-3: #2E8B6F;
+  --chart-1: #2E8B57;
+  --chart-2: #3A9D5C;
+  --chart-3: #6BB386;
   --chart-4: #D9943C;
-  --chart-5: #6B7A7E;
+  --chart-5: #5A6B5A;
 
-  /* Admin sidebar — deep ocean */
-  --sidebar: #0A3D4A;
-  --sidebar-foreground: #E8F1F4;
-  --sidebar-primary: #E27D60;
+  /* Admin sidebar — deep forest */
+  --sidebar: #1E5A3A;
+  --sidebar-foreground: #E8F0E5;
+  --sidebar-primary: #3A9D5C;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #0F4C5C;
+  --sidebar-accent: #246B47;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #0F4C5C;
-  --sidebar-ring: #E27D60;
+  --sidebar-border: #246B47;
+  --sidebar-ring: #3A9D5C;
 }
 
 .dark {
-  --background: #0F1F24;
-  --foreground: #EDE6D8;
-  --card: #162A30;
-  --card-foreground: #EDE6D8;
-  --popover: #162A30;
-  --popover-foreground: #EDE6D8;
+  --background: #0F1F15;
+  --foreground: #EDEFE5;
+  --card: #162A1B;
+  --card-foreground: #EDEFE5;
+  --popover: #162A1B;
+  --popover-foreground: #EDEFE5;
 
-  --primary: #4DBFD4;
-  --primary-foreground: #0A1F25;
-  --secondary: #1F3A42;
-  --secondary-foreground: #EDE6D8;
-  --accent: #E8987E;
-  --accent-foreground: #1B2A2E;
+  --primary: #4ADE80;
+  --primary-foreground: #0A1F10;
+  --secondary: #1F3A26;
+  --secondary-foreground: #EDEFE5;
+  --accent: #6BB386;
+  --accent-foreground: #0A1F10;
 
-  --coral: #E8987E;
-  --coral-foreground: #1B2A2E;
-  --sand: #1F3A42;
-  --ink: #EDE6D8;
+  --coral: #6BB386;
+  --coral-foreground: #0A1F10;
+  --sand: #1F3A26;
+  --ink: #EDEFE5;
 
-  --muted: #1A2C32;
-  --muted-foreground: #9FB0B5;
-  --section: #122429;
+  --muted: #1A2C20;
+  --muted-foreground: #9FB0A5;
+  --section: #12241A;
 
   --destructive: #E57373;
-  --destructive-foreground: #0F1F24;
+  --destructive-foreground: #0F1F15;
   --success: #4ADE80;
-  --success-foreground: #0F1F24;
+  --success-foreground: #0F1F15;
   --warning: #FBBF24;
-  --warning-foreground: #0F1F24;
+  --warning-foreground: #0F1F15;
   --danger: #E57373;
-  --danger-foreground: #0F1F24;
+  --danger-foreground: #0F1F15;
 
-  --border: #2D4A52;
-  --input: #2D4A52;
-  --ring: #4DBFD4;
+  --border: #2D4A36;
+  --input: #2D4A36;
+  --ring: #4ADE80;
 
-  --chart-1: #4DBFD4;
-  --chart-2: #E8987E;
-  --chart-3: #4ADE80;
+  --chart-1: #4ADE80;
+  --chart-2: #6BB386;
+  --chart-3: #2E8B57;
   --chart-4: #FBBF24;
-  --chart-5: #9FB0B5;
+  --chart-5: #9FB0A5;
 
-  --sidebar: #072B35;
-  --sidebar-foreground: #C9DBE0;
-  --sidebar-primary: #E8987E;
-  --sidebar-primary-foreground: #072B35;
-  --sidebar-accent: #122E38;
-  --sidebar-accent-foreground: #EDE6D8;
-  --sidebar-border: #122E38;
-  --sidebar-ring: #E8987E;
+  --sidebar: #0A1F12;
+  --sidebar-foreground: #C9DBCE;
+  --sidebar-primary: #6BB386;
+  --sidebar-primary-foreground: #0A1F12;
+  --sidebar-accent: #12241A;
+  --sidebar-accent-foreground: #EDEFE5;
+  --sidebar-border: #12241A;
+  --sidebar-ring: #6BB386;
 }
 
 @layer base {
@@ -198,7 +198,7 @@
     letter-spacing: -0.01em;
     font-weight: 600;
   }
-  /* Custom scrollbar — slim, sand-toned */
+  /* Custom scrollbar — slim, sage-toned */
   ::-webkit-scrollbar {
     width: 9px;
     height: 9px;
@@ -207,17 +207,17 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #D6CDB9;
+    background: #C9D4C5;
     border-radius: 5px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #B5AB95;
+    background: #A8B5A5;
     background-clip: content-box;
   }
   .dark ::-webkit-scrollbar-thumb {
-    background: #2D4A52;
+    background: #2D4A36;
     background-clip: content-box;
   }
   /* Selection */
@@ -225,6 +225,7 @@
     background: var(--coral);
     color: #FFFFFF;
   }
+  /* Print ink — deep forest */
 }
 
 @layer utilities {
@@ -234,9 +235,9 @@
   .text-pretty {
     text-wrap: pretty;
   }
-  /* Brand gradient text — teal → coral */
+  /* Brand gradient text — deep → bright forest */
   .text-gradient-ocean {
-    background: linear-gradient(120deg, #0E5A6F 0%, #2E8B6F 55%, #E27D60 110%);
+    background: linear-gradient(120deg, #2E8B57 0%, #3A9D5C 55%, #6BB386 110%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -255,13 +256,13 @@
   .shadow-luxury,
   .shadow-flat,
   .shadow-flat-sm {
-    box-shadow: 0 1px 2px rgba(15, 31, 36, 0.04),
-                0 1px 3px rgba(15, 31, 36, 0.06);
+    box-shadow: 0 1px 2px rgba(15, 31, 21, 0.04),
+                0 1px 3px rgba(15, 31, 21, 0.06);
   }
   .shadow-card-hover,
   .shadow-luxury-lg {
-    box-shadow: 0 2px 4px rgba(15, 31, 36, 0.05),
-                0 8px 24px -8px rgba(14, 90, 111, 0.18);
+    box-shadow: 0 2px 4px rgba(15, 31, 21, 0.05),
+                0 8px 24px -8px rgba(46, 139, 87, 0.22);
   }
   /* Hairline border helper */
   .border-hairline { border: 1px solid var(--border); }
@@ -328,7 +329,7 @@
   /* Reset layout so the invoice takes the full page */
   html, body {
     background: #ffffff !important;
-    color: #1B2A2E !important;
+    color: #1A2E20 !important;
     font-size: 11pt !important;
   }
 
@@ -345,7 +346,7 @@
   /* The invoice card itself — strip shadows/borders for print */
   [data-invoice] {
     box-shadow: none !important;
-    border: 1px solid #d4cfc1 !important;
+    border: 1px solid #c9d4c5 !important;
     page-break-inside: avoid;
   }
 

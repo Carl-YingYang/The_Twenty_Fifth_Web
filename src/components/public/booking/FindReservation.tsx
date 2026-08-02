@@ -201,7 +201,7 @@ export function FindReservation() {
 
                 <Card data-invoice className="overflow-hidden rounded-lg border border-border shadow-card">
                   {/* Header */}
-                  <div className="flex flex-col-reverse gap-3 bg-[#0A3D4A] p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-7">
+                  <div className="flex flex-col-reverse gap-3 bg-[#1E5A3A] p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-7">
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-coral">
                         Reservation
