@@ -302,7 +302,7 @@ export function CalendarAdmin() {
         {roomsData?.rooms && (
           <BlockDatesDialog rooms={roomsData.rooms}>
             <Button variant="outline" size="sm" className="h-9 gap-2">
-              <Ban className="size-4 text-red-600" />
+              <Ban className="size-4 text-red-600 dark:text-red-400" />
               Block Dates
             </Button>
           </BlockDatesDialog>

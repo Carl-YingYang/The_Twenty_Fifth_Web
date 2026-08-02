@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *, .admin-scope *));
 
 @theme inline {
   --color-background: var(--background);
@@ -49,6 +49,10 @@
   --color-coral-foreground: var(--coral-foreground);
   --color-sand: var(--sand);
   --color-ink: var(--ink);
+  --color-cta: var(--cta);
+  --color-cta-foreground: var(--cta-foreground);
+  --color-band: var(--band);
+  --color-band-foreground: var(--band-foreground);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -57,9 +61,9 @@
 }
 
 /* ============================================================
-   THE TWENTY-FIFTH — Forest Green Identity Palette
-   - Warm cream background, deep forest green primary,
-     bright forest accent, charcoal-green ink text.
+   THE TWENTY-FIFTH — Coastal Luxury Palette
+   - Cream background, deep forest green primary (header/footer/bands),
+     terracotta hero accent, cyan CTA buttons.
    - Sharp flat design: hairline borders, one shadow tier.
    ============================================================ */
 :root {
@@ -67,110 +71,190 @@
 
   /* Surfaces */
   --background: #F8F8F0;       /* warm cream */
-  --foreground: #1A2E20;       /* deep forest ink */
+  --foreground: #2C2C2C;       /* near-black charcoal */
   --card: #FFFFFF;
-  --card-foreground: #1A2E20;
+  --card-foreground: #2C2C2C;
   --popover: #FFFFFF;
-  --popover-foreground: #1A2E20;
+  --popover-foreground: #2C2C2C;
 
-  /* Brand */
-  --primary: #2E8B57;          /* deep forest green */
+  /* Brand — deep forest green (header, footer, stat bands) */
+  --primary: #1A3D2E;          /* deep forest green */
   --primary-foreground: #FFFFFF;
-  --secondary: #E8F0E5;        /* soft sage chip */
-  --secondary-foreground: #1A2E20;
-  --accent: #3A9D5C;           /* bright forest green */
+  --secondary: #EFE8E0;        /* soft warm chip */
+  --secondary-foreground: #2C2C2C;
+  --accent: #1A3D2E;           /* forest green accent */
   --accent-foreground: #FFFFFF;
 
-  --coral: #3A9D5C;
-  --coral-foreground: #FFFFFF;
-  --sand: #E8F0E5;
-  --ink: #1A2E20;
+  /* Terracotta — hero bands, eyebrow labels, hover accents */
+  --coral: #E8A88C;            /* dusty terracotta / salmon */
+  --coral-foreground: #3D2B24; /* warm dark brown text on terracotta */
+  --sand: #EFE8E0;
+  --ink: #2C2C2C;
 
-  --muted: #F0F2E8;
-  --muted-foreground: #5A6B5A;
-  --section: #F2F4EC;
+  /* Cyan — CTA buttons, action highlights */
+  --cta: #5EC4CE;              /* bright cyan / teal */
+  --cta-foreground: #FFFFFF;
+
+  /* Deep forest band — stats bands, CTAs that need solid green */
+  --band: #1A3D2E;
+  --band-foreground: #FFFFFF;
+
+  --muted: #F2EEE5;
+  --muted-foreground: #5A6B5F;
+  --section: #F4F1E8;
 
   --destructive: #C0392B;
   --destructive-foreground: #FFFFFF;
   --success: #2E8B57;
   --success-foreground: #FFFFFF;
   --warning: #D9943C;
-  --warning-foreground: #1A2E20;
+  --warning-foreground: #2C2C2C;
   --danger: #C0392B;
   --danger-foreground: #FFFFFF;
 
-  --border: #D6DCD0;
-  --input: #D6DCD0;
-  --ring: #2E8B57;
+  --border: #E0DCD2;
+  --input: #E0DCD2;
+  --ring: #5EC4CE;
 
-  --chart-1: #2E8B57;
-  --chart-2: #3A9D5C;
-  --chart-3: #6BB386;
+  --chart-1: #1A3D2E;
+  --chart-2: #E8A88C;
+  --chart-3: #5EC4CE;
   --chart-4: #D9943C;
-  --chart-5: #5A6B5A;
+  --chart-5: #5A6B5F;
 
-  /* Admin sidebar — deep forest */
-  --sidebar: #1E5A3A;
+  /* Admin sidebar (public-facing launcher + admin default) */
+  --sidebar: #1A3D2E;
   --sidebar-foreground: #E8F0E5;
-  --sidebar-primary: #3A9D5C;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #246B47;
+  --sidebar-primary: #E8A88C;
+  --sidebar-primary-foreground: #3D2B24;
+  --sidebar-accent: #246047;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #246B47;
-  --sidebar-ring: #3A9D5C;
+  --sidebar-border: #246047;
+  --sidebar-ring: #E8A88C;
+}
+
+/* ============================================================
+   ADMIN SCOPE — Dark Teal-Green Dashboard Theme
+   Applied to .admin-scope wrapper on AdminLayout + AdminLogin.
+   Overrides the light tokens with a dark luxury SaaS palette:
+   deep teal-green surfaces, coral accents, emerald success.
+   ============================================================ */
+.admin-scope {
+  --background: #0F2B2D;       /* deep desaturated teal-green */
+  --foreground: #F0F4F5;       /* cool off-white */
+  --card: #1A3839;             /* dark slate-teal card */
+  --card-foreground: #F0F4F5;
+  --popover: #1A3839;
+  --popover-foreground: #F0F4F5;
+
+  --primary: #D4846A;          /* coral accent — admin brand */
+  --primary-foreground: #2C1A12;
+  --secondary: #244546;        /* lighter teal chip */
+  --secondary-foreground: #F0F4F5;
+  --accent: #D4846A;           /* coral */
+  --accent-foreground: #2C1A12;
+
+  --coral: #D4846A;            /* coral alert/accent */
+  --coral-foreground: #2C1A12;
+  --sand: #244546;
+  --ink: #F0F4F5;
+
+  --cta: #5EC4CE;              /* cyan — keep consistent with public */
+  --cta-foreground: #0F2B2D;
+
+  --band: #0A1F20;             /* deepest teal for bands */
+  --band-foreground: #F0F4F5;
+
+  --muted: #153133;
+  --muted-foreground: #94A7AA;  /* muted sage-gray */
+  --section: #132E30;
+
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --success: #10B981;           /* emerald */
+  --success-foreground: #0F2B2D;
+  --warning: #FBBF24;
+  --warning-foreground: #0F2B2D;
+  --danger: #EF4444;
+  --danger-foreground: #FFFFFF;
+
+  --border: #264D4F;            /* dark teal border */
+  --input: #264D4F;
+  --ring: #D4846A;
+
+  --chart-1: #10B981;           /* emerald */
+  --chart-2: #D4846A;           /* coral */
+  --chart-3: #5EC4CE;           /* cyan */
+  --chart-4: #FBBF24;           /* amber */
+  --chart-5: #94A7AA;           /* sage-gray */
+
+  /* Admin sidebar — same deep teal, slightly darker */
+  --sidebar: #0A1F20;
+  --sidebar-foreground: #C9DBCE;
+  --sidebar-primary: #D4846A;
+  --sidebar-primary-foreground: #0A1F20;
+  --sidebar-accent: #1A3839;
+  --sidebar-accent-foreground: #F0F4F5;
+  --sidebar-border: #1A3839;
+  --sidebar-ring: #D4846A;
 }
 
 .dark {
-  --background: #0F1F15;
-  --foreground: #EDEFE5;
-  --card: #162A1B;
-  --card-foreground: #EDEFE5;
-  --popover: #162A1B;
-  --popover-foreground: #EDEFE5;
+  --background: #0F2B2D;
+  --foreground: #F0F4F5;
+  --card: #1A3839;
+  --card-foreground: #F0F4F5;
+  --popover: #1A3839;
+  --popover-foreground: #F0F4F5;
 
-  --primary: #4ADE80;
-  --primary-foreground: #0A1F10;
-  --secondary: #1F3A26;
-  --secondary-foreground: #EDEFE5;
-  --accent: #6BB386;
-  --accent-foreground: #0A1F10;
+  --primary: #5EC4CE;
+  --primary-foreground: #0F2B2D;
+  --secondary: #244546;
+  --secondary-foreground: #F0F4F5;
+  --accent: #E8A88C;
+  --accent-foreground: #3D2B24;
 
-  --coral: #6BB386;
-  --coral-foreground: #0A1F10;
-  --sand: #1F3A26;
-  --ink: #EDEFE5;
+  --coral: #E8A88C;
+  --coral-foreground: #3D2B24;
+  --sand: #244546;
+  --ink: #F0F4F5;
 
-  --muted: #1A2C20;
-  --muted-foreground: #9FB0A5;
-  --section: #12241A;
+  --cta: #5EC4CE;
+  --cta-foreground: #0F2B2D;
+  --band: #0A1F20;
+  --band-foreground: #F0F4F5;
 
-  --destructive: #E57373;
-  --destructive-foreground: #0F1F15;
-  --success: #4ADE80;
-  --success-foreground: #0F1F15;
+  --muted: #153133;
+  --muted-foreground: #94A7AA;
+  --section: #132E30;
+
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --success: #10B981;
+  --success-foreground: #0F2B2D;
   --warning: #FBBF24;
-  --warning-foreground: #0F1F15;
-  --danger: #E57373;
-  --danger-foreground: #0F1F15;
+  --warning-foreground: #0F2B2D;
+  --danger: #EF4444;
+  --danger-foreground: #FFFFFF;
 
-  --border: #2D4A36;
-  --input: #2D4A36;
-  --ring: #4ADE80;
+  --border: #264D4F;
+  --input: #264D4F;
+  --ring: #5EC4CE;
 
-  --chart-1: #4ADE80;
-  --chart-2: #6BB386;
-  --chart-3: #2E8B57;
+  --chart-1: #5EC4CE;
+  --chart-2: #E8A88C;
+  --chart-3: #10B981;
   --chart-4: #FBBF24;
-  --chart-5: #9FB0A5;
+  --chart-5: #94A7AA;
 
-  --sidebar: #0A1F12;
+  --sidebar: #0A1F20;
   --sidebar-foreground: #C9DBCE;
-  --sidebar-primary: #6BB386;
-  --sidebar-primary-foreground: #0A1F12;
-  --sidebar-accent: #12241A;
-  --sidebar-accent-foreground: #EDEFE5;
-  --sidebar-border: #12241A;
-  --sidebar-ring: #6BB386;
+  --sidebar-primary: #E8A88C;
+  --sidebar-primary-foreground: #3D2B24;
+  --sidebar-accent: #1A3839;
+  --sidebar-accent-foreground: #F0F4F5;
+  --sidebar-border: #1A3839;
+  --sidebar-ring: #E8A88C;
 }
 
 @layer base {
@@ -198,7 +282,7 @@
     letter-spacing: -0.01em;
     font-weight: 600;
   }
-  /* Custom scrollbar — slim, sage-toned */
+  /* Custom scrollbar — slim, warm-toned */
   ::-webkit-scrollbar {
     width: 9px;
     height: 9px;
@@ -207,17 +291,18 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #C9D4C5;
+    background: #D8D0C2;
     border-radius: 5px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #A8B5A5;
+    background: #B5AB95;
     background-clip: content-box;
   }
-  .dark ::-webkit-scrollbar-thumb {
-    background: #2D4A36;
+  .dark ::-webkit-scrollbar-thumb,
+  .admin-scope ::-webkit-scrollbar-thumb {
+    background: #264D4F;
     background-clip: content-box;
   }
   /* Selection */
@@ -235,9 +320,9 @@
   .text-pretty {
     text-wrap: pretty;
   }
-  /* Brand gradient text — deep → bright forest */
+  /* Brand gradient text — forest → terracotta → cyan */
   .text-gradient-ocean {
-    background: linear-gradient(120deg, #2E8B57 0%, #3A9D5C 55%, #6BB386 110%);
+    background: linear-gradient(120deg, #1A3D2E 0%, #E8A88C 55%, #5EC4CE 110%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -256,13 +341,13 @@
   .shadow-luxury,
   .shadow-flat,
   .shadow-flat-sm {
-    box-shadow: 0 1px 2px rgba(15, 31, 21, 0.04),
-                0 1px 3px rgba(15, 31, 21, 0.06);
+    box-shadow: 0 1px 2px rgba(15, 43, 45, 0.04),
+                0 1px 3px rgba(15, 43, 45, 0.06);
   }
   .shadow-card-hover,
   .shadow-luxury-lg {
-    box-shadow: 0 2px 4px rgba(15, 31, 21, 0.05),
-                0 8px 24px -8px rgba(46, 139, 87, 0.22);
+    box-shadow: 0 2px 4px rgba(15, 43, 45, 0.05),
+                0 8px 24px -8px rgba(94, 196, 206, 0.22);
   }
   /* Hairline border helper */
   .border-hairline { border: 1px solid var(--border); }
@@ -329,7 +414,7 @@
   /* Reset layout so the invoice takes the full page */
   html, body {
     background: #ffffff !important;
-    color: #1A2E20 !important;
+    color: #2C2C2C !important;
     font-size: 11pt !important;
   }
 
@@ -346,7 +431,7 @@
   /* The invoice card itself — strip shadows/borders for print */
   [data-invoice] {
     box-shadow: none !important;
-    border: 1px solid #c9d4c5 !important;
+    border: 1px solid #d8d0c2 !important;
     page-break-inside: avoid;
   }
 

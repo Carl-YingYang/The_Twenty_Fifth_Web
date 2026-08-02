@@ -178,7 +178,7 @@ export function GalleryAdmin() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-2 top-2 size-8 bg-white/90 text-foreground backdrop-blur-sm transition-opacity hover:bg-white hover:text-red-700 sm:opacity-0 sm:group-hover:opacity-100"
+                  className="absolute right-2 top-2 size-8 bg-white/90 text-foreground backdrop-blur-sm transition-opacity hover:bg-white hover:text-red-700 dark:hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
                   onClick={() => setDeleting(item)}
                   aria-label={`Remove ${item.title}`}
                 >

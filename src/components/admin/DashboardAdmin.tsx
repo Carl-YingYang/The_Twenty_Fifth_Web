@@ -324,7 +324,7 @@ function NeedsAttention() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1 h-9 border-red-300 text-red-700 hover:bg-red-50 sm:flex-none"
+                  className="flex-1 h-9 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40 sm:flex-none"
                   disabled={statusMutation.isPending}
                   onClick={() =>
                     setPendingAction({ reservation: r, status: "REJECTED" })
@@ -467,8 +467,8 @@ function OccupancyDonut({
   rate: number;
 }) {
   const data = [
-    { name: "Occupied", value: occupied, color: "#2E8B57" },
-    { name: "Available", value: available, color: "#D6DCD0" },
+    { name: "Occupied", value: occupied, color: "#10B981" },
+    { name: "Available", value: available, color: "#264D4F" },
   ];
   return (
     <div className="flex flex-col items-center">
@@ -501,7 +501,7 @@ function OccupancyDonut({
         <div className="flex items-center gap-1.5">
           <span
             className={cn("size-2.5 rounded-full")}
-            style={{ backgroundColor: "#2E8B57" }}
+            style={{ backgroundColor: "#10B981" }}
           />
           <span className="text-muted-foreground">
             Occupied <span className="font-medium text-foreground">{occupied}</span>
@@ -510,7 +510,7 @@ function OccupancyDonut({
         <div className="flex items-center gap-1.5">
           <span
             className="size-2.5 rounded-full"
-            style={{ backgroundColor: "#D6DCD0" }}
+            style={{ backgroundColor: "#264D4F" }}
           />
           <span className="text-muted-foreground">
             Open <span className="font-medium text-foreground">{available}</span>

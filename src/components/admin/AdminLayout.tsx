@@ -14,10 +14,8 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Moon,
   Settings,
   Sparkles,
-  Sun,
   Users,
   Waves,
 } from "lucide-react";
@@ -73,7 +71,6 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
   const { isAuthenticated, user, logout } = useAuthStore();
   const { view, navigate } = useViewStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const mounted = useMounted();
@@ -91,34 +88,6 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
       navigate("admin-login");
     }
   }, [meData, logout, navigate]);
-
-  // Theme init — read from localStorage on mount (legitimate hydration pattern)
-  useEffect(() => {
-    const stored = (typeof window !== "undefined"
-      ? localStorage.getItem("rrms-theme")
-      : null) as "light" | "dark" | null;
-    const initial = stored ?? "light";
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTheme(initial);
-    if (initial === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
-
-  function toggleTheme() {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("rrms-theme", next);
-      if (next === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
-  }
 
   if (!mounted) {
     return <AdminLayoutSkeleton />;
@@ -168,7 +137,7 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="admin-scope min-h-screen bg-background text-foreground">
       <div className="flex min-h-screen">
         {/* Desktop sidebar */}
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 lg:block">
@@ -194,8 +163,6 @@ export function AdminLayout({ title, subtitle, children, actions }: AdminLayoutP
             actions={actions}
             onOpenMobileNav={() => setMobileNavOpen(true)}
             user={user}
-            theme={theme}
-            onToggleTheme={toggleTheme}
           />
           <main className="min-h-0 flex-1 p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8">{children}</main>
         </div>
@@ -322,16 +289,12 @@ function TopBar({
   actions,
   onOpenMobileNav,
   user,
-  theme,
-  onToggleTheme,
 }: {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
   onOpenMobileNav: () => void;
   user: User | null;
-  theme: "light" | "dark";
-  onToggleTheme: () => void;
 }) {
   const { navigate } = useViewStore();
   return (
@@ -357,20 +320,6 @@ function TopBar({
 
       <div className="flex items-center gap-1 sm:gap-1.5">
         {actions}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-9"
-          onClick={onToggleTheme}
-          aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-          title={theme === "light" ? "Dark mode" : "Light mode"}
-        >
-          {theme === "light" ? (
-            <Moon className="size-4" />
-          ) : (
-            <Sun className="size-4" />
-          )}
-        </Button>
         <NotificationsBell />
         <Button
           variant="outline"

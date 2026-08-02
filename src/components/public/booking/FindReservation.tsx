@@ -185,9 +185,9 @@ export function FindReservation() {
                 {/* Print-only invoice header — only visible when printing.
                     Shows resort name + contact info at the top of the printed page. */}
                 <div data-print-only className="hidden">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1F6F50", paddingBottom: "12px", marginBottom: "20px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1A3D2E", paddingBottom: "12px", marginBottom: "20px" }}>
                     <div>
-                      <h1 style={{ fontSize: "20pt", fontWeight: 700, color: "#1F6F50", margin: 0 }}>{RESORT_INFO.name}</h1>
+                      <h1 style={{ fontSize: "20pt", fontWeight: 700, color: "#1A3D2E", margin: 0 }}>{RESORT_INFO.name}</h1>
                       <p style={{ fontSize: "10pt", color: "#6b6557", margin: "4px 0 0" }}>
                         {RESORT_INFO.addressShort} · {RESORT_INFO.phone} · {RESORT_INFO.email}
                       </p>
@@ -201,7 +201,7 @@ export function FindReservation() {
 
                 <Card data-invoice className="overflow-hidden rounded-lg border border-border shadow-card">
                   {/* Header */}
-                  <div className="flex flex-col-reverse gap-3 bg-[#1E5A3A] p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-7">
+                  <div className="flex flex-col-reverse gap-3 bg-[#1A3D2E] p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-7">
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-coral">
                         Reservation

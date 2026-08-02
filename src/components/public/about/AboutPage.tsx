@@ -88,7 +88,7 @@ export function AboutPage() {
       </section>
 
       {/* Stats band */}
-      <section className="bg-[#1E5A3A] py-14 text-white">
+      <section className="bg-[#1A3D2E] py-14 text-white">
         <div className="container-luxury">
           <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
             {STATS.map((s, i) => (
@@ -190,7 +190,7 @@ export function AboutPage() {
             <Button
               onClick={() => navigate("book")}
               size="lg"
-              className="rounded-md bg-white text-coral hover:bg-white/90"
+              className="rounded-md bg-cta text-cta-foreground hover:bg-cta/90"
             >
               Book Your Stay
               <ArrowRight className="h-4 w-4" />

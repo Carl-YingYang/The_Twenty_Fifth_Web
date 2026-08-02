@@ -37,16 +37,16 @@ const TONE_CONFIG: Record<
   },
   warning: {
     icon: AlertTriangle,
-    iconClass: "text-amber-500",
+    iconClass: "text-amber-500 dark:text-amber-400",
     actionClass:
-      "bg-amber-600 text-white hover:bg-amber-600/90 focus-visible:ring-amber-600/20",
+      "bg-amber-600 text-white hover:bg-amber-600/90 focus-visible:ring-amber-600/20 dark:bg-amber-500 dark:hover:bg-amber-500/90",
     ring: "ring-amber-500/20",
   },
   success: {
     icon: CheckCircle2,
-    iconClass: "text-emerald-600",
+    iconClass: "text-emerald-600 dark:text-emerald-400",
     actionClass:
-      "bg-emerald-700 text-white hover:bg-emerald-700/90 focus-visible:ring-emerald-700/20",
+      "bg-emerald-700 text-white hover:bg-emerald-700/90 focus-visible:ring-emerald-700/20 dark:bg-emerald-500 dark:hover:bg-emerald-500/90",
     ring: "ring-emerald-600/20",
   },
   info: {

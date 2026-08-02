@@ -148,7 +148,7 @@ function Field({
       <Label className="text-sm font-medium text-foreground">{label}</Label>
       {children}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {error && <p className="text-xs text-red-700">{error}</p>}
+      {error && <p className="text-xs text-red-700 dark:text-red-400">{error}</p>}
     </div>
   );
 }

@@ -42,7 +42,7 @@ export function PublicNav() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#1A3D2E]/95 text-white backdrop-blur-sm">
       <div className="container-luxury">
         <div className="flex h-16 items-center justify-between md:h-20">
           {/* Wordmark */}
@@ -51,10 +51,10 @@ export function PublicNav() {
             className="group flex flex-col items-start leading-none"
             aria-label={`${RESORT_INFO.name} home`}
           >
-            <span className="font-display text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+            <span className="font-display text-lg font-semibold tracking-tight text-white sm:text-xl">
               {RESORT_INFO.name}
             </span>
-            <span className="mt-0.5 text-[0.55rem] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+            <span className="mt-0.5 text-[0.55rem] font-medium uppercase tracking-[0.32em] text-white/60">
               Zambales
             </span>
           </button>
@@ -70,13 +70,13 @@ export function PublicNav() {
                   className={cn(
                     "relative px-4 py-2 text-sm font-medium transition-colors",
                     active
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "text-white"
+                      : "text-white/70 hover:text-white"
                   )}
                 >
                   {item.label}
                   {active && (
-                    <span className="absolute inset-x-4 -bottom-0.5 h-0.5 rounded-full bg-coral" />
+                    <span className="absolute inset-x-4 -bottom-0.5 h-0.5 rounded-full bg-cta" />
                   )}
                 </button>
               );
@@ -86,13 +86,13 @@ export function PublicNav() {
           {/* Right side */}
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Vertical divider between nav and actions (desktop only) */}
-            <span className="hidden h-6 w-px bg-border lg:block" aria-hidden="true" />
+            <span className="hidden h-6 w-px bg-white/15 lg:block" aria-hidden="true" />
 
             {/* Dark mode toggle */}
             {mounted && themeReady && (
               <button
                 onClick={toggleTheme}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-9 sm:w-9"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-9 sm:w-9"
                 aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -100,14 +100,14 @@ export function PublicNav() {
             )}
             <button
               onClick={() => go("find-reservation")}
-              className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
+              className="hidden text-sm font-medium text-white/80 transition-colors hover:text-white md:inline-flex"
             >
               Find My Booking
             </button>
             <Button
               onClick={() => go("book")}
               size="sm"
-              className="hidden rounded-md bg-primary px-5 text-primary-foreground hover:bg-primary/90 md:inline-flex"
+              className="hidden rounded-md bg-cta px-5 text-cta-foreground hover:bg-cta/90 md:inline-flex"
             >
               Book Your Stay
             </Button>
@@ -116,7 +116,7 @@ export function PublicNav() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
+              className="text-white hover:bg-white/10 hover:text-white lg:hidden"
               aria-label="Open menu"
               onClick={() => setOpen(true)}
             >
@@ -155,7 +155,7 @@ export function PublicNav() {
                     className={cn(
                       "flex min-h-[44px] items-center justify-center rounded-lg px-3 py-2.5 text-[0.9rem] font-medium transition-colors",
                       active
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-cta/10 text-cta"
                         : "text-foreground hover:bg-muted"
                     )}
                   >
@@ -177,7 +177,7 @@ export function PublicNav() {
               </button>
               <Button
                 onClick={() => go("book")}
-                className="min-h-[44px] rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                className="min-h-[44px] rounded-lg bg-cta text-cta-foreground hover:bg-cta/90"
               >
                 Book Your Stay
               </Button>

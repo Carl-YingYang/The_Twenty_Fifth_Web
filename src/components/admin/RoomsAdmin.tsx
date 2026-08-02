@@ -512,7 +512,7 @@ function RoomCard({
           <Button
             variant="ghost"
             size="icon"
-            className="size-10 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-700"
+            className="size-10 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-400"
             onClick={onDelete}
             aria-label="Remove room"
           >
@@ -980,7 +980,7 @@ function Field({
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-foreground">{label}</Label>
       {children}
-      {error && <p className="text-xs text-red-700">{error}</p>}
+      {error && <p className="text-xs text-red-700 dark:text-red-400">{error}</p>}
     </div>
   );
 }

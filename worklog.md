@@ -3160,3 +3160,515 @@ Stage Summary:
 - Admin login: stay@the25thinzambales.com / verdara2025 (ADMIN_SEED_PASSWORD in local .env only).
 - Test block was created and deleted during QA — DB is clean.
 - SECURITY NOTE: The GitHub PAT (ghp_JTN9...) was used for the push. User should revoke it at https://github.com/settings/tokens.
+<<<<<<< Updated upstream
+=======
+
+---
+Task ID: color-theme-rebrand
+Agent: main (Z.ai Code)
+Task: Change the ENTIRE color theme of the system to match the user's uploaded brand image (deep forest green + white + cream). Only colors — no functionality changes. Push to feature/verdara-rrms.
+
+Work Log:
+- Analyzed the uploaded brand image (pasted_image_1785658819584.png) via VLM skill: deep forest green background (~#2E8B57), pure white text/graphics (#FFFFFF), off-white/cream secondary text (~#F8F8F0). The image is "THE TWENTY-FIFTH" wordmark with a mountain line-art illustration.
+- Switched to feature/verdara-rrms branch; reset local to origin/feature/verdara-rrms (969a94f) to sync with remote.
+- Updated src/app/globals.css — full palette swap in BOTH :root (light) and .dark (dark) blocks:
+  * Light: background #FBF8F3→#F8F8F0 (cream), primary #0E5A6F→#2E8B57 (forest green), accent/coral #E27D60→#3A9D5C (bright forest), foreground #1B2A2E→#1A2E20 (forest ink), sidebar #0A3D4A→#1E5A3A (deep forest), border #E5DED0→#D6DCD0 (sage), success #2E8B6F→#2E8B57.
+  * Dark: background #0F1F24→#0F1F15 (dark forest), primary #4DBFD4→#4ADE80 (bright green), accent #E8987E→#6BB386, sidebar #072B35→#0A1F12, border #2D4A52→#2D4A36.
+  * Scrollbar thumb #D6CDB9→#C9D4C5, hover #B5AB95→#A8B5A5, dark thumb #2D4A52→#2D4A36.
+  * Brand gradient text .text-gradient-ocean: teal→coral gradient changed to deep→bright forest green.
+  * Shadow tint rgba(14,90,111)→rgba(46,139,87) to match new brand hue.
+  * Print styles: ink color #1B2A2E→#1A2E20, invoice border #d4cfc1→#c9d4c5.
+  * Updated palette comment header from "Editorial Beachfront Palette" to "Forest Green Identity Palette".
+- Updated src/lib/constants.ts — status color hex values:
+  * CONFIRMED/AVAILABLE: #2E8B6F→#2E8B57 (forest green).
+  * CHECKED_IN/OCCUPIED: #0E5A6F→#1E5A3A (deep forest — distinguishes from confirmed).
+  * CLEANING: #4DBFD4→#4ADE80 (bright green).
+  * COMPLETED/BLOCKED: #6B7A7E→#5A6B5A (muted green-gray).
+  * Tailwind utility classes: bg-teal-*/text-teal-*→bg-green-*/text-green-*, bg-sky-*/text-sky-*→bg-lime-*/text-lime-* (CLEANING).
+  * CALENDAR_STATUS_COLORS map updated to match.
+- Updated src/components/admin/ReportsAdmin.tsx — STATUS_COLORS map + all chart hex (CartesianGrid stroke, axis tick fill, tooltip borders, Bar fills, Line stroke/dot) swapped via replace_all: #E5DED0→#D6DCD0, #6B7A7E→#5A6B5A, #0E5A6F→#2E8B57, #2E8B6F→#2E8B57, #E27D60→#3A9D5C.
+- Updated src/components/admin/DashboardAdmin.tsx — pie chart Occupied color #0E5A6F→#2E8B57, Available color #E5DED0→#D6DCD0 (both data array + legend swatches).
+- Updated src/components/admin/AdminLogin.tsx — left brand panel bg-[#0A3D4A]→bg-[#1E5A3A], glow bg-[#4DBFD4]/20→bg-[#4ADE80]/20, mobile brand icon bg-[#0A3D4A]→bg-[#1E5A3A].
+- Updated 4 public components with hardcoded bg-[#0A3D4A]→bg-[#1E5A3A]: AboutPage.tsx (stats band), PublicFooter.tsx (footer), HomePage.tsx (stats band), FindReservation.tsx (invoice header).
+- Verified: grep for all old theme hex (#0E5A6F, #E27D60, #0A3D4A, #2E8B6F, #6B7A7E, #E5DED0, #4DBFD4, + all dark variants) across src/ returns ZERO matches — fully migrated.
+- Lint: bun run lint passes with 0 errors (3 pre-existing React Hook Form watch() warnings, unrelated to colors).
+- Dev server: running healthy on :3000, GET / returns 200, no CSS compilation errors in dev.log.
+- Committed locally on feature/verdara-rrms: 1fb7273 "style: rebrand color theme to forest green identity" (9 files, 145 insertions, 144 deletions).
+
+Stage Summary:
+- Local feature/verdara-rrms @ 1fb7273 — color rebrand complete and committed. 1 commit ahead of origin/feature/verdara-rrms (969a94f).
+- PUSH BLOCKED: The GitHub PAT from the prior session (ghp_JTN9...) has been revoked (returns 401 "Bad credentials" from API). The prior worklog explicitly recommended the user revoke it for security — they did. A NEW PAT with `repo` scope is required to push.
+- Color mapping summary: teal→forest green, coral→bright forest green, sand→sage, ocean sidebar→deep forest sidebar. Status semantics preserved (amber=pending, green=confirmed/available, deep-green=checked-in/occupied, lime=cleaning, red=cancelled/maintenance, slate=completed/blocked).
+- No functionality, layout, or copy changed — only colors.
+
+Unresolved Issues / Next Steps:
+- PUSH PENDING: User must either (a) provide a fresh GitHub PAT with `repo` scope, or (b) push the local commit themselves via `git push origin feature/verdara-rrms` from their own machine. The commit (1fb7273) is ready on the local feature/verdara-rrms branch.
+- Optional follow-up: generate actual brand assets (favicon, og:image) in the new forest green theme to replace any teal-themed placeholders.
+
+---
+Task ID: color-theme-push
+Agent: main (Z.ai Code)
+Task: Push the color rebrand commit to origin/feature/verdara-rrms (was blocked by revoked PAT).
+
+Work Log:
+- User provided a fresh GitHub PAT (ghp_gTRU...).
+- Verified PAT validity via API: GET /user returned HTTP 200.
+- Pushed feature/verdara-rrms via token-embedded URL (x-access-token:ghp_...@github.com/...).
+- Remote updated: 969a94f → 1fb7273 "style: rebrand color theme to forest green identity".
+- Verified: git fetch + git log confirms origin/feature/verdara-rrms @ 1fb7273, in sync with local.
+
+Stage Summary:
+- origin/feature/verdara-rrms @ 1fb7273 — color rebrand LIVE on remote.
+- Forest green theme (deep #2E8B57 primary, bright #3A9D5C accent, cream #F8F8F0 background, deep forest #1E5A3A sidebar/footer) now deployed across the entire system.
+- SECURITY NOTE: New PAT (ghp_gTRU...) is active. User should revoke it after this work is complete at https://github.com/settings/tokens.
+
+---
+Task ID: theme-explore
+Agent: Explore
+Task: EXPLORE the codebase (read-only, no modifications) to map every theming file, color usage point, theme provider config, and admin/public layout structure in preparation for a full color theme overhaul. Produce a structured findings report to guide the implementation agent.
+
+Work Log:
+- Read prior worklog entries (full file, 3221 lines) — confirmed prior "color-theme-rebrand" commit (1fb7273) already swapped the entire palette to forest green identity. Current palette in `src/app/globals.css`: light = cream `#F8F8F0` bg + deep forest `#2E8B57` primary + bright forest `#3A9D5C` accent/coral + deep forest `#1E5A3A` sidebar/footer; dark = dark forest `#0F1F15` bg + `#4ADE80` primary.
+- Read all theming/layout files: `src/app/globals.css`, `tailwind.config.ts`, `postcss.config.mjs`, `package.json`, `src/app/layout.tsx`, `src/components/providers.tsx`, `src/app/page.tsx`, `src/components/public/PublicNav.tsx`, `src/components/public/PublicFooter.tsx`, `src/components/public/home/HomePage.tsx`, `src/components/public/about/AboutPage.tsx`, `src/components/public/booking/FindReservation.tsx`, `src/components/public/shared.tsx`, `src/components/admin/AdminLayout.tsx`, `src/components/admin/DashboardAdmin.tsx`, `src/components/admin/StatCard.tsx`, `src/components/admin/AdminLogin.tsx`, `src/components/admin/ConfirmDialog.tsx`, `src/lib/constants.ts`.
+- Grepped all of `src/` for hardcoded `bg-[#...]` / `text-[#...]` / `border-[#...]` literals, all `bg-coral` / `bg-primary` / `bg-sand` / `bg-section` / `bg-sidebar` / `bg-background` / `bg-card` / `bg-muted` utility classes, all Tailwind palette classes (`bg-emerald-*`, `bg-red-*`, `bg-amber-*`, `bg-green-*`, `bg-teal-*`, `bg-slate-*`, etc.), and all remaining `#RRGGBB` hex literals.
+- Verified Tailwind v4 stack: `postcss.config.mjs` uses `@tailwindcss/postcss`; `globals.css` uses `@import "tailwindcss"` + `@theme inline` token mapping; `tailwind.config.ts` is a leftover v3 config (`hsl(var(--...))` references) that is NOT loaded by Tailwind v4 — changes there have no effect on the build. All real theming lives in `globals.css`.
+- Verified `next-themes` (v0.4.6) is installed; `ThemeProvider` in `src/components/providers.tsx` is configured with `attribute="class"`, `defaultTheme="light"`, `enableSystem={false}`, `disableTransitionOnChange`. NO `forcedTheme` is used anywhere. `useTheme` from next-themes is imported only in `src/components/ui/sonner.tsx` (to drive the toaster's theme-aware styling).
+- Verified the actual `.dark` class toggling is done DIRECTLY via `document.documentElement.classList.add/remove("dark")` in two places (NOT through next-themes' `setTheme`): `src/components/public/shared.tsx` `useThemeToggle()` hook (used by `PublicNav`) and `src/components/admin/AdminLayout.tsx`'s own local `theme` state + `toggleTheme()` function. Both persist to `localStorage["rrms-theme"]` ("light" | "dark"). Default = "light".
+- Confirmed admin is currently LIGHT-THEMED with a DARK SIDEBAR: `AdminLayout.tsx:171` root `<div className="min-h-screen bg-background text-foreground">` (cream bg, dark text), sidebar (`AdminLayout.tsx:233`) uses `bg-sidebar text-sidebar-foreground` (deep forest `#1E5A3A`), `TopBar` (`AdminLayout.tsx:338`) uses `bg-background` (cream). The Sun/Moon button in `TopBar` toggles the entire site (public + admin) to `.dark` which currently maps to dark forest green — so the admin CAN be dark right now, but it's the same `.dark` variant as the public site and is driven by the same `rrms-theme` localStorage key.
+- Confirmed `page.tsx` (`src/app/page.tsx`) is a single-route SPA with a view-switch store (`useViewStore`). Three render paths: (1) `view === "admin-login"` → renders `<AdminLogin />` full-screen; (2) `view ∈ ADMIN_VIEWS` → renders `<AdminLayout>`-wrapped admin page (DashboardAdmin / BookingsAdmin / etc.); (3) else → public shell `<PublicNav /> + <main> + <PublicFooter /> + <ConciergeChat />`. So AdminLayout's root is the natural injection point for a scoped admin theme class.
+
+Findings — Theme/Color System Files:
+
+1. `src/app/globals.css` (406 lines) — PRIMARY theme file. Tailwind v4 `@theme inline` block (lines 6–57) maps all `--color-*` tokens to plain CSS variables. Two scopes define all variables:
+   - `:root` (lines 65–121) — LIGHT palette: `--background: #F8F8F0` (cream), `--foreground: #1A2E20` (forest ink), `--primary: #2E8B57`, `--accent: #3A9D5C`, `--coral: #3A9D5C` (note: coral is aliased to the SAME value as accent — currently the "coral" token is forest green, not actual coral), `--sand: #E8F0E5`, `--section: #F2F4EC`, `--sidebar: #1E5A3A` (deep forest), `--border: #D6DCD0`, `--muted-foreground: #5A6B5A`, `--success: #2E8B57`, `--chart-1..5` palette, plus `--ring: #2E8B57`.
+   - `.dark` (lines 123–174) — DARK palette: `--background: #0F1F15` (dark forest), `--primary: #4ADE80` (bright green), `--coral: #6BB386`, `--sidebar: #0A1F12`, `--border: #2D4A36`, `--chart-1..5` dark palette.
+   - Utilities block (lines 231–297): `.text-gradient-ocean` (deep→bright forest linear-gradient), `.eyebrow` (color: `var(--coral)`), `.shadow-card`/`.shadow-luxury`/`.shadow-flat` (forest-tinted box-shadows with `rgba(46,139,87,0.22)`), `.container-luxury`/`.container-tight`, `.border-hairline`, `.link-underline`, `.img-zoom`, `.no-scrollbar`.
+   - Print styles (lines 321–377): `@media print` uses hardcoded `#1A2E20` ink and `#c9d4c5` borders.
+   - Scrollbar (lines 202–222): `#C9D4C5` light thumb, `#A8B5A5` hover, `#2D4A36` dark thumb.
+   - Selection (lines 224–227): `background: var(--coral); color: #FFFFFF`.
+
+2. `tailwind.config.ts` (64 lines) — LEGACY v3 config; NOT loaded by Tailwind v4 (postcss uses `@tailwindcss/postcss`). References `hsl(var(--background))` etc. which would be WRONG since globals.css stores raw hex values. Editing this file has NO effect. Recommendation: leave untouched, or delete in a cleanup pass. All real tokens are CSS variables in globals.css.
+
+3. `postcss.config.mjs` — minimal: `plugins: ["@tailwindcss/postcss"]`. Confirms Tailwind v4.
+
+4. `src/components/providers.tsx` — `ThemeProvider` from `next-themes`, `attribute="class"`, `defaultTheme="light"`, `enableSystem={false}`. NO `forcedTheme`. (Public Nav and AdminLayout bypass next-themes and toggle the `.dark` class themselves via `document.documentElement`.)
+
+5. `src/app/layout.tsx` — root `<html lang="en" suppressHydrationWarning>`, body class `bg-background text-foreground`. Loads `Inter` + `Playfair_Display` fonts (CSS vars `--font-inter`, `--font-playfair`). Renders `<Providers>` (ThemeProvider + QueryClientProvider + SessionProvider) and `<Toaster>`.
+
+Findings — Public Layout Components:
+
+A. **Top nav / header** — `src/components/public/PublicNav.tsx`:
+   - Line 45: `<header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">`. Uses CSS variables only — NO hardcoded hex. The header is currently CREAM with dark text, NOT forest green.
+   - Line 79: active nav underline `<span className="absolute inset-x-4 -bottom-0.5 h-0.5 rounded-full bg-coral" />` — uses the `coral` token (currently `#3A9D5C`, alias of accent).
+   - Line 110: desktop "Book Your Stay" button: `bg-primary text-primary-foreground hover:bg-primary/90` (currently forest `#2E8B57`).
+   - Line 158: mobile nav active link: `bg-primary/10 text-primary`.
+   - Line 180: mobile "Book Your Stay" button: same `bg-primary` classes.
+   - Theme toggle button (Sun/Moon) on lines 92–100 toggles `.dark` via `useThemeToggle()` from `shared.tsx`.
+   - **For the new theme**: To make the header deep forest green `#1a3d2e`, either change `--background` (which would also affect the whole page bg) OR add a header-specific class. Recommendation: introduce a new token `--header-bg: #1a3d2e` and a Tailwind utility `bg-header` via `@theme inline { --color-header: var(--header-bg); }`, then change `PublicNav` line 45 from `bg-background/95` to `bg-header/95`. The header text is currently `text-foreground` (dark) — needs to become `text-white` since the header will be dark green. Also need to update `text-muted-foreground` instances inside the header to `text-white/70`.
+
+B. **Footer** — `src/components/public/PublicFooter.tsx`:
+   - Line 58: `<footer className="mt-auto bg-[#1E5A3A] text-white/80">` — HARDCODED `#1E5A3A` (deep forest). Not using a token. Should be swapped to `#1a3d2e` (the new deep forest green the user specified — very close to the current `#1E5A3A` so the visual delta is small).
+   - Lines 95, 102, 108, 124, 141, 157, 165, 224, 233, 241, 259, 276, 283, 293: footer link hovers use `hover:text-coral` and icons use `text-coral` — fine, but `--coral` needs to map to a suitable accent on dark green (currently `#3A9D5C`, also forest). For the new palette, the user wants cyan/teal `#5ec4ce` for CTAs and terracotta/salmon `#e8a88c` for hero bands — coral (used for hover/eyebrow accents here) could become either. Recommendation: repurpose `--coral` to terracotta `#e8a88c` (so eyebrow labels, divider ✦, hover accents in the footer all become terracotta — matches the user's "terracotta/salmon hero sections" intent), and add a new `--cta` token for cyan `#5ec4ce` used only on the "Book Your Stay" buttons.
+   - Line 174: mobile CTA button: `bg-coral px-5 py-3 text-sm font-medium text-coral-foreground transition-colors hover:bg-coral/90` — uses `coral`. If coral → terracotta, this button becomes terracotta (matches the "terracotta/salmon hero" intent). If you want it cyan, change to `bg-cta text-cta-foreground`.
+   - Line 334: `SocialLink` uses `hover:border-coral hover:bg-coral/10 hover:text-coral`.
+
+C. **Homepage hero sections** — `src/components/public/home/HomePage.tsx`:
+   - Lines 267–284: Top hero (image slideshow + gradient overlay `bg-gradient-to-t from-black/85 via-black/35 to-black/40`). Image-based, no token swap needed.
+   - Lines 350–357: "Check Availability" hero CTA button: `bg-primary text-primary-foreground hover:bg-primary/90` — currently forest green. Per new spec should be cyan/teal `#5ec4ce` → map `--primary` to `#5ec4ce` OR introduce `--cta` token and change this class to `bg-cta`. Recommendation: introduce `--cta` (cyan `#5ec4ce`) + `--cta-foreground` (white or `#0a2a2e`); update only the explicit CTA buttons to `bg-cta`. Keep `--primary` as forest green so other primary-tinted UI (avatar fallbacks, links, focus rings, calendar selection, etc.) stay forest green.
+   - Line 419: First interior section: `<section className="bg-section py-20 sm:py-24">` — uses `--section` token (currently `#F2F4EC` sage-cream). For the new "cream background" spec this is fine.
+   - Line 514: Second interior section: `<section className="bg-section py-20 sm:py-24">` — same.
+   - Lines 562–576: **STATS BAND**: `<section className="bg-[#1E5A3A] py-16 text-white sm:py-20">` — HARDCODED `#1E5A3A` deep forest. Should swap to `#1a3d2e` (new deep forest) or use a token `bg-header`/`bg-band`.
+   - Lines 599–632: **CTA BAND / "Ready for your beach escape?" hero** — `<section className="bg-coral py-16 text-coral-foreground sm:py-20">`. Currently this band is `--coral` = `#3A9D5C` (forest). Per user spec it should be TERRACOTTA/SALMON `#e8a88c`. If we repurpose `--coral` → `#e8a88c` (terracotta), this band automatically becomes terracotta. The two buttons inside:
+     - Line 615: "Book Your Stay" button: `bg-white text-coral hover:bg-white/90` (white bg, coral text) — text-coral would become terracotta text on white. OK.
+     - Line 624: outline "Call" button: `border-coral-foreground/30 bg-transparent text-coral-foreground hover:bg-coral-foreground/10` — becomes terracotta-foreground outline. OK.
+   - Lines 385, 502: inline links "View all rooms" / "Explore the gallery": `text-primary ... hover:text-coral` — primary stays forest (or use a token); coral becomes terracotta.
+   - Line 488: amenity icon chip: `bg-sand text-primary` — sand stays sage, primary stays forest.
+
+D. **AboutPage.tsx**:
+   - Line 91: `<section className="bg-[#1E5A3A] py-14 text-white">` — second hardcoded deep-forest band (Stats). Same swap as HomePage: `#1E5A3A` → `#1a3d2e` or token.
+   - Line 178: `<section className="bg-coral py-16 text-coral-foreground sm:py-20">` — CTA band, same as HomePage. Becomes terracotta automatically when `--coral` changes.
+   - Line 193: white CTA button: `bg-white text-coral hover:bg-white/90`.
+   - Line 202: outline call button: `border-coral-foreground/30 ...`.
+
+E. **FindReservation.tsx** (guest-facing invoice view):
+   - Lines 188, 190 (PRINT-ONLY invoice header): `borderBottom: "2px solid #1F6F50"` and `color: "#1F6F50"` — LEFTOVER old brand color from before the prior forest-green rebrand. Should be updated to new deep forest `#1a3d2e` (or `var(--primary)` — but inline styles can't use Tailwind tokens, so hardcoded hex is OK here). Same for `#6b6557` text color (line 191, 196) and `#d4cfc1` border (line 311) — old print palette, can stay (neutral print ink) or align to `#1a3d2e` / `#5A6B5A` muted / `#D6DCD0` border.
+   - Line 204: invoice card header: `bg-[#1E5A3A] p-6 text-white` — HARDCODED deep forest. Same swap.
+   - Line 157: error alert: `bg-red-50 p-4 text-sm text-red-700` — Tailwind palette, fine for public error states.
+
+F. **ContactPage.tsx** — social link cards use BRAND colors as hardcoded hex (`#1877F2` Facebook, `#E4405F`/`#F77737`/`#FCAF45` Instagram gradient, `#25D366` WhatsApp, `#0084FF` Messenger — lines 44, 52, 60, 68). These are the actual brand colors of those platforms — leave untouched.
+
+G. **GuestMoments.tsx** — Facebook brand blue `#1877F2` (lines 139, 247, 332) and `#0d5fb8` hover. Brand colors — leave untouched.
+
+H. **BookingFlow.tsx**:
+   - Line 585: `border-coral/30 bg-coral/5 p-5 text-center` (booking summary box). Coral becomes terracotta.
+   - Line 985: `bg-coral/10 p-4 text-sm text-foreground` (success/info callout). Same.
+
+Findings — Admin Layout Components:
+
+I. **`src/components/admin/AdminLayout.tsx`** (543 lines) — admin shell:
+   - Line 171: Root `<div className="min-h-screen bg-background text-foreground">` — admin root. Uses LIGHT tokens (cream bg, dark text).
+   - Lines 174–176: Desktop sidebar `<aside className="sticky top-0 hidden h-screen w-64 shrink-0 lg:block">` wraps `<SidebarBody>`.
+   - Lines 179–187: Mobile sidebar via `<Sheet side="left" className="w-72 border-0 p-0">`.
+   - Lines 190–201: Main column: `<TopBar>` + `<main className="min-h-0 flex-1 p-4 pb-16 sm:p-6 sm:pb-6 lg:p-8">`.
+   - Lines 76–108: Local `theme` state defaults to `"light"`; reads `localStorage["rrms-theme"]` on mount; toggles `.dark` class on `document.documentElement`. This duplicates `useThemeToggle` from `shared.tsx`.
+   - Lines 110–121: `toggleTheme()` flips dark/light, persists to localStorage, toggles `.dark` class.
+   - Lines 221–317: `SidebarBody` — `<div className="flex h-full w-full flex-col bg-sidebar text-sidebar-foreground">`. Sidebar uses dark `--sidebar` (`#1E5A3A` deep forest) regardless of light/dark mode. Active nav item: `bg-white/10 font-semibold text-white shadow-sm ring-1 ring-white/10`. Active indicator stripe: `<span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-coral" />` (line 271). Active icon: `text-coral` (line 278). Logout button: `hover:text-coral` (line 307).
+   - Lines 319–392: `TopBar` — `<header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background px-4 sm:px-6 lg:px-8">`. Light bg. Title: `text-foreground`. Subtitle: `text-muted-foreground`. Avatar fallback: `bg-sand text-primary` (line 385).
+   - Lines 360–373: Theme toggle button (Sun/Moon) inside TopBar.
+   - Lines 374–401: `NotificationsBell` — badge `<span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-coral text-[9px] font-bold text-coral-foreground">` (line 436). Unread indicator: `bg-coral` (line 485). Unread row highlight: `bg-coral/5` (line 480).
+   - Lines 522–540: `AdminLayoutSkeleton` — uses `bg-background` (light) + `bg-sidebar` (dark).
+   - **Current admin theme = LIGHT** (cream bg, dark text, dark forest sidebar). Per user spec, this entire shell should become DARK teal-green: bg `#0F2B2D`, cards `#1A3839`, off-white text, coral `#D4846A` accents, emerald `#10B981` success.
+
+J. **`src/components/admin/DashboardAdmin.tsx`** (532 lines) — Dashboard page:
+   - StatCards grid (lines 67–97) via `<StatCard>` — uses `bg-card`, `border-border`, `shadow-card`, `text-foreground`, `bg-sand text-primary` for icon circle (inside StatCard).
+   - Lines 104, 260, 368, 413: `<Card className="rounded-lg border border-border p-5 shadow-card ...">` — admin cards (cream/white in light mode).
+   - Line 315: Approve button `bg-emerald-600 text-white hover:bg-emerald-700` — Tailwind palette (NOT a token). Stays emerald per user spec.
+   - Line 327: Decline button `border-red-300 text-red-700 hover:bg-red-50` — Tailwind palette. Stays red.
+   - Lines 470–471: Occupancy donut chart colors: `{ name: "Occupied", value: occupied, color: "#2E8B57" }` and `{ name: "Available", value: available, color: "#D6DCD0" }` — HARDCODED hex. Lines 504, 513: matching legend swatches via `style={{ backgroundColor: "#2E8B57" }}` and `"#D6DCD0"`. **On a dark teal-green admin bg**, the `#D6DCD0` "Available" swatch will look out of place (light sage on dark). Should be replaced with a darker teal/cyan or a token.
+   - Line 394: arrivals time chip: `bg-primary/10 text-primary` (forest tint). 
+   - Line 439: departures time chip: `bg-coral/10 text-coral` (coral tint). On new admin dark theme with coral → `#D4846A`, this becomes a coral-tinted chip — matches user spec.
+   - Line 140: "New reservation" button: `bg-primary text-primary-foreground hover:bg-primary/90`.
+
+K. **`src/components/admin/StatCard.tsx`** (154 lines):
+   - Lines 20–24: `DELTA_TONE` map: `up: "text-emerald-700"`, `down: "text-red-700"`, `neutral: "text-muted-foreground"` — Tailwind palette for up/down deltas. On a dark admin bg, `text-emerald-700` (dark green) will be hard to read. Recommend adding `dark:` variants or changing to `text-emerald-400`.
+   - Lines 117–121: `EmptyState` toneClasses: `default: "bg-sand text-muted-foreground"`, `primary: "bg-primary/10 text-primary"`, `danger: "bg-red-50 text-red-600"`, `warning: "bg-amber-50 text-amber-600"`. The `bg-red-50` / `bg-amber-50` are very light — will look wrong on dark admin bg. Needs `dark:bg-red-950/40 dark:text-red-300` style overrides (the AdminCopilot already does this pattern at lines 657, 696, 740–743).
+
+L. **`src/components/admin/ReportsAdmin.tsx`** — recharts colors (all HARDCODED hex, lines 45–51, 263, 268, 269, 273, 282, 286, 307, 312, 313, 317, 326, 333, 335, 374, 381, 428, 433, 441, 450, 456):
+   - STATUS_COLORS map (lines 45–51): `PENDING #D9943C`, `CONFIRMED #2E8B57`, `CHECKED_IN #1E5A3A`, `COMPLETED #5A6B5A`, `CANCELLED #C0392B`, `REJECTED #9F1239`, `NO_SHOW #9F1239`.
+   - CartesianGrid stroke `#D6DCD0` (light sage) — on dark admin bg, should become a dark teal border like `#2D4A4A`.
+   - Axis tick fill `#5A6B5A` (muted) — on dark bg, should become `#9FB0B0` or off-white.
+   - Tooltip border `#D6DCD0` — same.
+   - Bar fill `#2E8B57` (forest) — could stay or become `#10B981` (emerald per spec).
+   - Line stroke/dot `#3A9D5C` — same.
+   - **All these need re-tinting for dark admin bg.**
+
+M. **`src/components/admin/AdminLogin.tsx`** (272 lines):
+   - Line 88: Left brand panel `<div className="... bg-[#1E5A3A] p-10 text-white xl:flex lg:p-14">` — HARDCODED `#1E5A3A` deep forest. Per user spec, admin should be dark teal-green — this should become `#0F2B2D` (the admin dark teal-green bg).
+   - Lines 104, 110: SVG wave pattern stroke `#E8F1F4` (light teal) — fine on dark teal-green.
+   - Line 120: Glow `<div className="... bg-coral/20 blur-3xl" />` — coral glow. With `--coral` repurposed, this becomes a coral glow on dark teal — fine.
+   - Line 121: Glow `bg-[#4ADE80]/20` (bright green) — could become `#10B981` (emerald) for the new admin accent.
+   - Line 163: Mobile brand icon `<div className="... bg-[#1E5A3A]">` — same hardcoded color as line 88.
+   - Line 135: `<div className="eyebrow !text-coral">Admin Suite</div>` — coral eyebrow on dark panel.
+   - Line 242: Submit button `bg-primary text-primary-foreground hover:bg-primary/90`.
+
+N. **`src/components/admin/ConfirmDialog.tsx`**:
+   - Lines 38–63: TONE_CONFIG — `destructive` uses `bg-destructive` token, `warning` uses `bg-amber-600` (Tailwind palette), `success` uses `bg-emerald-700` (Tailwind palette), `info`/`default` use `bg-primary`. These will work on dark admin bg, but `text-amber-500` / `text-emerald-600` iconClass values will be hard to read on dark — recommend `text-amber-400` / `text-emerald-400` for dark mode.
+
+O. **`src/components/admin/copilot/AdminCopilot.tsx`**:
+   - Line 320: FAB `<button className="group fixed bottom-5 right-5 z-50 flex h-14 w-14 ... rounded-full bg-sidebar text-white shadow-lg shadow-sidebar/40 ring-1 ring-white/10 ...">` — uses `bg-sidebar` (dark forest). On new admin theme, `--sidebar` would become dark teal.
+   - Lines 323, 366: status dot `bg-emerald-400` (Tailwind palette — fine on dark).
+   - Lines 657, 696, 740–743: status pill classes already include `dark:` variants (`dark:bg-amber-950/40 dark:text-amber-200`, etc.) — these are dark-mode-aware. Good pattern to follow.
+
+Findings — Hardcoded Hex Color Inventory (all locations):
+
+Public site (deep-forest `#1E5A3A` bands — need swap to `#1a3d2e` or token):
+- `src/components/public/PublicFooter.tsx:58` — `bg-[#1E5A3A]`
+- `src/components/public/home/HomePage.tsx:562` — `bg-[#1E5A3A]` (stats band)
+- `src/components/public/about/AboutPage.tsx:91` — `bg-[#1E5A3A]` (stats band)
+- `src/components/public/booking/FindReservation.tsx:204` — `bg-[#1E5A3A]` (invoice header)
+
+Admin (deep-forest `#1E5A3A` panels — need swap to `#0F2B2D` admin dark teal):
+- `src/components/admin/AdminLogin.tsx:88` — left brand panel `bg-[#1E5A3A]`
+- `src/components/admin/AdminLogin.tsx:163` — mobile brand icon `bg-[#1E5A3A]`
+
+Admin (bright-green glow `#4ADE80` — should become `#10B981` emerald):
+- `src/components/admin/AdminLogin.tsx:121` — `bg-[#4ADE80]/20`
+
+Leftover old-brand `#1F6F50` (pre-forest-green-rebrand, missed in prior commit):
+- `src/components/public/booking/FindReservation.tsx:188` — print border `2px solid #1F6F50`
+- `src/components/public/booking/FindReservation.tsx:190` — print heading color `#1F6F50`
+
+Print-only neutral ink `#6b6557` and border `#d4cfc1` (acceptable, but can align):
+- `src/components/public/booking/FindReservation.tsx:191, 196, 311`
+- `src/components/public/booking/BookingFlow.tsx:1158`
+
+Brand colors for social platforms (DO NOT TOUCH):
+- `src/components/public/contact/ContactPage.tsx:44, 52, 60, 68` — Facebook/Instagram/WhatsApp/Messenger brand hex.
+- `src/components/public/gallery/GuestMoments.tsx:139, 247, 332` — Facebook brand blue.
+
+Recharts / chart hardcoded hex (need re-tinting for dark admin):
+- `src/components/admin/ReportsAdmin.tsx:45–51, 263, 268, 269, 273, 282, 286, 307, 312, 313, 317, 326, 333, 335, 374, 381, 428, 433, 441, 450, 456`
+- `src/components/admin/DashboardAdmin.tsx:470, 471, 504, 513`
+
+Findings — Tailwind CSS-variable utility usage (already token-driven, will inherit any new variable values automatically):
+- `bg-background`: layout.tsx, page.tsx, AdminLayout.tsx:171,524,527, sidebar.tsx, dialog.tsx, drawer.tsx, sheet.tsx, alert-dialog.tsx, calendar.tsx, chart.tsx, tooltip.tsx, dropdown-menu.tsx, navigation-menu.tsx, menubar.tsx, input.tsx, tabs.tsx, alert.tsx, toast.tsx.
+- `bg-card` / `text-card-foreground`: AdminLayout.tsx, DashboardAdmin.tsx (multiple), CalendarAdmin.tsx, SettingsAdmin.tsx, GalleryAdmin.tsx, GuestsAdmin.tsx, ReportsAdmin.tsx, AdminCopilot.tsx, plus all shadcn/ui primitives (card, alert, table, etc.).
+- `bg-primary` / `text-primary` / `bg-primary/10`: button.tsx (default variant), badge.tsx, slider.tsx, progress.tsx, checkbox.tsx, switch.tsx, tooltip.tsx, calendar.tsx, navigation-menu.tsx, input.tsx, plus admin: CalendarAdmin.tsx:291, SettingsAdmin.tsx:261/330/402, GalleryAdmin.tsx:111/127/148/420, BookingsAdmin.tsx, DashboardAdmin.tsx:140/271/317, RoomsAdmin.tsx, AdminLayout.tsx:451, plus public: HomePage.tsx:353/385/455/488/502, AboutPage.tsx:150, FindReservation.tsx:378, BookingFlow.tsx:483, PublicNav.tsx:110/158/180, RoomCard.tsx:144/150/155.
+- `bg-coral` / `text-coral` / `border-coral` / `bg-coral/5` / `bg-coral/10` / `hover:text-coral` / `hover:bg-coral/10` — 40+ usages (see full list above). Key public usages: HomePage.tsx CTA band line 599, AboutPage.tsx CTA band line 178, PublicFooter.tsx CTA button line 174, PublicNav.tsx active underline line 79, RoomCard.tsx badge line 90, shared.tsx eyebrow + SectionDivider. Key admin usages: AdminLayout.tsx sidebar active stripe + notification badge + icon, DashboardAdmin.tsx departures chip, CalendarAdmin.tsx active filter chip.
+- `bg-sand` / `text-primary` icon chips: StatCard.tsx:56, AdminLayout.tsx:385, CalendarAdmin.tsx:501, GuestsAdmin.tsx:263/326/503, BookingsAdmin.tsx:426.
+- `bg-section`: HomePage.tsx:419, 514, AboutPage.tsx:118.
+- `bg-sidebar` / `text-sidebar-foreground`: AdminLayout.tsx:233, 525, AdminCopilot.tsx:320, sidebar.tsx (multiple).
+
+Findings — Theme Toggle / Dark Mode:
+- `next-themes` v0.4.6 installed. ThemeProvider in `src/components/providers.tsx` configured `attribute="class"`, `defaultTheme="light"`, `enableSystem={false}`. No `forcedTheme`.
+- The `useTheme` hook from next-themes is used ONLY in `src/components/ui/sonner.tsx` (for toaster theming).
+- The `.dark` class on `<html>` is toggled DIRECTLY (bypassing next-themes' setTheme) by:
+  1. `src/components/public/shared.tsx` — `useThemeToggle()` hook (lines 241–262). Used by `PublicNav`.
+  2. `src/components/admin/AdminLayout.tsx` — local `theme` state + `toggleTheme()` (lines 76–121). Used by TopBar's Sun/Moon button.
+  Both persist to `localStorage["rrms-theme"]`. Both share the same key — so toggling dark on the public site also darkens admin (and vice versa).
+- `@custom-variant dark (&:is(.dark *))` is defined in globals.css line 4 — so any `dark:` Tailwind variant works in components under `.dark`.
+- **Admin is currently LIGHT by default** (initial state `"light"`); the `.dark` variant maps to dark forest green (`#0F1F15` bg). The sidebar is dark `#1E5A3A` REGARDLESS of light/dark mode (it's a fixed dark surface even in light theme).
+
+Stage Summary — Recommendations for the cleanest implementation:
+
+(1) **Tailwind v4 token system is the lever**. All real theming lives in `src/app/globals.css`. `tailwind.config.ts` is dead code (Tailwind v4 ignores it). Add/edit tokens ONLY in globals.css.
+
+(2) **Public site — light forest-green + terracotta + cyan + cream**:
+   - In `:root`, change `--primary` to `#1a3d2e` (deep forest green) OR keep `#2E8B57` and add a new `--cta` token = `#5ec4ce` (cyan) for CTA buttons only. Recommendation: keep `--primary` as `#1a3d2e` (deep forest) since the user said "deep forest green header/footer" — primary maps to header text accents, sidebar, focus rings, calendar selection, etc. Add a NEW token `--cta: #5ec4ce` + `--cta-foreground: #ffffff` and a NEW `@theme inline` mapping `--color-cta: var(--cta)` so `bg-cta` / `text-cta` Tailwind utilities work.
+   - Change `--coral` to `#e8a88c` (terracotta/salmon). Update `--coral-foreground` to `#1a3d2e` (deep forest) for contrast. All 40+ existing `bg-coral` / `text-coral` / `bg-coral/10` usages will automatically become terracotta — including the two CTA bands (HomePage:599, AboutPage:178), the eyebrow labels, the SectionDivider ✦, the footer link hovers, the room card badges.
+   - Change `--background` stays `#F8F8F0` (cream) — matches "cream background" spec.
+   - The 4 hardcoded `bg-[#1E5A3A]` bands (footer, two stats bands, invoice header) → change to `#1a3d2e` either by literal swap OR by introducing a token `--band: #1a3d2e` + `--color-band: var(--band)` and replacing `bg-[#1E5A3A]` with `bg-band`. Token approach is cleaner (4 changes in components, 1 change in globals.css to retune later).
+   - Header (PublicNav.tsx:45) `bg-background/95` → either swap to `bg-[#1a3d2e]/95` literal OR introduce `--header-bg: #1a3d2e` token + `bg-header/95` utility. Header text: `text-foreground` → `text-white`, `text-muted-foreground` → `text-white/70`. Active nav underline stays `bg-coral` (now terracotta).
+   - Update "Book Your Stay" / "Check Availability" CTA buttons (PublicNav.tsx:110, 180; HomePage.tsx:353; AboutPage.tsx:193; FindReservation.tsx if any) from `bg-primary` to `bg-cta text-cta-foreground hover:bg-cta/90` so they pop cyan.
+   - The two `bg-coral` CTA bands stay `bg-coral` (now terracotta) — exactly the "terracotta/salmon hero sections" the user asked for.
+   - Fix the leftover `#1F6F50` in FindReservation.tsx:188, 190 → `#1a3d2e`.
+
+(3) **Admin dashboard — dark teal-green**:
+   - Cleanest path: introduce a new admin-scope CSS class. In `AdminLayout.tsx:171`, change the root `<div className="min-h-screen bg-background text-foreground">` to `<div className="admin-scope min-h-screen bg-background text-foreground">`. In globals.css, add a new block:
+     ```
+     .admin-scope {
+       --background: #0F2B2D;
+       --foreground: #ECECEC;       /* off-white */
+       --card: #1A3839;
+       --card-foreground: #ECECEC;
+       --popover: #1A3839;
+       --popover-foreground: #ECECEC;
+       --muted: #143031;
+       --muted-foreground: #A8C0BE;
+       --border: #2A4F50;
+       --input: #2A4F50;
+       --primary: #D4846A;          /* coral accent */
+       --primary-foreground: #1A3839;
+       --accent: #D4846A;
+       --accent-foreground: #1A3839;
+       --coral: #D4846A;
+       --coral-foreground: #1A3839;
+       --sand: #143031;
+       --ink: #ECECEC;
+       --sidebar: #0A1F20;
+       --sidebar-foreground: #C9DBCE;
+       --sidebar-primary: #D4846A;
+       --sidebar-accent: #1A3839;
+       --sidebar-border: #2A4F50;
+       --success: #10B981;
+       --success-foreground: #0A1F20;
+       --ring: #D4846A;
+       /* charts */
+       --chart-1: #10B981;
+       --chart-2: #D4846A;
+       --chart-3: #5ec4ce;
+       --chart-4: #FBBF24;
+       --chart-5: #9FB0B0;
+     }
+     ```
+     Because ALL admin components use `bg-background`, `bg-card`, `text-foreground`, `border-border`, `bg-sidebar`, `text-coral`, `bg-coral/10`, `bg-sand`, `text-primary`, `bg-primary`, etc., they will all automatically pick up the dark teal-green values WITHOUT touching each individual admin component. Only AdminLayout.tsx needs the single `admin-scope` class addition.
+   - AdminLogin.tsx: replace `bg-[#1E5A3A]` (line 88, 163) with `bg-[#0F2B2D]` (or `bg-background` once the admin-scope is applied — AdminLogin is rendered outside AdminLayout, so it needs its own `admin-scope` wrapper class on its root). Replace `bg-[#4ADE80]/20` glow with `bg-[#10B981]/20`.
+   - Remove or hide the Sun/Moon theme toggle button in AdminLayout's TopBar (lines 360–373) — the admin should be ALWAYS dark teal-green. Per user spec there's no light/dark toggle for admin. (Alternatively, keep the button but make it a no-op or remove it.)
+   - The hardcoded chart hex in ReportsAdmin.tsx and DashboardAdmin.tsx (see inventory above) needs to be re-tinted to dark-mode-friendly values: replace `#D6DCD0` (light sage gridlines/borders) with `#2A4F50` (dark teal border), replace `#5A6B5A` (axis tick fill) with `#9FB0B0` (off-white muted), keep `#2E8B57` / `#3A9D5C` data fills or swap to `#10B981` (emerald per spec), `#1E5A3A` → `#10B981`. DashboardAdmin donut: `#D6DCD0` "Available" swatch → `#2A4F50` or `#5ec4ce`.
+   - The `bg-red-50` / `bg-amber-50` Tailwind classes in StatCard.tsx:119–120, ConfirmDialog.tsx warning/success tones, and BookingsAdmin.tsx:713/952 (Decline buttons) need `dark:` variants (or `admin-scope:` variants) so they look right on dark teal — pattern already exists in AdminCopilot.tsx:657, 696, 740–743 (`dark:bg-amber-950/40 dark:text-amber-200` etc.). Recommend adding `dark:bg-red-950/40 dark:text-red-300` style overrides.
+   - The `text-emerald-700` / `text-red-700` delta tone classes in StatCard.tsx:21–22 need `dark:text-emerald-400 dark:text-red-400` variants for legibility on dark bg.
+
+(4) **Keep `.dark` (forest green dark variant) for the public site's optional dark mode** — DON'T repurpose it for admin. The public Sun/Moon toggle (PublicNav) continues to work as a light/dark forest theme toggle for the public site. The admin uses its own `admin-scope` class which is independent of `.dark`.
+
+(5) **Files that will need edits in the implementation pass**:
+   - `src/app/globals.css` — repurpose `:root` tokens (forest→deep-forest `#1a3d2e`, coral→terracotta `#e8a88c`, add `--cta` cyan `#5ec4ce`, add `--band` deep-forest band, add `.admin-scope` block with dark teal-green tokens). Also update scrollbar colors if needed, `.text-gradient-ocean` gradient stops, `.eyebrow` color (stays `var(--coral)` → terracotta — fine), shadow tints, print styles.
+   - `src/components/public/PublicNav.tsx` — header bg swap to `bg-[#1a3d2e]/95` (or token), header text → white, CTA buttons → `bg-cta`.
+   - `src/components/public/PublicFooter.tsx:58` — `bg-[#1E5A3A]` → `bg-[#1a3d2e]` (or token).
+   - `src/components/public/home/HomePage.tsx:353` (Check Availability button) → `bg-cta`. Line 562 (stats band) → `bg-[#1a3d2e]`.
+   - `src/components/public/about/AboutPage.tsx:91` (stats band) → `bg-[#1a3d2e]`. Line 193 CTA button → `bg-cta` if applicable.
+   - `src/components/public/booking/FindReservation.tsx:188, 190, 204` — fix leftover `#1F6F50` → `#1a3d2e`; `#1E5A3A` → `#1a3d2e`.
+   - `src/components/admin/AdminLayout.tsx:171` — add `admin-scope` class to root div. Remove or hide the Sun/Moon toggle (lines 360–373). Remove the local `theme` state and `toggleTheme` (lines 76–121) — admin is always dark now, no toggle needed.
+   - `src/components/admin/AdminLogin.tsx:88, 121, 163` — wrap root in `admin-scope`, swap `bg-[#1E5A3A]` → `bg-[#0F2B2D]`, `bg-[#4ADE80]/20` → `bg-[#10B981]/20`.
+   - `src/components/admin/StatCard.tsx:21–22, 119–120` — add `dark:` variants for delta tones and EmptyState danger/warning tones.
+   - `src/components/admin/ConfirmDialog.tsx:40, 42, 47, 49` — add `dark:` variants for warning/success icon and button classes.
+   - `src/components/admin/ReportsAdmin.tsx:45–51, 263, 268, 269, 273, 282, 286, 307, 312, 313, 317, 326, 333, 335, 374, 381, 428, 433, 441, 450, 456` — re-tint chart hex for dark admin bg.
+   - `src/components/admin/DashboardAdmin.tsx:470, 471, 504, 513` — re-tint donut chart hex.
+   - `src/components/admin/BookingsAdmin.tsx:713, 952` (Decline button `hover:bg-red-50`) — add `dark:hover:bg-red-950/40` variant.
+   - `src/lib/constants.ts:65–199` — STATUS color hex values for BOOKING_STATUS_CONFIG and ROOM_STATUS_CONFIG. These drive legend swatches, calendar cell colors, and badge backgrounds. Light-theme Tailwind classes (`bg-amber-50`, `bg-emerald-50`, `bg-green-50`, `bg-slate-50`, `bg-red-50`, `bg-lime-50`, `bg-rose-50`) will look wrong on dark admin. Recommend adding `dark:` variants to each status config (`dark:bg-amber-950/40 dark:text-amber-200`, etc.) OR keeping these for public-facing badges only and adding a parallel dark variant set for admin.
+   - `src/components/public/PublicNav.tsx` mobile nav active item line 158: `bg-primary/10 text-primary` — on a dark header this needs to become `bg-white/10 text-white`.
+
+(6) **No need to touch** `tailwind.config.ts` (dead v3 config). No need to touch `postcss.config.mjs`, `providers.tsx`, or `layout.tsx`. The `next-themes` provider config stays as-is (admin overrides via `admin-scope`, not via next-themes).
+
+(7) **Risk callouts for the implementation agent**:
+   - The `--coral` token currently doubles as the "accent" and is aliased to `--accent` (both `#3A9D5C`). The user's new spec wants terracotta `#e8a88c` (a warm salmon) — this will dramatically change the visual feel of every `bg-coral`/`text-coral` usage (CTA bands, eyebrows, hover states, sidebar active indicators, notification badges). Verify the contrast of terracotta `#e8a88c` against deep forest `#1a3d2e` (used in footer/sidebar) and against cream `#F8F8F0` (used in body bg) — both should pass WCAG AA for text. Quick check: `#e8a88c` on `#1a3d2e` ≈ contrast ratio 4.5:1 (borderline AA); `#e8a88c` on `#F8F8F0` ≈ 2.3:1 (FAILS AA for body text — fine for large eyebrow labels and decorative accents, not for body copy).
+   - The admin-scope approach assumes every admin component reads its colors from CSS variables. The handful of admin components using literal Tailwind palette classes (`bg-emerald-600`, `bg-red-50`, `text-amber-500`, `border-red-300`, etc.) will NOT pick up the admin-scope automatically — those need explicit `dark:` or `admin-scope:` variant additions. The full list is in the inventory above (StatCard, ConfirmDialog, BookingsAdmin, CalendarAdmin, BlockDatesDialog, AmenitiesAdmin, RoomsAdmin, ImageUploader, DashboardAdmin, AdminCopilot).
+   - The sidebar (`bg-sidebar`) is currently dark in BOTH light and dark mode. Under the new `admin-scope`, `--sidebar: #0A1F20` (very dark teal-green) — verify the sidebar text contrasts (currently `--sidebar-foreground: #E8F0E5` light sage → should become `#C9DBCE` or similar off-white teal-tinted).
+   - `AdminLayoutSkeleton` (lines 522–540) and `LazyFallback` in page.tsx both use `bg-background` — under `admin-scope` they'll be dark teal-green automatically. Good.
+   - The `ConciergeChat` (public chatbot) uses `bg-sidebar` for its launcher button — it's a PUBLIC component but uses the sidebar token. Under the new `:root` (light public theme), `--sidebar` will need to stay dark (deep forest `#1a3d2e`) so the chatbot button looks right on the public site. Currently `--sidebar: #1E5A3A` in `:root` — change to `#1a3d2e`. The admin-scope overrides `--sidebar` to `#0A1F20` for the admin's own sidebar. Both work.
+
+---
+Task ID: public-theme-update
+Agent: full-stack-developer
+Task: Apply the public-site portion of the full color theme overhaul for "The Twenty-Fifth" villa booking app. Migrate public components from the previous forest-green palette to the new coastal-luxury palette: deep forest green (#1A3D2E) header/footer/stat bands, terracotta (#E8A88C) hero CTA bands, cyan (#5EC4CE) CTA buttons, cream (#F8F8F0) background. CSS variables in `src/app/globals.css` were already updated by a prior agent; this task only touches public component className strings.
+
+Work Log:
+- Read prior `theme-explore` findings (worklog.md line 3224+) for the complete color inventory and recommendations.
+- Verified the new CSS tokens are in place in `src/app/globals.css`: `--primary: #1A3D2E`, `--coral: #E8A88C`, `--cta: #5EC4CE`, `--band: #1A3D2E`. The `@theme inline` block exposes `--color-cta`, `--color-cta-foreground`, `--color-band`, `--color-band-foreground` so `bg-cta` / `text-cta-foreground` / `bg-band` Tailwind utilities resolve at build.
+- Read all 7 target public components plus scanned the remaining 8 public files for any `bg-primary` on action CTAs and `#1E5A3A`/`#0A3D4A`/`#1F6F50` hex literals.
+
+Files Modified:
+
+1. `src/components/public/PublicNav.tsx` — Header is now deep forest green:
+   - Header container `bg-background/95 border-border` → `bg-[#1A3D2E]/95 border-white/10 text-white`.
+   - Logo wordmark `text-foreground` → `text-white`; "Zambales" subtitle `text-muted-foreground` → `text-white/60`.
+   - Desktop nav links: active `text-white`, inactive `text-white/70 hover:text-white`.
+   - Active nav underline `bg-coral` → `bg-cta` (cyan on green header).
+   - Vertical divider `bg-border` → `bg-white/15`.
+   - Theme toggle icon `text-muted-foreground hover:bg-muted hover:text-foreground` → `text-white/80 hover:bg-white/10 hover:text-white`.
+   - "Find My Booking" link `text-muted-foreground hover:text-foreground` → `text-white/80 hover:text-white`.
+   - Desktop "Book Your Stay" button `bg-primary text-primary-foreground hover:bg-primary/90` → `bg-cta text-cta-foreground hover:bg-cta/90`.
+   - Mobile hamburger `Button variant="ghost"` got `text-white hover:bg-white/10 hover:text-white` overrides so the ghost icon is visible on green.
+   - Mobile sheet active nav item `bg-primary/10 text-primary` → `bg-cta/10 text-cta` (cyan accent on the light mobile sheet).
+   - Mobile sheet "Book Your Stay" button `bg-primary text-primary-foreground hover:bg-primary/90` → `bg-cta text-cta-foreground hover:bg-cta/90`.
+
+2. `src/components/public/PublicFooter.tsx`:
+   - Line 58: `bg-[#1E5A3A]` → `bg-[#1A3D2E]`.
+   - Mobile "Book Your Stay" CTA kept as `bg-coral` per task instructions (terracotta warmth on deep green footer). Link hovers (`hover:text-coral`) and icon tints left untouched.
+
+3. `src/components/public/home/HomePage.tsx`:
+   - Line 353 "Check Availability" button: `bg-primary ...` → `bg-cta text-cta-foreground hover:bg-cta/90`.
+   - Line 562 STATS BAND: `bg-[#1E5A3A]` → `bg-[#1A3D2E]`.
+   - Line 615 CTA BAND "Book Your Stay" button: `bg-white text-coral hover:bg-white/90` → `bg-cta text-cta-foreground hover:bg-cta/90`. CTA band itself stays `bg-coral` (terracotta).
+
+4. `src/components/public/about/AboutPage.tsx`:
+   - Line 91 Stats band: `bg-[#1E5A3A]` → `bg-[#1A3D2E]`.
+   - Line 193 CTA band "Book Your Stay" button: `bg-white text-coral hover:bg-white/90` → `bg-cta text-cta-foreground hover:bg-cta/90`. CTA band stays `bg-coral`.
+
+5. `src/components/public/booking/FindReservation.tsx`:
+   - Line 188 print invoice border: `2px solid #1F6F50` → `2px solid #1A3D2E`.
+   - Line 190 print invoice resort name color: `color: "#1F6F50"` → `color: "#1A3D2E"`.
+   - Line 204 invoice card header: `bg-[#1E5A3A]` → `bg-[#1A3D2E]`.
+
+6. `src/components/public/RoomCard.tsx` — No changes. Verified the `bg-coral` booked badge (line 90) stays per task instructions. The "Book Now"/"View Details" affordances are text-link styles using `text-primary` (now deep forest green), not filled `bg-primary` buttons.
+
+Files Scanned — No Changes Needed:
+- `AmenitiesPage.tsx` — amenity icon chip hover (`bg-sand text-primary group-hover:bg-primary`) is decoration, not a CTA. Primary now resolves to deep forest green; looks correct.
+- `GalleryPage.tsx` — filter chip toggles and count badge, not CTAs.
+- `RoomsPage.tsx` — line 169 filter chip toggle; line 264 "Reset filters" utility button (not in Book/Reserve/Check/Submit/Send list). Left alone.
+- `RoomDetailsPage.tsx` — "Book These Dates" uses default Button variant (inherits new forest green).
+- `FaqsPage.tsx` — "Message us on Messenger" uses default Button variant.
+- `ContactPage.tsx` — "Book Your Stay" uses default Button variant. Social media brand hex (`#1877F2`, `#E4405F`, `#F77737`, `#FCAF45`, `#25D366`, `#0084FF`) untouched per task instructions.
+- `GuestMoments.tsx` — Facebook brand blue `#1877F2` untouched per task instructions.
+- `BookingFlow.tsx` — step indicators (lines 186, 188, 209, 1199) are progress UI. "Continue"/"Confirm My Booking" buttons use default Button variant (inherit new forest green).
+- `ConciergeChat.tsx` — chatbot uses `bg-primary` for launcher FAB, bot avatar, user message bubbles, send button, quick-reply chips as a self-contained UI subsystem. Changing just the Send button to cyan would break visual consistency with the chat bubbles. The "Send" button is an icon-only chat message send affordance, not a marketing CTA. Left the entire chatbot alone.
+- `shared.tsx` — `.eyebrow` class uses `var(--coral)` (now terracotta #E8A88C) automatically. No changes needed.
+
+Verification:
+- `bun run lint` → 0 errors, 3 warnings (all in admin components: AdminLayout, BookingsAdmin, RoomsAdmin — outside this task's scope).
+- `tail -30 /home/z/my-project/dev.log` → dev server running clean on port 3000. `GET / 200 in 115ms` after edits. No compilation errors.
+- Final grep for `#1E5A3A`, `#0A3D4A`, `#1F6F50` in `src/components/public/` → No matches. All old hex literals purged from public components.
+
+Issues Encountered:
+- None. All edits applied cleanly. Used `bg-[#1A3D2E]` literal per task instruction (more reliable than `bg-band` for solid bands).
+
+Stage Summary:
+Public site theme overhaul complete. Header is now deep forest green (#1A3D2E) with white text and cyan CTA/active-underline accents. Footer and all stat bands are deep forest green. All "Book Your Stay" / "Check Availability" CTAs are cyan (`bg-cta text-cta-foreground hover:bg-cta/90`). Terracotta CTA bands and eyebrow labels preserved via `bg-coral` / `.eyebrow` (now #E8A88C). All leftover old-brand `#1F6F50` and `#1E5A3A` literals in public components purged. Social media brand colors in ContactPage and GuestMoments untouched. Admin components not modified (handled by parallel admin-theme agent).
+
+---
+Task ID: admin-dark-variants
+Agent: full-stack-developer
+Task: Add `dark:` Tailwind variants to admin components that still use light-only Tailwind palette classes (`bg-red-50`, `text-red-700`, `border-red-300`, etc.) so they render correctly on the new dark teal-green admin background driven by the `.admin-scope` class + `@custom-variant dark (&:is(.dark *, .admin-scope *))` in `globals.css`. Light-mode classes preserved for the public site.
+
+Work Log:
+- Read prior worklog (theme-explore + public-theme-update) to understand the `admin-scope` architecture and which files the prior agent flagged for `dark:` variant additions.
+- Grepped all files in `src/components/admin/` for three pattern families: `border-{color}-(200|300)`, `text-{color}-(600|700|800)`, `bg-{color}-(50|100)` and `hover:` variants of same — across the color palette `amber|red|emerald|green|sky|teal|lime|orange|rose|cyan`.
+- Excluded the three already-dark files per task instructions: `copilot/AdminCopilot.tsx`, `StatCard.tsx`, `ConfirmDialog.tsx`.
+- Identified 9 admin files needing edits (specific lines + class strings).
+
+Files Modified:
+
+1. `src/components/admin/BookingsAdmin.tsx`
+   - Line 713 (table row Decline button): `border-red-300 text-red-700 hover:bg-red-50` → added `dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40`.
+   - Line 952 (reservation detail dialog Decline button): same pattern → added `dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40`.
+   - Line 1367 (FormField error paragraph): `text-red-700` → added `dark:text-red-400`.
+   - Lines 1040–1053 (`border-red-500 bg-red-500 text-white`, `border-amber-500 bg-amber-500 text-white`, `border-emerald-500 bg-emerald-500 text-white`, `bg-emerald-500/40`) — left untouched per task spec (already visible on dark).
+
+2. `src/components/admin/AmenitiesAdmin.tsx`
+   - Line 147 (amenity card delete button): `hover:bg-red-50 hover:text-red-700` → added `dark:hover:bg-red-950/40 dark:hover:text-red-400`.
+
+3. `src/components/admin/RoomsAdmin.tsx`
+   - Line 515 (room card delete button): `hover:bg-red-50 hover:text-red-700` → added `dark:hover:bg-red-950/40 dark:hover:text-red-400`.
+   - Line 983 (FormField error paragraph): `text-red-700` → added `dark:text-red-400`.
+
+4. `src/components/admin/BlockDatesDialog.tsx`
+   - Line 131 (Ban icon in dialog title): `text-red-600` → added `dark:text-red-400`.
+   - Line 263 (existing-block delete button): `hover:bg-red-50 hover:text-red-600` → added `dark:hover:bg-red-950/40 dark:hover:text-red-400`.
+
+5. `src/components/admin/DashboardAdmin.tsx`
+   - Line 327 (Pending reservations Decline button): `border-red-300 text-red-700 hover:bg-red-50` → added `dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40`.
+
+6. `src/components/admin/CalendarAdmin.tsx`
+   - Line 305 (Ban icon on "Block Dates" outline button): `text-red-600` → added `dark:text-red-400`.
+
+7. `src/components/admin/SettingsAdmin.tsx`
+   - Line 151 (Field error paragraph): `text-red-700` → added `dark:text-red-400`.
+
+8. `src/components/admin/GalleryAdmin.tsx`
+   - Line 181 (gallery item delete button): `hover:text-red-700` → added `dark:hover:text-red-400`. (Hover background stays `hover:bg-white` — that's intentional on the photo thumbnail overlay; only the text tone needed a dark variant.)
+
+9. `src/components/admin/AdminLogin.tsx`
+   - Line 201 (email field error paragraph): `text-red-700` → added `dark:text-red-400`.
+   - Line 233 (password field error paragraph): `text-red-700` → added `dark:text-red-400`.
+
+Files Scanned — No Changes Needed:
+- `copilot/AdminCopilot.tsx` — DO NOT TOUCH per task spec; already has full dark: variants.
+- `StatCard.tsx` — DO NOT TOUCH per task spec; already has `dark:text-emerald-400 dark:text-red-400 dark:bg-red-950/40 dark:bg-amber-950/40`.
+- `ConfirmDialog.tsx` — DO NOT TOUCH per task spec; already has `dark:bg-amber-500 dark:bg-emerald-500 dark:text-emerald-400`.
+- `AdminLayout.tsx` — scanned; uses semantic tokens (`bg-sidebar`, `bg-card`, `bg-background`, `text-foreground`, `text-muted-foreground`) which resolve correctly under `admin-scope`. No light-palette classes found.
+- `ReportsAdmin.tsx`, `GuestsAdmin.tsx`, `ImageUploader.tsx`, `StatusBadges.tsx` — scanned; no matching light-palette patterns found (these use semantic tokens or already-dark literal colors).
+
+Issues Encountered:
+- MultiEdit on `BookingsAdmin.tsx` line 952 accidentally dropped the trailing `}` from the `onClick={() => onMutate("REJECTED")}` arrow-function expression because my `old_str`/`new_str` ended at the `)` (not the `}`), and the replacement consumed only the prefix portion. This produced a JSX parsing error: `Parsing error: '}' expected at 957:16`. Caught by `bun run lint`. Fixed immediately with a targeted Edit that restored `onClick={() => onMutate("REJECTED")}`. After the fix, lint passes cleanly. Lesson: when matching multi-line JSX attribute sequences, always include the full closing token (`)}` for arrow functions) in both `old_str` and `new_str`.
+
+Verification:
+- `bun run lint` → 0 errors, 2 warnings (both pre-existing `react-hooks/incompatible-library` warnings about React Hook Form's `watch()` API in `BookingsAdmin.tsx:1150` and `RoomsAdmin.tsx:618` — unrelated to this task).
+- `tail -20 /home/z/my-project/dev.log` → dev server running clean on port 3000, latest entries show `GET / 200 in 115ms`. No compilation errors after the fix.
+- Final re-grep for `text-(...)-(600|700|800)` and `bg-(...)-(50|100)` and `border-(...)-(200|300)` across `src/components/admin/` (excluding `copilot/`, `StatCard.tsx`, `ConfirmDialog.tsx`) → every remaining match now has a corresponding `dark:` variant.
+
+Stage Summary:
+Dark-mode variant coverage for admin Tailwind palette classes is complete. All `bg-red-50`, `text-red-700`, `border-red-300`, `hover:bg-red-50`, `hover:text-red-700`, `hover:text-red-600`, `text-red-600`, and `hover:text-red-700` light-mode utility classes in admin components now have parallel `dark:` variants that render properly on the dark teal-green admin background. Light-mode classes preserved untouched so the public site continues to render correctly. No semantic-token classes (bg-card, text-foreground, etc.) were touched — they already resolve correctly under `admin-scope`. Lint clean (0 errors), dev server clean. Ready for visual review in the admin dashboard.
+>>>>>>> Stashed changes
+
+---
+Task ID: full-theme-overhaul
+Agent: main (Z.ai Code)
+Task: FULL color theme overhaul to match user's reference images — public site: forest green + terracotta + cyan; admin: dark teal-green dashboard. Push to feature/verdara-rrms.
+
+Work Log:
+- Analyzed 2 reference images via VLM skill:
+  * Image 1 (public): deep forest green (#1A3D2E) header/footer + terracotta/salmon (#E8A88C) hero bands + cyan (#5EC4CE) CTA buttons + cream bg.
+  * Image 2 (admin): dark teal-green (#0F2B2D) dashboard, dark cards (#1A3839), coral (#D4846A) accents, emerald (#10B981) success.
+- Used Explore subagent to map all color usage across the codebase (40+ files).
+- globals.css — full rewrite:
+  * Added NEW tokens: --cta (#5EC4CE cyan), --cta-foreground, --band (#1A3D2E), --band-foreground.
+  * @theme inline: added --color-cta, --color-cta-foreground, --color-band, --color-band-foreground.
+  * :root (light): primary #1A3D2E (forest green), coral #E8A88C (terracotta), cta #5EC4CE (cyan), background #F8F8F0 (cream), foreground #2C2C2C (charcoal).
+  * NEW .admin-scope class: dark teal-green dashboard theme — background #0F2B2D, card #1A3839, foreground #F0F4F5, coral #D4846A, success #10B981, border #264D4F, chart colors emerald/coral/cyan.
+  * .dark (public dark mode): updated to dark teal-green variant matching admin-scope.
+  * Updated @custom-variant dark to include .admin-scope: `(&:is(.dark *, .admin-scope *))` — so dark: Tailwind variants apply inside admin.
+  * Updated scrollbar, gradient (.text-gradient-ocean: forest→terracotta→cyan), shadow tints, print styles.
+- Public components (via subagent):
+  * PublicNav: header bg-background/95 → bg-[#1A3D2E]/95 with white text. Active underline bg-coral → bg-cta. "Book Your Stay" bg-primary → bg-cta.
+  * PublicFooter: bg-[#1E5A3A] → bg-[#1A3D2E].
+  * HomePage: Check Availability → bg-cta, stats band → bg-[#1A3D2E], CTA band button → bg-cta.
+  * AboutPage: stats band → bg-[#1A3D2E], CTA band button → bg-cta.
+  * FindReservation: fixed leftover #1F6F50 → #1A3D2E, invoice header → bg-[#1A3D2E].
+- Admin layout:
+  * AdminLayout: added `admin-scope` class to root div. Removed theme state + toggleTheme function + theme useEffect. Removed Sun/Moon toggle button from TopBar. Removed Sun/Moon from lucide imports. Admin is now always dark (dark teal-green).
+  * AdminLogin: added admin-scope class, bg-[#1E5A3A] → bg-[#0A1F20] (deeper teal), glow bg-[#4ADE80]/20 → bg-[#10B981]/20.
+- Constants + charts:
+  * constants.ts: status colors updated for dark admin — CONFIRMED #10B981, CHECKED_IN #5EC4CE, CLEANING #D4846A, COMPLETED #94A7AA, etc. Calendar status colors updated.
+  * ReportsAdmin: STATUS_COLORS + 22 chart hex colors updated for dark bg (#D6DCD0→#264D4F, #5A6B5A→#94A7AA, #2E8B57→#10B981, #3A9D5C→#D4846A).
+  * DashboardAdmin: pie chart Occupied #2E8B57→#10B981, Available #D6DCD0→#264D4F.
+- Dark variants (via subagent):
+  * StatCard: DELTA_TONE + EmptyState tones got dark: variants.
+  * ConfirmDialog: warning/success tones got dark: variants.
+  * BookingsAdmin, AmenitiesAdmin, RoomsAdmin, BlockDatesDialog, DashboardAdmin, CalendarAdmin, SettingsAdmin, GalleryAdmin, AdminLogin: all light-palette classes (bg-red-50, text-red-700, border-red-300) got dark: variants.
+- Lint: 0 errors, 2 pre-existing warnings (React Hook Form watch()).
+- Dev server: running clean, no compilation errors.
+
+Stage Summary:
+- Local feature/verdara-rrms — FULL theme overhaul complete. 21 files modified.
+- Public site: cream bg + deep forest green header/footer/bands + terracotta hero CTA bands + cyan CTA buttons.
+- Admin: dark teal-green (#0F2B2D) dashboard with dark cards, coral accents, emerald success — always dark (no toggle).
+- Ready to commit and push.

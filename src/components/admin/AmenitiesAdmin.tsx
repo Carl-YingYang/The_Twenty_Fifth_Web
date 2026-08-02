@@ -144,7 +144,7 @@ export function AmenitiesAdmin() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-9 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-700 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                        className="size-9 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
                         onClick={() => setDeleting(a)}
                         aria-label={`Remove ${a.name}`}
                       >

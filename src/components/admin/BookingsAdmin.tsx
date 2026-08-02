@@ -710,7 +710,7 @@ function RowActions({
           <Button
             size="sm"
             variant="outline"
-            className="h-8 border-red-300 text-red-700 hover:bg-red-50"
+            className="h-8 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
             disabled={pending}
             onClick={() => onMutate("REJECTED")}
           >
@@ -949,7 +949,7 @@ function ReservationDetailsDialog({
             <>
               <Button
                 variant="outline"
-                className="w-full border-red-300 text-red-700 hover:bg-red-50 sm:w-auto"
+                className="w-full border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40 sm:w-auto"
                 disabled={pending}
                 onClick={() => onMutate("REJECTED")}
               >
@@ -1364,7 +1364,7 @@ function Field({
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-foreground">{label}</Label>
       {children}
-      {error && <p className="text-xs text-red-700">{error}</p>}
+      {error && <p className="text-xs text-red-700 dark:text-red-400">{error}</p>}
     </div>
   );
 }

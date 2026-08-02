@@ -128,7 +128,7 @@ export function BlockDatesDialog({ rooms, children }: BlockDatesDialogProps) {
       <DialogContent className="max-w-lg gap-0 p-0">
         <DialogHeader className="border-b border-border px-4 py-5 sm:px-6">
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-medium tracking-tight">
-            <Ban className="size-5 text-red-600" />
+            <Ban className="size-5 text-red-600 dark:text-red-400" />
             Block Dates
           </DialogTitle>
           <DialogDescription>
@@ -260,7 +260,7 @@ export function BlockDatesDialog({ rooms, children }: BlockDatesDialogProps) {
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="size-7 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                      className="size-7 shrink-0 text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                       onClick={() => deleteMutation.mutate(b.id)}
                       disabled={deleteMutation.isPending}
                       aria-label="Remove block"

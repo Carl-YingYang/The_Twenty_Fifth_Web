@@ -350,7 +350,7 @@ export function HomePage() {
                 <Button
                   onClick={onCheckAvailability}
                   size="lg"
-                  className="col-span-1 w-full rounded-md bg-primary text-primary-foreground hover:bg-primary/90 sm:col-span-2 md:col-span-1 md:w-auto"
+                  className="col-span-1 w-full rounded-md bg-cta text-cta-foreground hover:bg-cta/90 sm:col-span-2 md:col-span-1 md:w-auto"
                 >
                   Check Availability
                   <ArrowRight className="h-4 w-4" />
@@ -559,7 +559,7 @@ export function HomePage() {
       {/* ============================================================
           STATS BAND
       ============================================================ */}
-      <section className="bg-[#1E5A3A] py-16 text-white sm:py-20">
+      <section className="bg-[#1A3D2E] py-16 text-white sm:py-20">
         <div className="container-luxury">
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-5">
             {STATS.map((s, i) => (
@@ -612,7 +612,7 @@ export function HomePage() {
             <Button
               onClick={() => navigate("book")}
               size="lg"
-              className="rounded-md bg-white text-coral hover:bg-white/90"
+              className="rounded-md bg-cta text-cta-foreground hover:bg-cta/90"
             >
               Book Your Stay
               <ArrowRight className="h-4 w-4" />

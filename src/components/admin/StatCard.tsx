@@ -18,8 +18,8 @@ interface StatCardProps {
 }
 
 const DELTA_TONE: Record<NonNullable<StatCardProps["deltaTone"]>, string> = {
-  up: "text-emerald-700",
-  down: "text-red-700",
+  up: "text-emerald-600 dark:text-emerald-400",
+  down: "text-red-600 dark:text-red-400",
   neutral: "text-muted-foreground",
 };
 
@@ -116,8 +116,8 @@ export function EmptyState({
   const toneClasses = {
     default: "bg-sand text-muted-foreground",
     primary: "bg-primary/10 text-primary",
-    danger: "bg-red-50 text-red-600",
-    warning: "bg-amber-50 text-amber-600",
+    danger: "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400",
+    warning: "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400",
   }[tone];
 
   return (
