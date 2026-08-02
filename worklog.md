@@ -3786,3 +3786,32 @@ Stage Summary:
 - Both bugs verified fixed end-to-end via agent-browser: admin can now block calendar dates (201 Created) and remove them (200 OK).
 - Admin password reset to `verdara2025` for `stay@the25thinzambales.com` and `admin@verdararesort.com` (was unknown because `ADMIN_SEED_PASSWORD` env var was never set). User should set `ADMIN_SEED_PASSWORD` in `.env` and re-seed for production.
 
+
+---
+Task ID: theme-branch-verification
+Agent: main (Z.ai Code)
+Task: User asked to push ONLY the color theme from commit bd5b346 to feature/verdara-rrms branch — NOT to main. Verify the theme is correct and nothing unwanted gets pushed.
+
+Work Log:
+- User clarification: "color theme lang yung galing dito bd5b346, wala kang e pupush sa main branch, sa verdara-rrms lang"
+- Checked all branch positions:
+  * feature/verdara-rrms (local) = bd5b346 (theme overhaul) ✅
+  * origin/feature/verdara-rrms (remote) = bd5b346 ✅ — already in sync
+  * main (local) = 7eb7502 (has scrollbar + auth fix + cleanup ON TOP of bd5b346) — NOT pushed
+  * origin/main (remote) = a5381a5 ("supabase connection") — untouched, NOT pushed
+- Switched to feature/verdara-rrms branch, cleared .next cache, restarted dev server.
+- Verified the bd5b346 theme renders correctly via agent-browser + VLM:
+  * Header: deep forest green ✅
+  * Page background: cream/light (#F8F8F0) ✅
+  * CTA button "Book Your Stay": cyan/aqua (#5EC4CE) ✅
+  * Eyebrow labels ("THE VILLA"): terracotta/coral (#E8A88C) ✅
+- The user's uploaded screenshot (pasted_image_1785665252494.png) showed a darker appearance — this was because the dev server was running on the `main` branch (which has extra scrollbar/auth commits). The theme TOKENS are identical between main and bd5b346 (verified via git diff — only the scrollbar CSS section changed, not the :root/.admin-scope/.dark color variables). The dark appearance was the VLM interpreting the hero's photographic overlay + dark sections (header, stats band, footer) as the "primary background".
+- Confirmed: NO push to main was performed. NO push to feature/verdara-rrms was needed (already at bd5b346 on remote).
+
+Stage Summary:
+- feature/verdara-rrms (local + remote) = bd5b346 — the full theme overhaul commit. ✅
+- The theme on this branch is verified correct: cream bg + forest green header/footer + terracotta accents + cyan CTA buttons (public); dark teal-green dashboard (admin).
+- main branch has local commits (scrollbar elegance fix, RBAC hierarchy fix, dev artifact cleanup) that were NOT pushed anywhere — per user instruction.
+- origin/main remains untouched at a5381a5.
+- No action needed — bd5b346 is already on origin/feature/verdara-rrms.
+
