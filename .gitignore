@@ -97,3 +97,7 @@ qa-*.png
 start-dev.sh
 verification-*.png
 current-theme*.png
+
+# Agent-browser verification screenshots (local only)
+verify-*.png
+qa-*.png
