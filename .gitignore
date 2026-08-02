@@ -92,3 +92,8 @@ qa-*.png
 .commit-msg.txt
 *.patch
 .zscripts/dev.pid
+
+# Dev server supervisor + verification screenshots (local only)
+start-dev.sh
+verification-*.png
+current-theme*.png
